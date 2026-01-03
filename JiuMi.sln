@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35806.99 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiuMi", "JiuMi\JiuMi.csproj", "{D863490A-C41E-C240-598D-705C09824A07}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiuMi.Desktop", "JiuMi.Desktop\JiuMi.Desktop.csproj", "{E377CBB8-48B8-CD9B-BF4A-2CFF07FD8919}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiuMi.Domain", "JiuMi.Domain\JiuMi.Domain.csproj", "{79CB89DB-0E70-4B39-B96A-C1F6F2671278}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiuMi.Application", "JiuMi.Application\JiuMi.Application.csproj", "{0EE5D383-E4DD-4812-9C56-61BBE3CEC517}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiuMi.Infrastructure", "JiuMi.Infrastructure\JiuMi.Infrastructure.csproj", "{335B1883-19EB-44E5-9BED-3D1275D842E9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D863490A-C41E-C240-598D-705C09824A07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D863490A-C41E-C240-598D-705C09824A07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D863490A-C41E-C240-598D-705C09824A07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D863490A-C41E-C240-598D-705C09824A07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E377CBB8-48B8-CD9B-BF4A-2CFF07FD8919}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E377CBB8-48B8-CD9B-BF4A-2CFF07FD8919}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E377CBB8-48B8-CD9B-BF4A-2CFF07FD8919}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E377CBB8-48B8-CD9B-BF4A-2CFF07FD8919}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79CB89DB-0E70-4B39-B96A-C1F6F2671278}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79CB89DB-0E70-4B39-B96A-C1F6F2671278}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79CB89DB-0E70-4B39-B96A-C1F6F2671278}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79CB89DB-0E70-4B39-B96A-C1F6F2671278}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EE5D383-E4DD-4812-9C56-61BBE3CEC517}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EE5D383-E4DD-4812-9C56-61BBE3CEC517}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EE5D383-E4DD-4812-9C56-61BBE3CEC517}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EE5D383-E4DD-4812-9C56-61BBE3CEC517}.Release|Any CPU.Build.0 = Release|Any CPU
+		{335B1883-19EB-44E5-9BED-3D1275D842E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{335B1883-19EB-44E5-9BED-3D1275D842E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{335B1883-19EB-44E5-9BED-3D1275D842E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{335B1883-19EB-44E5-9BED-3D1275D842E9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D9414151-0717-4E21-9120-C16BC95B288A}
+	EndGlobalSection
+EndGlobal
