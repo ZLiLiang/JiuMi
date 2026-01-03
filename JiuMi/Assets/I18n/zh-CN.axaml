@@ -1,4 +1,5 @@
 ﻿<ResourceDictionary xmlns="https://github.com/avaloniaui"
 					xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 	<x:String x:Key="GreetingMessage">欢迎使用 Avalonia！</x:String>
+	<x:String x:Key="HomePageNavHeader">主页</x:String>
 </ResourceDictionary>
