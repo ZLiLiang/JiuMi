@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaXaml Remove="Assets\I18n\zh-CN.axaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.10" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.10" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
@@ -22,5 +26,24 @@
   <ItemGroup>
     <ProjectReference Include="..\JiuMi.Application\JiuMi.Application.csproj" />
     <ProjectReference Include="..\JiuMi.Infrastructure\JiuMi.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Update="Assets\I18n\Keys.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Keys.cs</LastGenOutput>
+    </AvaloniaResource>
+    <AvaloniaResource Update="Assets\I18n\Keys.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Keys.tt</DependentUpon>
+    </AvaloniaResource>
+    <AvaloniaResource Update="Assets\I18n\zh-CN.axaml">
+      <SubType>Designer</SubType>
+    </AvaloniaResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
   </ItemGroup>
 </Project>

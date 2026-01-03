@@ -1,12 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:JiuMi.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:views="clr-namespace:JiuMi.Views"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="JiuMi.Views.MainWindow"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="JiuMi">
-        <views:MainView />
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:vm="using:JiuMi.ViewModels"
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:views="clr-namespace:JiuMi.Views"
+		mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+		x:Class="JiuMi.Views.MainWindow"
+		Icon="/Assets/avalonia-logo.ico"
+		Title="JiuMi"
+		ExtendClientAreaToDecorationsHint="True">
+	<views:MainView />
 </Window>

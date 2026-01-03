@@ -1,0 +1,37 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Xml" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text.RegularExpressions" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+<#
+    string sourceFile = Host.ResolvePath("zh-CN.axaml");
+    string className = "Keys";
+    string namespaceName = "JiuMi.Assets.I18n";
+
+    string content = File.ReadAllText(sourceFile);
+
+    var regex = new Regex("x:Key=\"(.*?)\"");
+    var matches = regex.Matches(content);
+    
+    var keys = new HashSet<string>();
+    foreach(Match match in matches)
+    {
+        keys.Add(match.Groups[1].Value);
+    }
+#>
+
+namespace <#= namespaceName #>;
+
+public static class <#= className #>
+{
+<# foreach (var key in keys) { #>
+    /// <summary>
+    /// Key: <#= key #>
+    /// </summary>
+    public const string <#= key #> = "<#= key #>";
+
+<# } #>
+}
