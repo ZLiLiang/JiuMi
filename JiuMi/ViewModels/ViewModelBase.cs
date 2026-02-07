@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FluentAvalonia.UI.Controls;
+using JiuMi.Attributes;
 using JiuMi.Services;
 
 namespace JiuMi.ViewModels;
@@ -28,11 +30,24 @@ public abstract class MainPageViewModelBase : ViewModelBase, IDisposable
 
     public abstract bool ShowsInFooter { get; }
 
-    public abstract void UpdateText();
+    public virtual void RefreshLocalizedStrings()
+    {
+
+    }
 
     private void OnLanguageChanged()
     {
-        UpdateText();
+        RefreshLocalizedStrings();
+
+        var properties = this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var prop in properties)
+        {
+            if (Attribute.IsDefined(prop, typeof(LocalizedAttribute)))
+            {
+                OnPropertyChanged(prop.Name);
+            }
+        }
     }
 
     protected virtual void Dispose(bool disposing)
