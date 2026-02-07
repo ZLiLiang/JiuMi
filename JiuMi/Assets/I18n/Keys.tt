@@ -22,6 +22,7 @@
         keys.Add(match.Groups[1].Value);
     }
 #>
+using JiuMi.Services;
 
 namespace <#= namespaceName #>;
 
@@ -32,6 +33,17 @@ public static class <#= className #>
     /// Key: <#= key #>
     /// </summary>
     public const string <#= key #> = "<#= key #>";
+
+<# } #>
+}
+
+public static class Strings
+{
+<# foreach (var key in keys) { #>
+    /// <summary>
+    /// Value of: <#= key #>
+    /// </summary>
+    public static string <#= key #> => LanguageService.Current.GetString(Keys.<#= key #>);
 
 <# } #>
 }
