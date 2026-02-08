@@ -1,15 +1,20 @@
-﻿using Avalonia;
+﻿using System;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
-
+using JiuMi.Extensions;
 using JiuMi.ViewModels;
 using JiuMi.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace JiuMi;
 
 public partial class App : Application
 {
+    public new static App? Current => Application.Current as App;
+    public IServiceProvider? Services { get; private set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -17,9 +22,15 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        // Line below is needed to remove Avalonia data validation.
-        // Without this line you will get duplicate validations from both Avalonia and CT
+        var collection = new ServiceCollection();
+
+        collection.AddJiuMiUIServices();
+
+        Services = collection.BuildServiceProvider();
+
         BindingPlugins.DataValidators.RemoveAt(0);
+
+        DataTemplates.Add(new ViewLocator(Services));
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

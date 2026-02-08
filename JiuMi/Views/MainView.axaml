@@ -3,6 +3,8 @@
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:vm="clr-namespace:JiuMi.ViewModels"
+			 xmlns:conv="clr-namespace:JiuMi.Converters"
+			 xmlns:ui="using:FluentAvalonia.UI.Controls"
 			 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
 			 x:Class="JiuMi.Views.MainView"
 			 x:DataType="vm:MainViewModel">
@@ -12,5 +14,35 @@
 		<vm:MainViewModel />
 	</Design.DataContext>
 
-	<TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+	<UserControl.Resources>
+		<conv:SymbolToIconSourceConverter x:Key="SymbolConverter" />
+	</UserControl.Resources>
+
+	<ui:NavigationView PaneDisplayMode="Left"
+					   MenuItemsSource="{Binding NavigationItems}"
+					   FooterMenuItemsSource="{Binding FooterItems}"
+					   SelectedItem="{Binding SelectedPage}"
+					   IsSettingsVisible="False">
+
+		<ui:NavigationView.Styles>
+			<Style Selector="ui|NavigationViewItem" x:DataType="vm:MainPageViewModelBase">
+				<Setter Property="IconSource"
+						Value="{Binding IconKey, Converter={StaticResource SymbolConverter}}"/>
+			</Style>
+			<Style Selector="ui|NavigationViewItem:selected" x:DataType="vm:MainPageViewModelBase">
+				<Setter Property="IconSource"
+						Value="{Binding IconFilledKey, Converter={StaticResource SymbolConverter}}"/>
+			</Style>
+		</ui:NavigationView.Styles>
+
+		<ui:NavigationView.MenuItemTemplate>
+			<DataTemplate x:DataType="vm:MainPageViewModelBase">
+				<ui:NavigationViewItem Content="{Binding NavHeader}"/>
+			</DataTemplate>
+		</ui:NavigationView.MenuItemTemplate>
+
+		<TransitioningContentControl Content="{Binding SelectedPage}" Margin="10" />
+
+	</ui:NavigationView>
+
 </UserControl>

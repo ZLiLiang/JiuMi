@@ -14,6 +14,11 @@ public static class Keys
     /// </summary>
     public const string HomePageNavHeader = "HomePageNavHeader";
 
+    /// <summary>
+    /// Key: SettingPageNavHeader
+    /// </summary>
+    public const string SettingPageNavHeader = "SettingPageNavHeader";
+
 }
 
 public static class Strings
@@ -27,5 +32,10 @@ public static class Strings
     /// Value of: HomePageNavHeader
     /// </summary>
     public static string HomePageNavHeader => LanguageService.Current.GetString(Keys.HomePageNavHeader);
+
+    /// <summary>
+    /// Value of: SettingPageNavHeader
+    /// </summary>
+    public static string SettingPageNavHeader => LanguageService.Current.GetString(Keys.SettingPageNavHeader);
 
 }

@@ -4,14 +4,12 @@ using Avalonia.Interactivity;
 
 namespace JiuMi.Pages;
 
-public partial class HomePage : UserControl
+public partial class SettingPage : UserControl
 {
-    public HomePage()
+    public SettingPage()
     {
         InitializeComponent();
-
         this.Unloaded += OnUnloaded;
-
     }
 
     private void OnUnloaded(object? sender, RoutedEventArgs e)
