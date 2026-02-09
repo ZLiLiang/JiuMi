@@ -1,10 +1,8 @@
 ﻿using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using JiuMi.Pages;
 using JiuMi.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JiuMi;
 
@@ -20,9 +18,16 @@ public class ViewLocator(IServiceProvider serviceProvider) : IDataTemplate
         if (param is null)
             return null;
 
-        var count = "ViewModel".Length;
-        var name = param.GetType().FullName?[..^count].Replace("ViewModels", "Pages");
-        
+        var typeName = param.GetType().FullName;
+        if (string.IsNullOrEmpty(typeName)) 
+            return null;
+
+        var name = typeName.Replace("ViewModels", "Pages");
+        if (name.EndsWith("ViewModel"))
+        {
+            name = name[..^"ViewModel".Length];
+        }
+
         var type = Type.GetType(name);
 
         if (type != null)

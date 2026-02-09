@@ -4,5 +4,5 @@
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
 			 x:Class="JiuMi.Pages.HomePage">
-	Welcome to HomePage!
+	<TextBlock Text="Welcome to HomePage!" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24"/>
 </UserControl>

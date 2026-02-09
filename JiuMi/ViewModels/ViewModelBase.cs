@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FluentAvalonia.UI.Controls;
@@ -35,18 +37,26 @@ public abstract class MainPageViewModelBase : ViewModelBase, IDisposable
 
     }
 
+    private static readonly Dictionary<Type, List<string>> _localizedPropertiesCache = [];
+
     private void OnLanguageChanged()
     {
         RefreshLocalizedStrings();
 
-        var properties = this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var type = this.GetType();
 
-        foreach (var prop in properties)
+        if (!_localizedPropertiesCache.TryGetValue(type, out var propNames))
         {
-            if (Attribute.IsDefined(prop, typeof(LocalizedAttribute)))
-            {
-                OnPropertyChanged(prop.Name);
-            }
+            propNames = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => Attribute.IsDefined(p, typeof(LocalizedAttribute)))
+                .Select(p => p.Name)
+                .ToList();
+            _localizedPropertiesCache[type] = propNames;
+        }
+
+        foreach (var name in propNames)
+        {
+            OnPropertyChanged(name);
         }
     }
 
