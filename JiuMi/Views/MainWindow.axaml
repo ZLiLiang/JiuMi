@@ -8,6 +8,7 @@
 		x:Class="JiuMi.Views.MainWindow"
 		Icon="/Assets/avalonia-logo.ico"
 		Title="JiuMi"
-		ExtendClientAreaToDecorationsHint="True">
+		ExtendClientAreaToDecorationsHint="True"
+		WindowStartupLocation="CenterScreen">
 	<views:MainView />
 </Window>

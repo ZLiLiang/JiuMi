@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
@@ -20,7 +21,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override void OnFrameworkInitializationCompleted()
+    public override async void OnFrameworkInitializationCompleted()
     {
         var collection = new ServiceCollection();
 
@@ -34,10 +35,21 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            var splashScreen = new JiuMiSplashWindow();
+            desktop.MainWindow = splashScreen;
+            splashScreen.Show();
+
+            base.OnFrameworkInitializationCompleted();
+
+            await Task.Delay(2000);
+
+            var mainWindow = new MainWindow
             {
                 DataContext = new MainViewModel()
             };
+            desktop.MainWindow = mainWindow;
+            mainWindow.Show();
+            splashScreen.Close();
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -45,8 +57,8 @@ public partial class App : Application
             {
                 DataContext = new MainViewModel()
             };
-        }
 
-        base.OnFrameworkInitializationCompleted();
+            base.OnFrameworkInitializationCompleted();
+        }
     }
 }
