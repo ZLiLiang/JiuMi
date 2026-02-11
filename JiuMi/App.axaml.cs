@@ -44,17 +44,23 @@ public partial class App : Application
             desktop.MainWindow = splashScreen;
             splashScreen.Show();
 
+            var mainWindow = new MainWindow
+            {
+                DataContext = new MainViewModel(),
+                Opacity = 0,
+                ShowInTaskbar = false
+            };
+            mainWindow.Show();
+            splashScreen.Activate();
+
             _ = splashVM.Initialize();
 
             splashScreen.StartAnimation(onAnimationFinished: () =>
             {
-                var mainWindow = new MainWindow
-                {
-                    DataContext = new MainViewModel()
-                };
-
+                mainWindow.ShowInTaskbar = true;
+                mainWindow.Opacity = 1;
+                mainWindow.Activate();
                 desktop.MainWindow = mainWindow;
-                mainWindow.Show();
                 splashScreen.Close();
             });
         }
