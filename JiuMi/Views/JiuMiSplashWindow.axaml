@@ -6,9 +6,12 @@
 		x:Class="JiuMi.Views.JiuMiSplashWindow"
 		Title="JiuMiSplashWindow"
 		SystemDecorations="None"
-        WindowStartupLocation="CenterScreen"
-        Topmost="True"
-        Width="600" Height="350"
-        TransparencyLevelHint="AcrylicBlur">
-	<TextBlock Text="Welcome to JiuMiSplashWindow!" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24"/>
+		WindowStartupLocation="CenterScreen"
+		Topmost="True"
+		Width="600" Height="350"
+		TransparencyLevelHint="AcrylicBlur">
+	<Image x:Name="GifImageControl"
+		   Stretch="None"
+		   HorizontalAlignment="Center"
+		   VerticalAlignment="Center"/>
 </Window>

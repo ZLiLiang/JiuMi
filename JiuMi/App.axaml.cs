@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using JiuMi.Extensions;
 using JiuMi.ViewModels;
 using JiuMi.Views;
@@ -35,21 +36,27 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var splashScreen = new JiuMiSplashWindow();
+            var splashVM = new JiuMiSplashViewModel();
+            var splashScreen = new JiuMiSplashWindow
+            {
+                DataContext = splashVM,
+            };
             desktop.MainWindow = splashScreen;
             splashScreen.Show();
 
-            base.OnFrameworkInitializationCompleted();
+            _ = splashVM.Initialize();
 
-            await Task.Delay(2000);
-
-            var mainWindow = new MainWindow
+            splashScreen.StartAnimation(onAnimationFinished: () =>
             {
-                DataContext = new MainViewModel()
-            };
-            desktop.MainWindow = mainWindow;
-            mainWindow.Show();
-            splashScreen.Close();
+                var mainWindow = new MainWindow
+                {
+                    DataContext = new MainViewModel()
+                };
+
+                desktop.MainWindow = mainWindow;
+                mainWindow.Show();
+                splashScreen.Close();
+            });
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -58,7 +65,8 @@ public partial class App : Application
                 DataContext = new MainViewModel()
             };
 
-            base.OnFrameworkInitializationCompleted();
         }
+
+        base.OnFrameworkInitializationCompleted();
     }
 }

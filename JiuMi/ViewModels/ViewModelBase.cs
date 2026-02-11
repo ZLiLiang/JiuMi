@@ -20,7 +20,7 @@ public abstract class MainPageViewModelBase : ViewModelBase, IDisposable
         LanguageService.Current.LanguageChanged += OnLanguageChanged;
     }
 
-    private bool _disposedValue;
+    private bool _disposed = false;
 
     public abstract string PageKey { get; }
 
@@ -62,15 +62,15 @@ public abstract class MainPageViewModelBase : ViewModelBase, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposedValue)
-        {
-            if (disposing)
-            {
-                LanguageService.Current.LanguageChanged -= OnLanguageChanged;
-            }
+        if (_disposed) return;
 
-            _disposedValue = true;
+        if (disposing)
+        {
+            LanguageService.Current.LanguageChanged -= OnLanguageChanged;
         }
+
+        _disposed = true;
+
     }
 
     public void Dispose()
