@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Fluxzy.Core" Version="1.34.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JiuMi.Domain\JiuMi.Domain.csproj" />
   </ItemGroup>
 
