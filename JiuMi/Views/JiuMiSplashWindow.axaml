@@ -8,8 +8,8 @@
 		SystemDecorations="None"
 		WindowStartupLocation="CenterScreen"
 		Topmost="True"
-		Width="600" Height="350"
-		TransparencyLevelHint="AcrylicBlur">
+		Width="400" Height="200"
+		Background="Transparent">
 	<Image x:Name="GifImageControl"
 		   Stretch="None"
 		   HorizontalAlignment="Center"

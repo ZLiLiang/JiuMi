@@ -50,10 +50,6 @@ public partial class App : Application
                 Opacity = 0,
                 ShowInTaskbar = false
             };
-            mainWindow.Show();
-            splashScreen.Activate();
-
-            _ = splashVM.Initialize();
 
             splashScreen.StartAnimation(onAnimationFinished: () =>
             {
@@ -63,6 +59,11 @@ public partial class App : Application
                 desktop.MainWindow = mainWindow;
                 splashScreen.Close();
             });
+
+            mainWindow.Show();
+            splashScreen.Activate();
+
+            _ = splashVM.Initialize();
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {

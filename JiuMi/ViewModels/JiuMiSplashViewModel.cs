@@ -8,6 +8,9 @@ public class JiuMiSplashViewModel : ViewModelBase
 
     public async Task Initialize()
     {
-        IsInitializationComplete = true;
+        await Task.Run(() =>
+        {
+            IsInitializationComplete = true;
+        });
     }
 }
