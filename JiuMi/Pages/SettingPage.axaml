@@ -2,7 +2,46 @@
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:ui="using:FluentAvalonia.UI.Controls"
 			 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
 			 x:Class="JiuMi.Pages.SettingPage">
-	<TextBlock Text="Welcome to SettingPage!" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24"/>
+	<ScrollViewer Padding="20">
+		<StackPanel Spacing="8">
+			<ui:SettingsExpander Header="{DynamicResource SettingPagePersonalizationHeader}"
+								 Description="{DynamicResource SettingPagePersonalizationDesc}"
+								 IsExpanded="True">
+				<ui:SettingsExpanderItem Content="{DynamicResource SettingPageThemeOption}">
+					<ui:SettingsExpanderItem.Footer>
+						<ComboBox ItemsSource="{Binding Themes}"
+								  SelectedItem="{Binding SelectedTheme}"
+								  MinWidth="120" />
+					</ui:SettingsExpanderItem.Footer>
+				</ui:SettingsExpanderItem>
+
+				<ui:SettingsExpanderItem Content="{DynamicResource SettingPageLanguageOption}">
+					<ui:SettingsExpanderItem.Footer>
+						<ComboBox ItemsSource="{Binding Languages}"
+								  SelectedValue="{Binding SelectedLanguage}"
+								  SelectedValueBinding="{Binding Key}"
+								  MinWidth="120" />
+					</ui:SettingsExpanderItem.Footer>
+				</ui:SettingsExpanderItem>
+			</ui:SettingsExpander>
+
+			<ui:SettingsExpander Header="{DynamicResource SettingPageAboutHeader}"
+								 IconSource="Important"
+								 Margin="0,20,0,0">
+				<ui:SettingsExpanderItem Content="{DynamicResource SettingPageVersionOption}">
+					<ui:SettingsExpanderItem.Footer>
+						<TextBlock Text="{Binding AppVersion}" VerticalAlignment="Center" Foreground="Gray"/>
+					</ui:SettingsExpanderItem.Footer>
+				</ui:SettingsExpanderItem>
+
+				<ui:SettingsExpanderItem>
+					<Button Content="{DynamicResource SettingPageCheckUpdateBtn}"
+							Command="{Binding CheckUpdateCommand}" />
+				</ui:SettingsExpanderItem>
+			</ui:SettingsExpander>
+		</StackPanel>
+	</ScrollViewer>
 </UserControl>

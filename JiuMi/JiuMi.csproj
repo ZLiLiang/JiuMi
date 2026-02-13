@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaXaml Remove="Assets\I18n\en-US.axaml" />
     <AvaloniaXaml Remove="Assets\I18n\zh-CN.axaml" />
   </ItemGroup>
 
@@ -30,6 +31,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Update="Assets\I18n\en-US.axaml">
+      <SubType>Designer</SubType>
+    </AvaloniaResource>
     <AvaloniaResource Update="Assets\I18n\Keys.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Keys.cs</LastGenOutput>

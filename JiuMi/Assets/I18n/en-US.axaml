@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+					xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<x:String x:Key="GreetingMessage">Welcome to Avalonia£¡</x:String>
+	<x:String x:Key="HomePageNavHeader">Home</x:String>
+	<x:String x:Key="SettingPageNavHeader">Setting</x:String>
+
+	<x:String x:Key="SettingPagePersonalizationHeader">Personalization</x:String>
+	<x:String x:Key="SettingPagePersonalizationDesc">Customize appearance and language</x:String>
+
+	<x:String x:Key="SettingPageThemeOption">App Theme</x:String>
+	<x:String x:Key="SettingPageLanguageOption">Language</x:String>
+
+	<x:String x:Key="SettingPageAboutHeader">About JiuMi</x:String>
+	<x:String x:Key="SettingPageVersionOption">Version</x:String>
+	<x:String x:Key="SettingPageCheckUpdateBtn">Check Update</x:String>
+</ResourceDictionary>

@@ -14,7 +14,6 @@
 	</Application.Resources>
 
 	<Application.Styles>
-		<sty:FluentAvaloniaTheme PreferUserAccentColor="True"
-								 PreferSystemTheme="True" />
+		<sty:FluentAvaloniaTheme PreferUserAccentColor="True" />
 	</Application.Styles>
 </Application>

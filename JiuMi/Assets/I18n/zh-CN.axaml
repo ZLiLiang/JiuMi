@@ -3,4 +3,14 @@
 	<x:String x:Key="GreetingMessage">欢迎使用 Avalonia！</x:String>
 	<x:String x:Key="HomePageNavHeader">主页</x:String>
 	<x:String x:Key="SettingPageNavHeader">设置</x:String>
+
+	<x:String x:Key="SettingPagePersonalizationHeader">个性化</x:String>
+	<x:String x:Key="SettingPagePersonalizationDesc">调整应用的外观和语言</x:String>
+
+	<x:String x:Key="SettingPageThemeOption">应用主题</x:String>
+	<x:String x:Key="SettingPageLanguageOption">显示语言</x:String>
+
+	<x:String x:Key="SettingPageAboutHeader">关于 JiuMi</x:String>
+	<x:String x:Key="SettingPageVersionOption">当前版本</x:String>
+	<x:String x:Key="SettingPageCheckUpdateBtn">检查更新</x:String>
 </ResourceDictionary>
