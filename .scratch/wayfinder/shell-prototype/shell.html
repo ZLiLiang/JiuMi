@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>JiuMi shell prototype</title>
+<style>
+  :root{
+    --accent:#63b3ff;
+    --text:#f4f4f4;
+    --text-2:#b9b9b9;
+    --stroke:rgba(255,255,255,.105);
+    --card:rgba(39,39,42,.82);
+    --window-bg:#202020;
+    --page-bg:#141414;
+    --control-bg:rgba(255,255,255,.075);
+    --control-stroke:rgba(255,255,255,.18);
+    --separator:rgba(255,255,255,.105);
+    --hover:rgba(255,255,255,.055);
+    --selected:rgba(255,255,255,.09);
+    --disabled:#777;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI",sans-serif;font-size:14px;
+       background:var(--page-bg);padding:26px;display:flex;flex-direction:column;gap:20px;align-items:flex-start}
+  .caption{color:#9a9a9a;font-size:12px;letter-spacing:.3px}
+  .window{width:1200px;height:760px;border-radius:8px;overflow:hidden;position:relative;
+    background:
+      radial-gradient(1100px 560px at 18% -12%, rgba(120,170,255,.38), transparent 62%),
+      radial-gradient(900px 480px at 102% -6%, rgba(255,120,204,.18), transparent 56%),
+      var(--window-bg);
+    box-shadow:0 18px 50px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.14);
+    display:flex;flex-direction:column;color:var(--text)}
+  .ico{display:inline-flex;width:16px;height:16px;flex:none;align-items:center;justify-content:center}
+  .ico svg{width:100%;height:100%;display:block}
+  .titlebar{height:40px;display:flex;align-items:center;padding-left:14px;gap:10px;flex:none}
+  .appmark{width:18px;height:18px;border-radius:4px;background:linear-gradient(135deg,#4b8bff,#7a5cff);
+           display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
+  .apptitle{font-size:12px;color:var(--text-2)}
+  .captionbars{margin-left:auto;display:flex;height:100%}
+  .cbtn{width:46px;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-2)}
+  .cbtn .ico{width:10px;height:10px}
+  .cbtn.close:hover{background:#c42b1c;color:#fff}
+  .body{flex:1;display:flex;min-height:0}
+  .nav{width:280px;padding:8px 8px 12px;display:flex;flex-direction:column;flex:none}
+  .navhead{display:flex;align-items:center;gap:12px;padding:6px 8px 10px}
+  .hamb{width:36px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text)}
+  .navtitle{font-size:14px;font-weight:600}
+  .item{height:36px;border-radius:4px;display:flex;align-items:center;gap:14px;padding:0 12px;margin:2px 0;
+        font-size:14px;position:relative;color:var(--text)}
+  .item .ico{color:var(--text)}
+  .item:hover{background:var(--hover)}
+  .item.selected{background:var(--selected)}
+  .item.selected::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+        width:3px;height:16px;border-radius:2px;background:var(--accent)}
+  .item.selected .ico{color:var(--accent)}
+  .item.selected .ico svg{fill:currentColor}
+  .item .soon{margin-left:auto;font-size:10px;color:var(--text-2);background:var(--control-bg);
+        padding:2px 6px;border-radius:9px}
+  .item.disabled{color:var(--disabled)}
+  .item.disabled .ico{color:var(--disabled)}
+  .navspacer{flex:1}
+  .sep{height:1px;background:var(--separator);margin:6px 12px}
+  .content{flex:1;overflow:hidden;padding:32px 44px 36px}
+  h1{font-family:"Segoe UI Variable Display","Segoe UI";font-size:28px;font-weight:600;letter-spacing:-.2px}
+  .sub{color:var(--text-2);font-size:13px;margin-top:6px}
+  .hero{display:flex;gap:26px;align-items:center;background:var(--card);border:1px solid var(--stroke);
+        border-radius:12px;padding:20px 24px;margin-top:22px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .hero .anim{width:340px;height:200px;border-radius:10px;flex:none;position:relative;overflow:hidden;
+        background:radial-gradient(120% 120% at 0% 0%, #25476a, #49355c 55%, #603b52);
+        display:flex;align-items:center;justify-content:center}
+  .hero .anim::after{content:"";position:absolute;inset:-40%;
+        background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
+        transform:rotate(18deg);animation:sheen 2.4s linear infinite}
+  @keyframes sheen{0%{translate:-45% 0}100%{translate:45% 0}}
+  .hero .anim span{position:relative;z-index:1;font-size:11px;color:#e7e7e7;
+        background:rgba(0,0,0,.34);padding:4px 10px;border-radius:20px}
+  .hero h2{font-family:"Segoe UI Variable Display","Segoe UI";font-size:24px;font-weight:600;letter-spacing:-.2px}
+  .hero p{font-size:13px;color:var(--text-2);margin-top:8px;line-height:1.6;max-width:430px}
+  .tools-title{font-size:14px;font-weight:600;margin-top:26px;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:8px;padding:18px;
+        display:flex;gap:14px;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card .badge{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+        color:#fff;flex:none}
+  .card .badge .ico{width:20px;height:20px}
+  .card h3{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card p{font-size:12px;color:var(--text-2);margin-top:5px;line-height:1.5}
+  .pill{font-size:10px;font-weight:400;color:#c7e5ff;border:1px solid rgba(99,179,255,.42);
+        border-radius:9px;padding:1px 7px;background:rgba(99,179,255,.14)}
+  .section{margin-top:26px;max-width:800px}
+  .sectitle{font-size:14px;font-weight:600;margin-bottom:8px}
+  .settingscard{background:var(--card);border:1px solid var(--stroke);border-radius:8px;overflow:hidden}
+  .row{display:flex;align-items:center;gap:16px;padding:14px 18px}
+  .row+.row{border-top:1px solid var(--separator)}
+  .row .label{flex:1}
+  .row .label b{font-size:13px;font-weight:600;display:block}
+  .row .label span{font-size:11.5px;color:var(--text-2);display:block;margin-top:2px}
+  .combo{min-width:220px;height:32px;border-radius:4px;background:var(--control-bg);
+         border:1px solid var(--control-stroke);display:flex;align-items:center;padding:0 10px;font-size:13px;gap:8px}
+  .combo .chev{margin-left:auto;color:var(--text-2)}
+  .combo .chev .ico{width:10px;height:10px}
+  .radios{display:flex;gap:14px;font-size:13px}
+  .radio{display:flex;align-items:center;gap:7px}
+  .dot{width:16px;height:16px;border-radius:50%;border:1px solid rgba(255,255,255,.45);
+       display:flex;align-items:center;justify-content:center;flex:none}
+  .dot.on{border-color:var(--accent)}
+  .dot.on::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .link{font-size:12.5px;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="caption">原型 A · 主页（FluentWindow + 左侧 NavigationView + 卡片网格）</div>
+<div class="window" id="home">
+  <div class="titlebar">
+    <div class="appmark">九</div>
+    <div class="apptitle">JiuMi</div>
+    <div class="captionbars">
+      <div class="cbtn"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 8h10"/></svg></span></div>
+      <div class="cbtn"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="3.5" width="9" height="9" rx="1.2"/></svg></span></div>
+      <div class="cbtn close"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m4.2 4.2 7.6 7.6M11.8 4.2l-7.6 7.6"/></svg></span></div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="nav">
+      <div class="navhead">
+        <div class="hamb"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10M3 8h10M3 11h10"/></svg></span></div>
+      </div>
+      <div class="item selected"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M2 7.2 8 2l6 5.2V14a.8.8 0 0 1-.8.8H9.6V10H6.4v4.8H2.8A.8.8 0 0 1 2 14z"/></svg></span>主页</div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2v7.6m0 0 2.8-2.8M8 9.8 5.2 7M3 13.2h10"/></svg></span>微信视频下载<span class="soon">即将推出</span></div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M11.4 2.4 13.6 4.6 6.4 11.8H4.2V9.6z"/><path d="M3 13.6h10"/></svg></span>批量重命名<span class="soon">即将推出</span></div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.4"/><circle cx="5.6" cy="6.4" r=".9" fill="currentColor" stroke="none"/><path d="m3 11.6 3.2-3.2 2.2 2.2 1.8-1.8 2.8 2.8"/></svg></span>图标转换<span class="soon">即将推出</span></div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/><path d="M8 2c1.8 1.7 2.8 3.7 2.8 6s-1 4.3-2.8 6c-1.8-1.7-2.8-3.7-2.8-6S6.2 3.7 8 2z"/></svg></span>世界工作时间<span class="soon">即将推出</span></div>
+      <div class="navspacer"></div>
+      <div class="sep"></div>
+      <div class="item"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3"/></svg></span>设置</div>
+    </div>
+    <div class="content">
+      <h1>主页</h1>
+      <div class="sub">从下面的工具开始，或用左侧导航切换页面。</div>
+
+      <div class="hero">
+        <div class="anim"><span>splash.gif 动画区（340×200）</span></div>
+        <div>
+          <h2>欢迎使用 JiuMi</h2>
+          <p>把常用的文件小工具收在一处。所有处理都在本地完成，不上传任何内容。</p>
+        </div>
+      </div>
+
+      <div class="tools-title">工具</div>
+      <div class="grid">
+        <div class="card">
+          <div class="badge" style="background:#2e7d32"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2v7.6m0 0 2.8-2.8M8 9.8 5.2 7M3 13.2h10"/></svg></span></div>
+          <div>
+            <h3>微信视频下载 <span class="pill">即将推出</span></h3>
+            <p>粘贴视频链接，选择清晰度与保存位置，批量下载。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="badge" style="background:#1565c0"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M11.4 2.4 13.6 4.6 6.4 11.8H4.2V9.6z"/><path d="M3 13.6h10"/></svg></span></div>
+          <div>
+            <h3>批量重命名 <span class="pill">即将推出</span></h3>
+            <p>按规则批量修改文件夹内文件名，支持预览与撤销。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="badge" style="background:#6a3ec8"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.4"/><circle cx="5.6" cy="6.4" r=".9" fill="currentColor" stroke="none"/><path d="m3 11.6 3.2-3.2 2.2 2.2 1.8-1.8 2.8 2.8"/></svg></span></div>
+          <div>
+            <h3>图标转换 <span class="pill">即将推出</span></h3>
+            <p>把 PSD 图标导出为 ICO / PNG，支持多尺寸与透明背景。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="badge" style="background:#c26a00"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/><path d="M8 2c1.8 1.7 2.8 3.7 2.8 6s-1 4.3-2.8 6c-1.8-1.7-2.8-3.7-2.8-6S6.2 3.7 8 2z"/></svg></span></div>
+          <div>
+            <h3>世界工作时间 <span class="pill">即将推出</span></h3>
+            <p>比较多个城市的工作时间重叠，安排跨时区会议。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="caption">原型 B · 设置（语言热切换 + 主题 + 关于）</div>
+<div class="window" id="settings">
+  <div class="titlebar">
+    <div class="appmark">九</div>
+    <div class="apptitle">JiuMi</div>
+    <div class="captionbars">
+      <div class="cbtn"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 8h10"/></svg></span></div>
+      <div class="cbtn"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="3.5" width="9" height="9" rx="1.2"/></svg></span></div>
+      <div class="cbtn close"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m4.2 4.2 7.6 7.6M11.8 4.2l-7.6 7.6"/></svg></span></div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="nav">
+      <div class="navhead">
+        <div class="hamb"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10M3 8h10M3 11h10"/></svg></span></div>
+      </div>
+      <div class="item"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M2 7.2 8 2l6 5.2V14a.8.8 0 0 1-.8.8H9.6V10H6.4v4.8H2.8A.8.8 0 0 1 2 14z"/></svg></span>主页</div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2v7.6m0 0 2.8-2.8M8 9.8 5.2 7M3 13.2h10"/></svg></span>微信视频下载<span class="soon">即将推出</span></div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M11.4 2.4 13.6 4.6 6.4 11.8H4.2V9.6z"/><path d="M3 13.6h10"/></svg></span>批量重命名<span class="soon">即将推出</span></div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.4"/><circle cx="5.6" cy="6.4" r=".9" fill="currentColor" stroke="none"/><path d="m3 11.6 3.2-3.2 2.2 2.2 1.8-1.8 2.8 2.8"/></svg></span>图标转换<span class="soon">即将推出</span></div>
+      <div class="item disabled"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/><path d="M8 2c1.8 1.7 2.8 3.7 2.8 6s-1 4.3-2.8 6c-1.8-1.7-2.8-3.7-2.8-6S6.2 3.7 8 2z"/></svg></span>世界工作时间<span class="soon">即将推出</span></div>
+      <div class="navspacer"></div>
+      <div class="sep"></div>
+      <div class="item selected"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3"/></svg></span>设置</div>
+    </div>
+    <div class="content">
+      <h1>设置</h1>
+      <div class="sub">更改语言与外观，修改会立即生效并自动保存。</div>
+
+      <div class="section">
+        <div class="sectitle">语言和区域</div>
+        <div class="settingscard">
+          <div class="row">
+            <div class="label"><b>显示语言</b><span>切换后立即生效，无需重启</span></div>
+            <div class="combo">简体中文（中国）<span class="chev"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m4 6.2 4 4 4-4"/></svg></span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sectitle">外观</div>
+        <div class="settingscard">
+          <div class="row">
+            <div class="label"><b>主题</b><span>选择应用的颜色模式</span></div>
+            <div class="radios">
+              <div class="radio"><span class="dot on"></span>跟随系统</div>
+              <div class="radio"><span class="dot"></span>浅色</div>
+              <div class="radio"><span class="dot"></span>深色</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sectitle">关于</div>
+        <div class="settingscard">
+          <div class="row">
+            <div class="label"><b>JiuMi</b><span>版本 0.1.0 · Avalonia 12 · FluentAvaloniaUI</span></div>
+            <div class="link">GitHub 仓库</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
