@@ -28,3 +28,9 @@ Run `pwsh ./verify.ps1` before considering a code change done. It is the only su
 - Write the subject in the imperative mood, lowercase, no trailing period, at most 72 characters.
 - Wrap body lines at 72 characters; use the body to explain *why*, not *what*.
 - Commit message content is **English**, even when the repo's docs are Chinese.
+
+## Pull requests
+
+- Open pull requests with the `pr` skill.
+- Write the pull request body in **Chinese**; keep the title in Conventional Commits form.
+- Never merge a pull request. Merging is the repository owner's decision: stop once the pull request is open.
