@@ -1,0 +1,22 @@
+{
+  "Shell.Nav.Home": "主页",
+  "Shell.Nav.Settings": "设置",
+  "Shell.Nav.Expand": "展开导航",
+  "Shell.Nav.Collapse": "收起导航",
+  "Home.Title": "主页",
+  "Home.Subtitle": "JiuMi 的小工具都从这里开始。",
+  "Home.Hero.Title": "四个工具，一个入口",
+  "Home.Hero.Body": "微信视频下载、批量重命名、图标转换与世界工作时间都会陆续出现在这里。现在先把导航、本地化与主题打磨好。",
+  "Home.Tools.Title": "工具",
+  "Settings.Title": "设置",
+  "Settings.Subtitle": "调整语言与外观，查看版本信息。",
+  "Tool.WeChatDownload.Name": "微信视频下载",
+  "Tool.WeChatDownload.Description": "把微信里的视频保存到本地。",
+  "Tool.BatchRename.Name": "批量重命名",
+  "Tool.BatchRename.Description": "按规则批量修改文件夹内文件的名称。",
+  "Tool.IconConvert.Name": "图标转换",
+  "Tool.IconConvert.Description": "把 PS 格式的图标转换成常用图片格式。",
+  "Tool.WorldClock.Name": "世界工作时间",
+  "Tool.WorldClock.Description": "查看不同城市的工作时间重叠。",
+  "Common.ComingSoon": "即将推出"
+}
