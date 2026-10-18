@@ -1,8 +1,6 @@
 <fa:FAAppWindow xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:fa="using:FluentAvalonia.UI.Windowing"
-                 xmlns:fac="using:FluentAvalonia.UI.Controls"
-                 xmlns:loc="using:JiuMi.Localization"
                  xmlns:vm="using:JiuMi.ViewModels"
                  x:Class="JiuMi.Views.MainWindow"
                  x:DataType="vm:MainWindowViewModel"
@@ -13,38 +11,6 @@
                  MinHeight="600"
                  Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                  TransparencyLevelHint="Mica">
-  <fa:FAAppWindow.Resources>
-    <DataTemplate x:Key="NavigationItemTemplate" x:DataType="vm:ShellNavigationItem">
-      <Grid Classes="nav-content" ColumnDefinitions="Auto,*" ColumnSpacing="14">
-        <fac:FASymbolIcon Grid.Column="0"
-                          Classes="nav-icon nav-icon-outline"
-                          FontSize="16"
-                          VerticalAlignment="Center"
-                          Symbol="{Binding IconName, Converter={x:Static loc:SymbolNameConverter.Instance}}" />
-        <fac:FASymbolIcon Grid.Column="0"
-                          Classes="nav-icon nav-icon-selected"
-                          FontSize="16"
-                          VerticalAlignment="Center"
-                          Symbol="{Binding SelectedIconName, Converter={x:Static loc:SymbolNameConverter.Instance}}" />
-        <Grid Grid.Column="1" Classes="nav-text" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-          <TextBlock Grid.Column="0"
-                     Classes="nav-label"
-                     VerticalAlignment="Center"
-                     FontSize="14"
-                     TextWrapping="NoWrap"
-                     TextTrimming="CharacterEllipsis"
-                     Text="{Binding Label}" />
-          <ContentControl Grid.Column="1"
-                          Classes="nav-badge"
-                          VerticalAlignment="Center"
-                          IsVisible="{Binding IsComingSoon}"
-                          Theme="{StaticResource ComingSoonBadgeTheme}"
-                          Content="{loc:Localize Common.ComingSoon}" />
-        </Grid>
-      </Grid>
-    </DataTemplate>
-  </fa:FAAppWindow.Resources>
-
   <Grid RowDefinitions="40,*">
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
       <Border Width="18" Height="18" CornerRadius="4" VerticalAlignment="Center">
@@ -63,76 +29,6 @@
                  Text="{Binding AppName}" />
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Background="Transparent">
-      <Border Grid.Column="0"
-              Width="{Binding NavigationWidth}"
-              Padding="8,8,8,12">
-        <Grid RowDefinitions="Auto,*,Auto,Auto">
-          <Button Grid.Row="0"
-                  Width="36"
-                  Height="32"
-                  Margin="0,0,0,8"
-                  Padding="0"
-                  HorizontalAlignment="Left"
-                  Background="Transparent"
-                  BorderThickness="0"
-                  CornerRadius="4"
-                  Command="{Binding ToggleNavigationCommand}"
-                  AutomationProperties.Name="{Binding ToggleNavigationAccessibleName}">
-            <fac:FASymbolIcon Symbol="List"
-                              FontSize="16"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center" />
-          </Button>
-
-          <ListBox Grid.Row="1"
-                   Classes="nav"
-                   Classes.collapsed="{Binding IsNavigationCollapsed}"
-                   VerticalAlignment="Top"
-                   Background="Transparent"
-                   BorderThickness="0"
-                   Padding="0"
-                   ItemsSource="{Binding PrimaryNavigationItems}"
-                   ItemTemplate="{StaticResource NavigationItemTemplate}"
-                   ItemContainerTheme="{StaticResource NavigationItemTheme}"
-                   SelectedItem="{Binding SelectedPrimaryItem, Mode=TwoWay}">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Spacing="2" />
-              </ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-          </ListBox>
-
-          <Border Grid.Row="2"
-                  Height="1"
-                  Margin="6,12"
-                  Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
-
-          <ListBox Grid.Row="3"
-                   Classes="nav"
-                   Classes.collapsed="{Binding IsNavigationCollapsed}"
-                   VerticalAlignment="Bottom"
-                   Background="Transparent"
-                   BorderThickness="0"
-                   Padding="0"
-                   ItemsSource="{Binding SettingsNavigationItems}"
-                   ItemTemplate="{StaticResource NavigationItemTemplate}"
-                   ItemContainerTheme="{StaticResource NavigationItemTheme}"
-                   SelectedItem="{Binding SelectedSettingsItem, Mode=TwoWay}">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Spacing="2" />
-              </ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-          </ListBox>
-        </Grid>
-      </Border>
-
-      <ScrollViewer Grid.Column="1"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-        <ContentControl Content="{Binding CurrentPage}" />
-      </ScrollViewer>
-    </Grid>
+    <Grid Grid.Row="1" Background="Transparent" />
   </Grid>
 </fa:FAAppWindow>
