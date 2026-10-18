@@ -33,4 +33,6 @@ Run `pwsh ./verify.ps1` before considering a code change done. It is the only su
 
 - Open pull requests with the `pr` skill.
 - Write the pull request body in **Chinese**; keep the title in Conventional Commits form.
+- Link the ticket with `Closes #<n>`.
+- Update the ticket once the pull request is open: tick the `## Acceptance criteria` items that are verified, post the resolution comment, and close the ticket. If the owner rejects the pull request, they will say so; reopen the ticket then.
 - Never merge a pull request. Merging is the repository owner's decision: stop once the pull request is open.
