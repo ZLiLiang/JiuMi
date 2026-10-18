@@ -8,7 +8,100 @@
     <local:ViewLocator />
   </Application.DataTemplates>
 
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="JiuMiComingSoonForegroundBrush" Color="{DynamicResource TextFillColorSecondary}" />
+          <SolidColorBrush x:Key="JiuMiComingSoonBorderBrush" Color="{DynamicResource ControlStrokeColorDefault}" />
+          <SolidColorBrush x:Key="JiuMiComingSoonBackgroundBrush" Color="{DynamicResource SubtleFillColorSecondary}" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="JiuMiComingSoonForegroundBrush" Color="{DynamicResource SystemAccentColorLight2}" />
+          <SolidColorBrush x:Key="JiuMiComingSoonBorderBrush"
+                           Color="{DynamicResource SystemAccentColor}"
+                           Opacity="0.42" />
+          <SolidColorBrush x:Key="JiuMiComingSoonBackgroundBrush"
+                           Color="{DynamicResource SystemAccentColor}"
+                           Opacity="0.14" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <ControlTheme x:Key="ComingSoonBadgeTheme" TargetType="ContentControl">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Foreground" Value="{DynamicResource JiuMiComingSoonForegroundBrush}" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{DynamicResource JiuMiComingSoonBackgroundBrush}"
+                    BorderBrush="{DynamicResource JiuMiComingSoonBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9"
+                    Padding="6,2"
+                    VerticalAlignment="Center">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                TextElement.FontSize="{TemplateBinding FontSize}"
+                                TextElement.Foreground="{TemplateBinding Foreground}" />
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+
+      <ControlTheme x:Key="NavigationItemTheme" TargetType="ListBoxItem">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="AutomationProperties.Name" Value="{ReflectionBinding Label}" />
+        <Setter Property="IsEnabled" Value="{ReflectionBinding IsEnabled}" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Grid>
+              <Border Name="NavItemBackground" Background="{TemplateBinding Background}" CornerRadius="4">
+                <ContentPresenter Name="PART_ContentPresenter"
+                                  Margin="{TemplateBinding Padding}"
+                                  HorizontalContentAlignment="Stretch"
+                                  VerticalContentAlignment="Center"
+                                  Content="{TemplateBinding Content}"
+                                  ContentTemplate="{TemplateBinding ContentTemplate}" />
+              </Border>
+              <Border Name="NavItemIndicator"
+                      Width="3"
+                      Height="16"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Center"
+                      CornerRadius="2"
+                      IsVisible="False"
+                      Background="{DynamicResource AccentFillColorDefaultBrush}" />
+              <Border Name="NavItemFocus"
+                      BorderThickness="2"
+                      CornerRadius="4"
+                      IsVisible="False"
+                      BorderBrush="{DynamicResource AccentFillColorDefaultBrush}" />
+            </Grid>
+          </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:pointerover /template/ Border#NavItemBackground">
+          <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#NavItemBackground">
+          <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#NavItemIndicator">
+          <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#NavItemFocus">
+          <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#NavItemBackground">
+          <Setter Property="Background" Value="Transparent" />
+        </Style>
+      </ControlTheme>
+    </ResourceDictionary>
+  </Application.Resources>
+
   <Application.Styles>
     <styling:FluentAvaloniaTheme />
+    <StyleInclude Source="avares://JiuMi/Styles/ShellStyles.axaml" />
   </Application.Styles>
 </Application>
