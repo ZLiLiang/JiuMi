@@ -58,6 +58,96 @@ JiuMi 应用外壳的设计基线。本文件记录跨模块的结构性规则�
 - 回落到 AppData 时，每会话最多一次非阻塞提示。
 - 提示的控件形态属于 UI 规格。
 
+## 本地化
+
+界面文案是**外置数据**，不是代码里的常量：加一门语言只加一个文件与一条清单记录，不改代码。
+
+### 文件与结构
+
+- 位置：`Assets/i18n/{zh-CN,en-US}.json`，随程序发布。
+- **扁平键**：一个键就是一条完整文案，运行时只加载为一个 `Dictionary<string, string>`，不做嵌套对象与拍平。
+- 文件里只有「键 → 文案」，不写分组、注释或元数据。
+
+### 键命名
+
+**语义分层、PascalCase、点分隔**：`<顶层命名空间>.<语义路径>.<名称>`。
+
+顶层命名空间是白名单，只有六个：
+
+| 顶层 | 用途 |
+| --- | --- |
+| `Shell.*` | 窗口、导航、托盘 |
+| `Home.*` | 主页 |
+| `Settings.*` | 设置页 |
+| `Tool.*` | 工具页 |
+| `Common.*` | 跨页复用且**含义相同**的文案 |
+| `Error.*` | 错误文案，按稳定事件码命名 |
+
+规则：**含义不同就是不同的键，哪怕中文写法一样。**「设置」作为导航项是 `Shell.Nav.Settings`，作为页面标题是 `Settings.Title`；「主页」同理拆成 `Shell.Nav.Home` 与 `Home.Title`。
+
+已登记的键（新增键先在此登记，再进 JSON）：
+
+| 键 | 含义 |
+| --- | --- |
+| `Shell.Nav.Home` / `Shell.Nav.Settings` | 导航项 |
+| `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单 |
+| `Shell.Tray.MinimizedHint` | 首次最小化的系统通知 |
+| `Home.Title` / `Settings.Title` | 页面标题 |
+| `Common.ComingSoon` | 工具卡上的「即将推出」 |
+| `Error.<事件码>` | 与 `ErrorRecord.code` 一一对应，如 `Error.Settings.SaveFailed` |
+
+### 占位符
+
+- 索引占位符 `{0}`、`{1}`…，服务提供 `Format(key, args)`，内部走 `string.Format`，允许译者调整参数顺序。
+- **复数规则本期不做**：外壳没有带计数的文案，现在引入 `.one` / `.other` 约定或 ICU MessageFormat 依赖是为猜测买单。将来某个工具真需要计数时，按后缀补键并单开票。
+
+### 语言清单
+
+`Assets/i18n/languages.json`：
+
+```json
+{
+  "source": "zh-CN",
+  "languages": [
+    { "code": "zh-CN", "displayName": "中文（简体）" },
+    { "code": "en-US", "displayName": "English" }
+  ]
+}
+```
+
+- `source`：回退语言，也是解析链路的终点；不逐条写 `isSource`。
+- `code`：具体语言代码，与同名的文案文件对应。
+- `displayName`：**母语名**，不随界面语言变化——看不懂当前界面语言的人仍要能找回自己的语言。
+
+### 首次启动与切换
+
+- 无已存设置时按 **精确匹配 → 语言子标签 → 源语言** 落定：`zh-Hans-CN` → `zh-CN`，`en-GB` → `en-US`，`ja-JP` → `zh-CN`；不弹窗询问。
+- 解析结果**立即作为具体代码持久化**；语言选择器是具体语言的平铺列表，**没有「跟随系统」**（只有主题保留跟随系统）。
+- 已存代码不在清单里（手改、拼错）：视为不支持，走同一条解析链路并记 Debug 日志，不弹窗、不报错。
+- 匹配大小写不敏感：`zh-cn` 命中 `zh-CN`。
+- 切换即时生效：`LocalizationService` 暴露索引器与 `PropertyChanged`，文案全部走绑定，无需重启。
+- **作用域文化跟随界面语言**，不跟随操作系统：英文界面显示 `10/18/2026`、`1,234.5`。
+- 清单里有、但文件缺失或解析失败的语言：记 Debug 日志并**跳过该语言**，不影响启动。
+
+### 缺键回退
+
+运行时回退顺序：**目标语言 → `zh-CN` → 键名**。
+
+- 命中退路记一条 Debug 日志；**绝不抛异常**。
+- 直接回显键名，让遗漏在界面上暴露出来。
+
+### 单测
+
+构建期失败，覆盖：
+
+1. 各语言 JSON 的**键集合完全相同**。
+2. 每个键的**占位符索引集合相同**（防英文版把 `{0}` 写丢）。
+3. 键名匹配 `^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)+$`，且顶层在白名单内。
+4. `languages.json` 列出的每个 `code` 都有对应文件且可解析。
+5. 每个 `Error.*` 键都能被某个 `ErrorRecord.code` 映射到（与错误章节的映射表一致）。
+
 ## 参考
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
+- [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
+- [决议：单实例与托盘（`Shell.Tray.*` 键名）](https://github.com/ZLiLiang/JiuMi/issues/7)
