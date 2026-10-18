@@ -1,5 +1,7 @@
 ﻿using System.Reflection;
 using JiuMi.Application;
+using JiuMi.Application.Localization;
+using JiuMi.Infrastructure.Localization;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JiuMi.Infrastructure;
@@ -21,6 +23,8 @@ public static class InfrastructureServiceCollectionExtensions
         Assembly entryAssembly =
             Assembly.GetEntryAssembly() ?? typeof(InfrastructureServiceCollectionExtensions).Assembly;
         services.AddSingleton<IApplicationInfo>(new AssemblyApplicationInfo(entryAssembly));
+        services.AddSingleton<ILocalizationSource>(
+            _ => new LocalizationFileSource(Path.Combine(AppContext.BaseDirectory, "Assets", "i18n")));
         return services;
     }
 }

@@ -1,4 +1,6 @@
-﻿using Avalonia;
+﻿using System.Globalization;
+using Avalonia;
+using JiuMi.Application.Localization;
 using JiuMi.Infrastructure;
 using JiuMi.ViewModels;
 using JiuMi.Views;
@@ -22,6 +24,11 @@ internal static class Program
     {
         var services = new ServiceCollection();
         services.AddInfrastructure();
+        services.AddSingleton<ILocalizationService>(provider =>
+        {
+            LocalizationCatalog catalog = provider.GetRequiredService<ILocalizationSource>().Load();
+            return new LocalizationService(catalog, CultureInfo.CurrentUICulture.Name);
+        });
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();
