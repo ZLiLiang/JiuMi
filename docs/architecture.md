@@ -94,6 +94,102 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 语言文件缺失或解析失败 | 跳过该语言（见本地化章节） |
 | 初始化超过 10 秒 | 「启动未完全就绪」告警 |
 
+## 错误呈现与诊断
+
+错误只按**是否阻断**分两级。用户可见面是**全局 InfoBar、容器内占位、独立错误窗口**三类；系统通知只是「没有可见窗口」时的投递兜底。用户能拿到的「详情」不是另造的数据结构，就是一条错误记录。
+
+决议见 [各类错误发生时用户应该看到什么？](https://github.com/ZLiLiang/JiuMi/issues/6)，论证见 [ADR-0003](./adr/0003-error-presentation.md)，视觉细节见 [`docs/ui-spec.md`](./ui-spec.md)。
+
+### 分级
+
+| 级别 | 判定 | 用户契约 |
+| --- | --- | --- |
+| 非阻断 | 主窗口可用，操作未完成但界面能继续用 | 告知，可选重试；不阻断任何操作 |
+| 阻断 | 主窗口不存在或不可用，没有可继续的操作 | 只剩「复制详情」与「退出」 |
+
+- 级别只由**主窗口是否可用**决定，不由异常类型、来源模块或调用方自报的严重程度决定。
+- 不存在第三级：可恢复与功能失败在用户侧是同一个契约，差别只落在文案与有没有「重试」。
+
+### 载体
+
+| 载体 | 职责 | 约束 |
+| --- | --- | --- |
+| 全局 InfoBar | 默认载体：启动期入队的告警、会话中途的失败 | 内容区顶部、导航栏右侧，推挤内容不覆盖；跨页常驻 |
+| 容器内占位 | 局部资源加载失败（GIF / hero / 图标） | 只降级该容器，不弹提示 |
+| 独立错误窗口 | 阻断级失败；以及主窗口可用时的 UI 线程未捕获异常 | 不依赖主窗口、本地化资源与主题资源 |
+| 系统通知（端口） | 无可见窗口时投递非阻断 Error | 其余平台为 no-op |
+
+- **不做 `ContentDialog`**：本期唯一的阻断场景发生在启动期，主窗口不存在、没有 owner；其余场景已定不弹模态（见启动序列章节与 ADR-0002），留着就是死代码。
+- **不做状态栏**：外壳没有常驻状态区，为报错单独造一条不划算。
+
+### 场景映射
+
+| 场景 | 级别 | `code` | 载体 | 动作 |
+| --- | --- | --- | --- | --- |
+| 会话中途设置保存失败 | Error | `Settings.SaveFailed` | InfoBar | 重试 + 复制详情 |
+| 设置文件损坏（改名 `.bak`，用默认值继续） | Warning | `Settings.Corrupted` | 队列 → InfoBar | 复制详情（正文说明已备份） |
+| 清单内的语言文件缺失或解析失败 | Debug | — | 仅日志 | —（见本地化章节） |
+| 用户主动切换语言失败 | Warning | `Localization.SwitchFailed` | InfoBar | 说明已回退，选择回弹 |
+| 主题跟随系统时应用失败 | Debug | — | 仅日志 | —（回退 Fluent 默认主题） |
+| 用户主动切换主题失败 | Warning | `Theme.SwitchFailed` | InfoBar | 选择回弹 |
+| splash / hero 的 GIF 加载或构造失败 | Debug | — | 容器内占位 | —（见启动序列章节的降级阶梯） |
+| 配置落点回退到 AppData | Warning（每会话一次） | `Config.FallbackToAppData` | InfoBar | 打开文件夹 |
+| 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
+| 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
+| 初始化抛未捕获异常（`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
+| 主窗口构造或显示失败 | 阻断 | `Shell.MainWindowFailed` | 错误窗口 | 复制详情 + 退出 |
+| UI 线程未捕获异常（主窗口可用） | 非阻断 | `Unexpected.UiThreadException` | 错误窗口 | 继续运行 / 退出 / 复制详情 |
+
+横切规则：
+
+- 同一 `code` 在一次会话内合并为一条并显示次数；Error 排在 Warning 之前。
+- 未登记的 `code` 默认仅日志，不弹任何载体。
+- 「重试」= 用当前内存状态重跑一次该操作；再失败只把次数 +1，不新增提示。
+- 映射表是「每个 `Error.*` 文案键都能被某个 `code` 映射到」这条单测的依据（见本地化章节单测第 5 项）。
+
+### 错误记录
+
+| 字段 | 说明 |
+| --- | --- |
+| `timestamp` | ISO 8601 带偏移 |
+| `level` | Warning / Error；Fatal 只出现在崩溃文件里 |
+| `code` | 稳定事件名，如 `Settings.SaveFailed`，对应文案键 `Error.Settings.SaveFailed` |
+| `operation` | 如 `Settings.Save` |
+| `exceptionType` / `exceptionMessage` / `stackTrace` | 仅在捕获到异常时存在 |
+| `appVersion` / `osDescription` | 环境 |
+| `configPath` | 当前生效的配置落点（见配置章节） |
+| `count` | 会话内合并次数 |
+
+- **来源**：内存环形缓冲（最近 50 条），由产生这条提示的同一处写入；呈现层不另造字段。50 条覆盖「看到提示 → 去点复制」的窗口，同时保证内存有界。
+- **复制格式**：本地化文案一行，随后 `key: value` 一行一字段，堆栈保持原样。
+- **本期落盘只有致命**：`<配置落点>\logs\crash-yyyyMMdd-HHmmss.txt`，含时间、版本、阶段或操作名、异常类型、消息、堆栈与当前配置落点；最多保留 5 份；两处都不可写则静默放弃，详情仍可复制。
+- Warning / Error 本期只进内存缓冲，不落文件；文件 sink、滚动、级别过滤、脱敏与诊断导出由日志设施承接（决议见 #11）。
+
+### 报告通道与线程
+
+- `JiuMi.Application` 定义 `IErrorReporter.Report(ErrorRecord)`；`JiuMi.Infrastructure` 提供实现，负责写入环形缓冲并发出进程内事件。
+- UI 在组合根（Desktop）订阅，经 `Dispatcher.UIThread.Post` 编组入队。
+- 任何层、任何线程都可以上报；UI 层不引用 Infrastructure。
+- **是否显示由 UI 按 `code` 查映射表决定**，不由调用方声明：一套记录，一张表。
+
+### 全局异常钩子
+
+| 钩子 | 时机 | 行为 |
+| --- | --- | --- |
+| `Dispatcher.UIThread.UnhandledException` | UI 线程 | 主窗口可用 → 错误窗口（继续运行 / 退出 / 复制详情）；启动期 → `Faulted` 错误窗口；标记 `Handled`，不叠加 |
+| `AppDomain.UnhandledException` | 非 UI 线程或终局 | UI 不可靠：只同步尽力写崩溃文件，不弹界面 |
+| `TaskScheduler.UnobservedTaskException` | 被放弃的任务 | `SetObserved()` + 记 Warning，不弹界面 |
+
+退出码：正常 `0`，致命 `1`。
+
+### 系统通知
+
+- 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现（`AppNotification` toast，有托盘时可用 `NotifyIcon` 气泡）在 `JiuMi.Infrastructure`，其他平台 no-op。
+- **触发**：仅当应用没有可见窗口（关闭或最小化到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
+- **内容**：标题为应用名，正文只用本地化短句、不带技术细节；点击激活主窗口并呈现对应 InfoBar。
+- 托盘图标本身归单实例与窗口生命周期章节；toast 不依赖托盘。本期没有后台任务，实际触发点为零，但端口与实现先建好。
+- 平台专属 API 允许使用，但必须隔离在 Infrastructure（经 Application 抽象暴露）；`#if WINDOWS` 只允许出现在 Infrastructure 与 Desktop 组合根，UI / Application 只认抽象。
+
 ## 配置与外置文件
 
 设置是一份**单文件**的状态，位置在启动时判定一次，此后本次会话的读取与写入都指向同一个文件。
@@ -186,7 +282,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Shell.Tray.MinimizedHint` | 首次最小化的系统通知 |
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Common.ComingSoon` | 工具卡上的「即将推出」 |
-| `Error.<事件码>` | 与 `ErrorRecord.code` 一一对应，如 `Error.Settings.SaveFailed` |
+| `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` | 错误呈现的操作与复制反馈 |
+| `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
+| `Error.<事件码>` | 与 `ErrorRecord.code` 一一对应，如 `Error.Settings.SaveFailed`；事件码清单见错误呈现与诊断章节的场景映射 |
 
 ### 占位符
 
@@ -242,6 +340,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
 - [ADR-0002 splash 启动序列：应用计时、两道门与降级阶梯](./adr/0002-splash-startup-sequence.md)
+- [ADR-0003 错误呈现：两级模型、四类载体、详情即日志记录](./adr/0003-error-presentation.md)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
+- [决议：各类错误发生时用户应该看到什么？](https://github.com/ZLiLiang/JiuMi/issues/6)
 - [决议：单实例与托盘（`Shell.Tray.*` 键名）](https://github.com/ZLiLiang/JiuMi/issues/7)
