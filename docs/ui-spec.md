@@ -129,10 +129,11 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
-3. **关于**（`Settings.About.Section`）：左侧应用名与版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version），右侧 `HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色）打开仓库页。
+3. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
 
 - 修改**即时生效并自动保存**：没有「保存」按钮、没有确认对话框、没有「已保存」提示。
-- 「导出诊断包」入口归「关于」分区（日志设施决议），形态待 `docs/architecture.md` 的日志章节落笔后补入，本节不预设。
+- 「导出诊断包」走系统保存对话框：默认文件名 `JiuMi-diagnostics-yyyyMMdd-HHmmss.zip`，默认目录为当前生效的 `logs\`。导出期间按钮禁用，结束后恢复；打包内容与失败处理见 [`docs/architecture.md`](./architecture.md) 的日志与诊断章节。
+- 日志初始化或写入失败时，关于区在路径下方显示一行「日志不可用」（`Settings.About.LoggingUnavailable`，11.5px / `SystemFillColorCautionBrush`），不弹提示、不放按钮；写入恢复后该行消失。
 
 ## 主题
 

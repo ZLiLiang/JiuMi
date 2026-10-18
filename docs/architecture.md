@@ -211,6 +211,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | splash / hero 的 GIF 加载或构造失败 | Debug | — | 容器内占位 | —（见启动序列章节的降级阶梯） |
 | 配置落点回退到 AppData | Warning（每会话一次） | `Config.FallbackToAppData` | InfoBar | 打开文件夹 |
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
+| 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化抛未捕获异常（`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
 | 主窗口构造或显示失败 | 阻断 | `Shell.MainWindowFailed` | 错误窗口 | 复制详情 + 退出 |
@@ -228,7 +229,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 字段 | 说明 |
 | --- | --- |
 | `timestamp` | ISO 8601 带偏移 |
-| `level` | Warning / Error；Fatal 只出现在崩溃文件里 |
+| `level` | Warning / Error；Fatal 另写崩溃文件（见日志与诊断章节） |
 | `code` | 稳定事件名，如 `Settings.SaveFailed`，对应文案键 `Error.Settings.SaveFailed` |
 | `operation` | 如 `Settings.Save` |
 | `exceptionType` / `exceptionMessage` / `stackTrace` | 仅在捕获到异常时存在 |
@@ -238,8 +239,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 - **来源**：内存环形缓冲（最近 50 条），由产生这条提示的同一处写入；呈现层不另造字段。50 条覆盖「看到提示 → 去点复制」的窗口，同时保证内存有界。
 - **复制格式**：本地化文案一行，随后 `key: value` 一行一字段，堆栈保持原样。
-- **本期落盘只有致命**：`<配置落点>\logs\crash-yyyyMMdd-HHmmss.txt`，含时间、版本、阶段或操作名、异常类型、消息、堆栈与当前配置落点；最多保留 5 份；两处都不可写则静默放弃，详情仍可复制。
-- Warning / Error 本期只进内存缓冲，不落文件；文件 sink、滚动、级别过滤、脱敏与诊断导出由日志设施承接（决议见 #11）。
+- **崩溃文件只承接致命**：`<日志目录>\crash-yyyyMMdd-HHmmss.txt`，含时间、版本、阶段或操作名、异常类型、消息、堆栈与当前配置落点；最多保留 5 份；两处都不可写则静默放弃，详情仍可复制。
+- Warning 及以上同时写进文件日志（见日志与诊断章节）；内存缓冲仍是详情与合并计数的唯一来源。
 
 ### 报告通道与线程
 
@@ -265,6 +266,114 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - **内容**：标题为应用名，正文只用本地化短句、不带技术细节；点击激活主窗口并呈现对应 InfoBar。
 - 托盘图标本身归单实例与窗口生命周期章节；toast 不依赖托盘。本期没有后台任务，实际触发点为零，但端口与实现先建好。
 - 平台专属 API 允许使用，但必须隔离在 Infrastructure（经 Application 抽象暴露）；`#if WINDOWS` 只允许出现在 Infrastructure 与 Desktop 组合根，UI / Application 只认抽象。
+
+## 日志与诊断
+
+日志是**旁路**：它记录发生了什么，不参与任何功能判定，写不进去也不能影响功能路径。日志文件、崩溃文件、详情缓冲与诊断包服务不同读者，但共用一套脱敏规则。
+
+决议见 [日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)，论证见 [ADR-0004](./adr/0004-logging.md)。
+
+### 依赖与边界
+
+| 包 | 版本 | 用途 |
+| --- | --- | --- |
+| `Serilog` | 4.4.0 | 日志核心 |
+| `Serilog.Sinks.File` | 7.0.0 | 文件 sink（`net8.0` 目标，`net10.0` 兼容） |
+| `Serilog.Formatting.Compact` | 3.0.0 | `CompactJsonFormatter` |
+| `Serilog.Sinks.Debug` | 3.0.0 | 仅 DEBUG 构建，输出到调试器 |
+
+- **不引入** `Serilog.Extensions.Logging`（MEL 桥接）、`Serilog.Sinks.Async`、`Serilog.Settings.Configuration`、`Serilog.Settings.AppSettings`。
+- `JiuMi.Application` 直接依赖 `Serilog.ILogger`；`LoggerConfiguration` 只在 Desktop 组合根与 Infrastructure 组装，UI 不引用 sink 类型，也不读日志文件。
+- 平台边界同错误呈现章节：`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
+
+### 位置与生命周期
+
+| 项 | 规则 |
+| --- | --- |
+| 目录 | `<exe 目录>\logs\`；exe 侧不可写时为 `%AppData%\JiuMi\logs\` |
+| 与配置的关系 | 跟随配置启动探针的结论，与 `config\` **同级**；绝不进 `data\` |
+| 创建时机 | 首次写日志之前建目录 |
+| 多进程 | `shared: false`；#7 的单实例保证同一 exe、同一用户会话只有一个进程，第二实例在打开日志前退出 |
+| 收尾 | 正常退出与致命退出都调用 `Log.CloseAndFlush()` |
+
+### 级别与过滤
+
+- 五级：`Debug` / `Information` / `Warning` / `Error` / `Fatal`；**不产生 `Verbose`**。
+- 发布构建默认 `Information`；`Debug` 需显式开启。
+- 环境变量 `JIUMI_LOG_LEVEL` 可覆盖，取值为五个级别名；非法值回退 `Information`，并记一条自诊断 Warning。
+- **设置页不提供级别开关**，级别也不写进 `settings.json`——避免污染半稳定契约（见配置与外置文件章节）。
+
+### 格式与事件字段
+
+- 格式：Compact JSON Lines（`CompactJsonFormatter`），一行一个事件，UTF-8 无 BOM。
+- 文件名：`jiuMi-yyyyMMdd.jsonl`；单文件达 5 MB 时追加 `_001`、`_002` 序号继续写。
+- 时间：文件里的 `@t` 为 UTC；「复制详情」保持错误记录里的带偏移本地时间。
+- enricher 为每条事件附加 `appVersion`、`osDescription`、`configPath`。
+- `Warning` 及以上由 `IErrorReporter` 附带 `code` / `operation` / `count`，与错误记录的字段一一对应：日志事件与错误记录是同一组字段的两种形态，不是两套数据结构。
+- 消息模板固定**英文**；UI 文案另走本地化资源，日志不依赖 i18n 键。
+- 「复制详情」仍是 `key: value` 文本；与文件日志**共用脱敏规则，不共用序列化格式**。
+
+### 覆盖范围
+
+固定最小集：
+
+- 启动状态机七态，各一条 `Information`
+- 配置探针结果与生效落点
+- 设置保存结果
+- 语言切换、主题切换
+- 主窗口显示 / 关闭、过渡到托盘
+- 所有异常路径（钩子分工见错误呈现章节）
+
+页面内部细节（导航切换、控件状态）走 `Debug`。**禁止散落的 `Debug.WriteLine`**：全部走 Serilog，DEBUG 构建由 `Serilog.Sinks.Debug` 汇入同一条事件流。
+
+### 写入与失败降级
+
+- 同步、unbuffered；**不加 Async sink**——桌面量级用不上异步队列的吞吐，还会多一个组件与一处崩溃刷盘风险。
+- `Fatal` 由 sink 立即刷盘。
+- 文件写入失败：`SelfLog.Enable` 输出到调试器；**不弹 InfoBar**，只在设置页「关于」区显示「日志不可用」状态（`Settings.About.LoggingUnavailable`）。
+- 日志失败绝不影响功能路径。
+
+### 崩溃文件
+
+沿用错误呈现章节的独立契约，不并入统一 sink：
+
+- 路径 `<日志目录>\crash-yyyyMMdd-HHmmss.txt`，纯文本 `key: value` + 堆栈，最多保留 5 份。
+- 由 `AppDomain.UnhandledException` 钩子同步尽力写；两侧都不可写则静默放弃，详情仍可复制。
+- 同一 `Fatal` 事件同时写进常规 JSONL 日志。
+
+### 脱敏
+
+- 唯一规则：把用户目录前缀替换为 `%USERPROFILE%`（覆盖 `C:\Users\<name>` 的大小写变体）。
+- 其余路径、异常消息、堆栈原样保留——诊断需要它们。
+- 不记录设置值、凭据、文件内容。
+- 文件日志、「复制详情」、诊断包共用这一套规则。
+
+### 保留与清理
+
+- `rollingInterval: Day`、`fileSizeLimitBytes: 5 MB`、`rollOnFileSizeLimit: true`。
+- `retainedFileCountLimit: 30`，约 150 MB 硬上限。
+- 清理由 sink 在滚动时执行；不自建清理器，也不在启动时扫描目录。
+- 崩溃文件按 5 份单独保留。
+
+### 详情缓冲
+
+- 保留错误呈现章节的 50 条内存环形缓冲，作为 Warning / Error 合并与「复制详情」的唯一来源。
+- `Warning` 及以上同时落文件；`Debug` / `Information` 只进文件。
+- UI **不读**日志文件。
+
+### 诊断导出
+
+| 项 | 规则 |
+| --- | --- |
+| 入口 | 设置页「关于」区，「打开文件夹」旁 |
+| 交互 | 保存对话框；默认文件名 `JiuMi-diagnostics-yyyyMMdd-HHmmss.zip`，默认目录为当前生效的 `logs\` |
+| 内容 | 保留期内全部 `.jsonl` + 现有 `crash-*.txt` + `settings.json` 快照 + `diagnostics.txt`（应用版本、OS、生效路径、语言、主题、日志级别覆盖、生成时间） |
+| 实现 | BCL `System.IO.Compression.ZipFile`，零额外依赖 |
+| 失败 | 非阻断 Error（`Diagnostics.ExportFailed`）+ 复制详情，不阻断 |
+
+### 不外发
+
+崩溃报告、日志与诊断包一律**不外发**；诊断包只能由用户手动导出并自行发送。将来若要外发，涉及同意与隐私，需单独立项。
 
 ## 配置与外置文件
 
@@ -296,8 +405,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- | --- |
 | `<exe>\config\` | 用户可改的应用状态 | 创建 |
 | `<exe>\data\` | 工具产物，按工具分子目录 | 预留，不创建 |
+| `<exe>\logs\` | 日志、崩溃文件与诊断包的来源 | 创建 |
 
-两者语义分开：`config` 是应用状态，`data` 是工具产物。
+三者语义分开：`config` 是应用状态，`data` 是工具产物，`logs` 是排障输出。exe 侧不可写时，`logs` 与 `config` 一起回落到 `%AppData%\JiuMi\`（见日志与诊断章节）。
 
 ### 文件契约（半稳定）
 
@@ -365,6 +475,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
+| `Settings.About.ExportDiagnostics` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
 | `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` | 错误呈现的操作与复制反馈 |
 | `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
@@ -425,6 +536,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
 - [ADR-0002 splash 启动序列：应用计时、两道门与降级阶梯](./adr/0002-splash-startup-sequence.md)
 - [ADR-0003 错误呈现：两级模型、四类载体、详情即日志记录](./adr/0003-error-presentation.md)
+- [ADR-0004 日志：Serilog 写 JSON Lines、崩溃文件独立、不外发](./adr/0004-logging.md)
+- [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
 - [决议：各类错误发生时用户应该看到什么？](https://github.com/ZLiLiang/JiuMi/issues/6)
