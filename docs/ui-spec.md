@@ -15,7 +15,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 浅色
 
-![主页：FluentWindow + 左侧展开的 NavigationView + hero 与两列工具卡](./images/shell-home.png)
+![主页：FluentAvalonia 窗口 + 左侧展开的 NavigationView + hero 与两列工具卡](./images/shell-home.png)
 
 ![设置页：三个分组设置卡片](./images/shell-settings.png)
 
@@ -31,7 +31,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 | 项 | 值 |
 | --- | --- |
-| 窗口 | `FluentWindow`（FluentAvalonia），标题栏由它提供，不自绘外框 |
+| 窗口 | `FAAppWindow`（FluentAvalonia 3；3.0 起由 `FluentWindow` 更名），标题栏由它提供，不自绘外框 |
 | 默认尺寸 | 1200 × 760 |
 | 最小尺寸 | 900 × 600，可放大、不设最大尺寸 |
 | 背景 | `MicaBackdrop`（系统支持时）；不支持时回退 `SolidBackgroundFillColorBaseBrush` |

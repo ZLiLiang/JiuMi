@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="JiuMi.Application.Tests/JiuMi.Application.Tests.csproj" />
+  <Project Path="JiuMi.Application/JiuMi.Application.csproj" />
+  <Project Path="JiuMi.Desktop/JiuMi.Desktop.csproj" />
+  <Project Path="JiuMi.Infrastructure.Tests/JiuMi.Infrastructure.Tests.csproj" />
+  <Project Path="JiuMi.Infrastructure/JiuMi.Infrastructure.csproj" />
+  <Project Path="JiuMi/JiuMi.csproj" />
+</Solution>

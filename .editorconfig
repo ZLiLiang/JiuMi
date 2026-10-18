@@ -278,3 +278,10 @@ dotnet_diagnostic.IDE0005.severity = suggestion
 dotnet_diagnostic.IDE0011.severity = warning
 dotnet_diagnostic.IDE0055.severity = warning
 dotnet_diagnostic.IDE0161.severity = warning
+
+#### Test projects ####
+
+# Test names follow the method_scenario_expected convention required by
+# docs/coding-guidelines/csharp.md section 3, which uses underscores by design.
+[{JiuMi.Application.Tests,JiuMi.Infrastructure.Tests}/*.cs]
+dotnet_diagnostic.CA1707.severity = none
