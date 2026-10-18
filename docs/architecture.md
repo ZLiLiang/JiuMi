@@ -2,6 +2,98 @@
 
 JiuMi 应用外壳的设计基线。本文件记录跨模块的结构性规则；单点决策的完整论证在 `docs/adr/`，每条规则都能追溯到一份决议或 ADR。
 
+## 启动序列
+
+启动是一个显式状态机。splash 的退场由**两道门取晚者**决定——「动画与最短展示已结束」与「初始化已就绪」，就绪另设 10 秒兜底。它不是某个定时器到点就交接。
+
+### 状态
+
+| 状态 | 进入条件 | 退出条件 |
+| --- | --- | --- |
+| `Bootstrapping` | 进程启动 | DI 容器建好（此阶段不做 IO） |
+| `SplashShown` | 容器就绪；按资源可用性选定降级档位并显示 splash | `Opened` 之后的下一个渲染帧启动计时与 GIF |
+| `Animating` | GIF 播放中（`IterationCount` 保持 `Infinite`） | GIF 时长到点：就绪则交接，未就绪转入 `Waiting` |
+| `Waiting` | 动画已停、初始化未就绪；停画（`Source = null`）并显示不确定进度环 | 就绪，或 10 秒兜底到点 |
+| `Handoff` | 已过 `max(1000ms, GIF 时长)` **且**（就绪 **或** 已过 10000ms） | 200ms 交叉淡入淡出完成 |
+| `Running` | splash 关闭、主窗口不透明度 1 并激活 | —— |
+| `Faulted` | 初始化抛未捕获异常、拿不到可用状态 | 终态：不进主窗口，呈现见错误呈现章节 |
+
+`Handoff` 的判定是一个表达式，不是三个定时器各自触发：`elapsed >= max(1000ms, gifDuration) && (ready || elapsed >= 10000ms)`。
+
+### 初始化内容
+
+splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
+
+1. 配置探针 → 设置加载。探针必须先于首次读取（规则见配置章节）。
+2. 本地化：读 `languages.json`，按已存语言的解析链加载文案（规则见本地化章节）。
+3. 主题应用。
+4. 主窗口构造并赋给 `MainWindow`——必须早于 `Handoff`。
+
+全部完成后置「就绪」。单实例抢占与启动期的激活请求见单实例与窗口生命周期章节。
+
+### 计时
+
+- **起点**：splash 的 `Opened` 事件之后的**下一个动画帧**（`TopLevel.RequestAnimationFrame`），不是窗口创建时刻——否则首帧渲染会吞掉动画开头。
+- **GIF 时长**：按帧延时累加。解码器规则为 `delayMs = delayCentiseconds * 10`，`delayMs <= 10` 时按 100ms 计。到点即 `Source = null` 停止绘制。
+- **最短展示**：1000ms。GIF 短于 1 秒时补到 1 秒；长于 1 秒时以 GIF 时长为准，不截断。
+- **就绪兜底**：10000ms。到点强制交接并记 Error。
+- 三者始终取晚者，不相加。
+- 超过 10 秒进入主窗口后，**迟到的初始化静默应用**（主题与语言走既有热切换路径），并记一条 Error 说明「初始化超时后完成」。
+
+### 单次播放由应用计时
+
+`Avalonia.Labs.Gif 12.0.2` 的 `GifImage` 只当播放器用，`IterationCount` 保持 `Infinite`。它的迭代语义不可依赖：
+
+- 没有 `AnimationCompleted`、没有 Play/Stop/Pause、没有播放状态属性，唯一控制是 `IterationCount`。
+- 判断为 `_iterationCount > IterationCount.Value`，且只在帧索引变化时更新，因此设 `N` 实际播 `N+1` 遍；单帧 GIF 因帧索引不变而永不停止。
+- 播完是**停止绘制**，不是定格末帧。
+- GIF 内嵌的 NETSCAPE 循环次数被解析但从不使用。
+
+结论：单次播放与结束时机全由应用按帧延时计时。
+
+### 资源降级阶梯
+
+| 档位 | 条件 | 表现 |
+| --- | --- | --- |
+| ① 正常 | `splash.gif` 可加载、可构造 `GifStreamSource` | GIF 播一遍 → 就绪慢则停画 + 进度环 |
+| ② 静帧 | GIF 缺失，或构造/头部解析抛异常（只能按 `Exception` 捕获，异常类型是 internal） | `splash.png` poster + 进度环**立即**显示；1000ms 底与就绪取晚者 |
+| ③ 纯背景 | poster 也缺失 | 不透明背景 + 进度环，计时同 ② |
+| ④ 无窗口 | splash 窗口本身建不出来 | 不显示窗口，静默等就绪（10s 兜底）后进主窗口，记 Error |
+
+- 降档只记 Debug / Error，不打扰用户。
+- **渲染期 LZW 解码错误不可控**：它发生在合成线程，被 Avalonia 捕获并仅写日志，应用抓不到；表现为 GIF 区停在上次绘制画面，计时照常推进。这是已知不可控项，不构成状态分支。
+
+### splash 窗口
+
+- `SystemDecorations=None`、`CanResize=false`、`ShowInTaskbar=false`、居中、不可拖动。
+- **不透明背景**：规避 GIF alpha 被 `AlphaFormat.Opaque` 渲染成黑。
+- 尺寸与进度环视觉形态归 UI 规格。
+
+### 交接
+
+- 主窗口在 `Handoff` 前已构造完成。
+- 进入 `Handoff` 时主窗口以 `Opacity = 0` 显示在 splash 之上，两窗同时做 200ms 淡变；结束时关闭 splash、主窗口 `Opacity = 1` 并激活。
+- 不用 `Topmost`：0 不透明度的主窗口就在上层，splash 自然透出。
+- `ShutdownMode = OnMainWindowClose` 且 `MainWindow` 已赋值，因此关闭 splash 不会结束进程。
+
+### 不允许跳过
+
+点击与 Esc 均不响应。展示时长下限 1 秒且只播一遍，跳过能省的时间有限；更关键的是跳过无法越过就绪门槛，真正可能拖住用户的是初始化。
+
+### 启动期失败
+
+启动期**一律不弹模态框**：所有告警进队列，主窗口出现后以 InfoBar 呈现，同类合并。呈现形态见错误呈现章节。
+
+| 失败 | 行为 |
+| --- | --- |
+| 设置文件损坏 | 改名 `.bak`，用默认值继续启动 |
+| 配置落点回退到 AppData | 每会话一次的非阻塞提示 |
+| AppData 也不可写 | 仅内存运行 + 常驻提示 |
+| GIF 加载或构造失败 | 静默降档，只记日志 |
+| 主题资源缺失 | 回退 Fluent 默认主题，只记 Debug |
+| 语言文件缺失或解析失败 | 跳过该语言（见本地化章节） |
+| 初始化超过 10 秒 | 「启动未完全就绪」告警 |
+
 ## 配置与外置文件
 
 设置是一份**单文件**的状态，位置在启动时判定一次，此后本次会话的读取与写入都指向同一个文件。
@@ -149,5 +241,7 @@ JiuMi 应用外壳的设计基线。本文件记录跨模块的结构性规则�
 ## 参考
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
+- [ADR-0002 splash 启动序列：应用计时、两道门与降级阶梯](./adr/0002-splash-startup-sequence.md)
+- [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
 - [决议：单实例与托盘（`Shell.Tray.*` 键名）](https://github.com/ZLiLiang/JiuMi/issues/7)
