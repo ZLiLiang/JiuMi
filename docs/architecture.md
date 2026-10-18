@@ -357,7 +357,15 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单 |
 | `Shell.Tray.MinimizedHint` | 首次最小化的系统通知 |
 | `Home.Title` / `Settings.Title` | 页面标题 |
-| `Common.ComingSoon` | 工具卡上的「即将推出」 |
+| `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
+| `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
+| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `BatchRename` / `IconConvert` / `WorldClock` |
+| `Settings.Subtitle` | 设置页副标题 |
+| `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
+| `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
+| `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
+| `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
+| `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
 | `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` | 错误呈现的操作与复制反馈 |
 | `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
 | `Error.<事件码>` | 与 `ErrorRecord.code` 一一对应，如 `Error.Settings.SaveFailed`；事件码清单见错误呈现与诊断章节的场景映射 |
