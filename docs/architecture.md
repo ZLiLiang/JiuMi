@@ -419,6 +419,19 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 始终写入 `"schemaVersion": 1`，作为将来迁移的锚点。
 - 不做严格校验，也不因配置错误拒绝启动。
 
+### 窗口与导航状态
+
+本期只持久化**一比特** UI 状态：导航栏是展开还是收起。窗口几何不进配置。
+
+| 键 | 类型 | 缺省 | 含义 |
+| --- | --- | --- | --- |
+| `navExpanded` | boolean | `true` | 导航栏展开（`true`）还是收起（`false`） |
+
+- 窗口尺寸、位置、最大化与还原尺寸**不记忆**：每次启动按 1200 × 760 打开，位置由系统决定（见 UI 规格）。理由见 [ADR-0005](./adr/0005-window-state-memory.md)。
+- `navExpanded` **只在主窗口关闭时写一次**；用户点展开/收起按钮不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
+- 关闭时写入失败**静默**：记一条不带 `code` 的 Warning 日志（操作 `Settings.SaveOnExit`），不进详情缓冲、不弹 InfoBar。此时窗口正在关，用户无从处理；「保存失败必须可见」的契约针对用户主动修改的设置。
+- 该键属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
+
 ### 写入
 
 - **整文件写**：不做增量或局部写。
@@ -537,6 +550,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0002 splash 启动序列：应用计时、两道门与降级阶梯](./adr/0002-splash-startup-sequence.md)
 - [ADR-0003 错误呈现：两级模型、四类载体、详情即日志记录](./adr/0003-error-presentation.md)
 - [ADR-0004 日志：Serilog 写 JSON Lines、崩溃文件独立、不外发](./adr/0004-logging.md)
+- [ADR-0005 窗口状态：只记导航栏展开，不记窗口几何](./adr/0005-window-state-memory.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
