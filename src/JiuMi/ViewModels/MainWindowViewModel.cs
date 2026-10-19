@@ -4,6 +4,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
 using JiuMi.Application.Localization;
+using JiuMi.Application.Settings;
 
 namespace JiuMi.ViewModels;
 
@@ -16,27 +17,39 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private const double CollapsedNavigationWidth = 48;
 
     private readonly ILocalizationService _localization;
+    private readonly ISettingsStore _settingsStore;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
-    private bool _isNavigationExpanded = true;
+    private bool _isNavigationExpanded;
+    private bool _savedOnExit;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindowViewModel"/> class.
     /// </summary>
     /// <param name="applicationInfo">Application name and version shown by the shell.</param>
     /// <param name="localization">The localization service that supplies interface text.</param>
-    public MainWindowViewModel(IApplicationInfo applicationInfo, ILocalizationService localization)
+    /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
+    /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
+    public MainWindowViewModel(
+        IApplicationInfo applicationInfo,
+        ILocalizationService localization,
+        SettingsViewModel settingsPage,
+        ISettingsStore settingsStore)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(localization);
+        ArgumentNullException.ThrowIfNull(settingsPage);
+        ArgumentNullException.ThrowIfNull(settingsStore);
 
         AppName = applicationInfo.Name;
         AppVersion = applicationInfo.Version;
         _localization = localization;
+        _settingsStore = settingsStore;
+        _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
-        SettingsPage = new SettingsViewModel();
+        SettingsPage = settingsPage;
         _currentPage = HomePage;
 
         PrimaryNavigationItems =
@@ -199,8 +212,29 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         get;
     }
 
+    /// <summary>
+    /// Saves the navigation rail state as the main window closes; a failed write stays silent.
+    /// </summary>
+    public void SaveOnExit()
+    {
+        if (_savedOnExit)
+        {
+            return;
+        }
+
+        _savedOnExit = true;
+        _ = _settingsStore.Save(_settingsStore.Current with
+        {
+            NavExpanded = IsNavigationExpanded,
+        });
+    }
+
     /// <inheritdoc />
-    public void Dispose() => _localization.PropertyChanged -= OnLocalizationChanged;
+    public void Dispose()
+    {
+        _localization.PropertyChanged -= OnLocalizationChanged;
+        SettingsPage.Dispose();
+    }
 
     private ShellNavigationItem CreateItem(
         string id,

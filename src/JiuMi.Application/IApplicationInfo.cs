@@ -20,4 +20,12 @@ public interface IApplicationInfo
     {
         get;
     }
+
+    /// <summary>
+    /// Gets the absolute URL of the public source repository.
+    /// </summary>
+    string RepositoryUrl
+    {
+        get;
+    }
 }

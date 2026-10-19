@@ -10,6 +10,12 @@
   "Home.Tools.Title": "Tools",
   "Settings.Title": "Settings",
   "Settings.Subtitle": "Adjust language and appearance, and check the version.",
+  "Settings.Language.Section": "Language and region",
+  "Settings.Language.Label": "Display language",
+  "Settings.Language.Hint": "Changes apply immediately; no restart needed.",
+  "Settings.About.Section": "About",
+  "Settings.About.Version": "Version {0}",
+  "Settings.About.Repository": "GitHub repository",
   "Tool.WeChatDownload.Name": "WeChat video download",
   "Tool.WeChatDownload.Description": "Save videos from WeChat to your disk.",
   "Tool.BatchRename.Name": "Batch rename",
@@ -18,5 +24,6 @@
   "Tool.IconConvert.Description": "Convert Photoshop icons into common image formats.",
   "Tool.WorldClock.Name": "World work hours",
   "Tool.WorldClock.Description": "See where working hours overlap across cities.",
-  "Common.ComingSoon": "Coming soon"
+  "Common.ComingSoon": "Coming soon",
+  "Common.OpenFolder": "Open folder"
 }

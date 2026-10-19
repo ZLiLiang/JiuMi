@@ -10,6 +10,12 @@
   "Home.Tools.Title": "工具",
   "Settings.Title": "设置",
   "Settings.Subtitle": "调整语言与外观，查看版本信息。",
+  "Settings.Language.Section": "语言和区域",
+  "Settings.Language.Label": "显示语言",
+  "Settings.Language.Hint": "切换后立即生效，无需重启。",
+  "Settings.About.Section": "关于",
+  "Settings.About.Version": "版本 {0}",
+  "Settings.About.Repository": "GitHub 仓库",
   "Tool.WeChatDownload.Name": "微信视频下载",
   "Tool.WeChatDownload.Description": "把微信里的视频保存到本地。",
   "Tool.BatchRename.Name": "批量重命名",
@@ -18,5 +24,6 @@
   "Tool.IconConvert.Description": "把 PS 格式的图标转换成常用图片格式。",
   "Tool.WorldClock.Name": "世界工作时间",
   "Tool.WorldClock.Description": "查看不同城市的工作时间重叠。",
-  "Common.ComingSoon": "即将推出"
+  "Common.ComingSoon": "即将推出",
+  "Common.OpenFolder": "打开文件夹"
 }

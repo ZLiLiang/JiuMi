@@ -3,7 +3,7 @@
 namespace JiuMi.Views;
 
 /// <summary>
-/// The settings page. Its sections are added by the settings ticket.
+/// The settings page: language selection and about information.
 /// </summary>
 public partial class SettingsView : UserControl
 {

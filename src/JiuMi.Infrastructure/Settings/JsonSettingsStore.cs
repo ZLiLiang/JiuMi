@@ -1,0 +1,302 @@
+﻿using System.Security;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using JiuMi.Application.Settings;
+
+namespace JiuMi.Infrastructure.Settings;
+
+/// <summary>
+/// Reads and writes the half-stable JSON settings file with a temporary file and an atomic replace.
+/// </summary>
+public sealed class JsonSettingsStore : ISettingsStore
+{
+    private static readonly JsonSerializerOptions _serializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private readonly ISettingsLocationProvider _locationProvider;
+    private SettingsLocation? _location;
+    private SettingsLoadResult? _loadResult;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JsonSettingsStore"/> class.
+    /// </summary>
+    /// <param name="locationProvider">Decides the settings location once, on first use.</param>
+    public JsonSettingsStore(ISettingsLocationProvider locationProvider)
+    {
+        ArgumentNullException.ThrowIfNull(locationProvider);
+        _locationProvider = locationProvider;
+    }
+
+    /// <inheritdoc />
+    public SettingsLocation Location => _location ??= _locationProvider.Locate();
+
+    /// <inheritdoc />
+    public AppSettings Current { get; private set; } = AppSettings.CreateDefault();
+
+    /// <inheritdoc />
+    public SettingsLoadResult Load()
+    {
+        return _loadResult ??= LoadCore();
+    }
+
+    /// <inheritdoc />
+    public SettingsSaveResult Save(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        AppSettings normalized = settings with
+        {
+            SchemaVersion = SettingsContract.SchemaVersion,
+        };
+        Current = normalized;
+
+        SettingsLocation location = Location;
+        if (!location.IsPersistent)
+        {
+            return SettingsSaveResult.NotPersisted;
+        }
+
+        string settingsPath = location.FilePath!;
+        string tempPath = Path.Combine(location.DirectoryPath!, SettingsContract.TempFileName);
+
+        try
+        {
+            string json = JsonSerializer.Serialize(ToDocument(normalized), _serializerOptions);
+            WriteTempFile(tempPath, json);
+            File.Move(tempPath, settingsPath, overwrite: true);
+            return SettingsSaveResult.Success;
+        }
+        catch (Exception exception) when (IsFileFailure(exception))
+        {
+            TryDelete(tempPath);
+            return SettingsSaveResult.Failed(exception);
+        }
+    }
+
+    private SettingsLoadResult LoadCore()
+    {
+        SettingsLocation location = Location;
+        SettingsLoadIssue issues = GetLocationIssue(location);
+        AppSettings settings = AppSettings.CreateDefault();
+        Exception? error = null;
+
+        if (!location.IsPersistent)
+        {
+            Current = settings;
+            return new SettingsLoadResult(settings, location, issues);
+        }
+
+        TryDelete(Path.Combine(location.DirectoryPath!, SettingsContract.TempFileName));
+
+        string settingsPath = location.FilePath!;
+        if (!File.Exists(settingsPath))
+        {
+            Current = settings;
+            return new SettingsLoadResult(settings, location, issues);
+        }
+
+        try
+        {
+            settings = ReadSettings(settingsPath);
+        }
+        catch (Exception exception) when (IsFileFailure(exception) || exception is JsonException)
+        {
+            issues |= SettingsLoadIssue.Corrupted;
+            error = exception;
+            settings = AppSettings.CreateDefault();
+            BackupCorruptedFile(settingsPath, location.DirectoryPath!);
+        }
+
+        Current = settings;
+        return new SettingsLoadResult(settings, location, issues, error);
+    }
+
+    private static SettingsLoadIssue GetLocationIssue(SettingsLocation location)
+    {
+        return location.Kind switch
+        {
+            SettingsLocationKind.AppData => SettingsLoadIssue.FallbackToAppData,
+            SettingsLocationKind.MemoryOnly => SettingsLoadIssue.MemoryOnly,
+            _ => SettingsLoadIssue.None,
+        };
+    }
+
+    private static AppSettings ReadSettings(string settingsPath)
+    {
+        using FileStream stream = new(settingsPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using JsonDocument document = JsonDocument.Parse(stream);
+        JsonElement root = document.RootElement;
+
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            throw new JsonException("The settings file root is not a JSON object.");
+        }
+
+        return new AppSettings
+        {
+            SchemaVersion = ReadSchemaVersion(root),
+            Language = ReadLanguage(root),
+            Theme = ReadTheme(root),
+            NavExpanded = ReadNavExpanded(root),
+        };
+    }
+
+    private static int ReadSchemaVersion(JsonElement root)
+    {
+        return root.TryGetProperty("schemaVersion", out JsonElement element) &&
+            element.ValueKind == JsonValueKind.Number &&
+            element.TryGetInt32(out int version)
+            ? version
+            : SettingsContract.SchemaVersion;
+    }
+
+    private static string? ReadLanguage(JsonElement root)
+    {
+        if (!root.TryGetProperty("language", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        string? language = element.GetString()?.Trim();
+        return string.IsNullOrEmpty(language) ? null : language;
+    }
+
+    private static AppTheme ReadTheme(JsonElement root)
+    {
+        if (!root.TryGetProperty("theme", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.String)
+        {
+            return AppTheme.System;
+        }
+
+        return ParseTheme(element.GetString());
+    }
+
+    private static AppTheme ParseTheme(string? value)
+    {
+        if (string.Equals(value, "light", StringComparison.OrdinalIgnoreCase))
+        {
+            return AppTheme.Light;
+        }
+
+        if (string.Equals(value, "dark", StringComparison.OrdinalIgnoreCase))
+        {
+            return AppTheme.Dark;
+        }
+
+        return AppTheme.System;
+    }
+
+    private static bool ReadNavExpanded(JsonElement root)
+    {
+        return !root.TryGetProperty("navExpanded", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.False;
+    }
+
+    private static void WriteTempFile(string tempPath, string json)
+    {
+        using var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        using (var writer = new StreamWriter(
+            stream,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            bufferSize: 1024,
+            leaveOpen: true))
+        {
+            writer.Write(json);
+            writer.Flush();
+        }
+
+        stream.Flush(flushToDisk: true);
+    }
+
+    private static SettingsDocument ToDocument(AppSettings settings)
+    {
+        return new SettingsDocument
+        {
+            SchemaVersion = SettingsContract.SchemaVersion,
+            Language = settings.Language,
+            Theme = ToStorageValue(settings.Theme),
+            NavExpanded = settings.NavExpanded,
+        };
+    }
+
+    private static string ToStorageValue(AppTheme theme)
+    {
+        return theme switch
+        {
+            AppTheme.Light => "light",
+            AppTheme.Dark => "dark",
+            _ => "system",
+        };
+    }
+
+    private static void BackupCorruptedFile(string settingsPath, string directoryPath)
+    {
+        try
+        {
+            File.Move(
+                settingsPath,
+                Path.Combine(directoryPath, SettingsContract.BackupFileName),
+                overwrite: true);
+        }
+        catch (IOException)
+        {
+            // The startup path continues with defaults even when the corrupt file cannot be renamed.
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static bool IsFileFailure(Exception exception)
+    {
+        return exception is IOException or UnauthorizedAccessException or NotSupportedException or SecurityException;
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private sealed class SettingsDocument
+    {
+        public int SchemaVersion
+        {
+            get;
+            init;
+        }
+
+        public string? Language
+        {
+            get;
+            init;
+        }
+
+        public string? Theme
+        {
+            get;
+            init;
+        }
+
+        public bool NavExpanded
+        {
+            get;
+            init;
+        }
+    }
+}
