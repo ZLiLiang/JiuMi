@@ -1,8 +1,8 @@
 <Solution>
-  <Project Path="JiuMi.Application.Tests/JiuMi.Application.Tests.csproj" />
-  <Project Path="JiuMi.Application/JiuMi.Application.csproj" />
-  <Project Path="JiuMi.Desktop/JiuMi.Desktop.csproj" />
-  <Project Path="JiuMi.Infrastructure.Tests/JiuMi.Infrastructure.Tests.csproj" />
-  <Project Path="JiuMi.Infrastructure/JiuMi.Infrastructure.csproj" />
-  <Project Path="JiuMi/JiuMi.csproj" />
+  <Project Path="test/JiuMi.Application.Tests/JiuMi.Application.Tests.csproj" />
+  <Project Path="src/JiuMi.Application/JiuMi.Application.csproj" />
+  <Project Path="src/JiuMi.Desktop/JiuMi.Desktop.csproj" />
+  <Project Path="test/JiuMi.Infrastructure.Tests/JiuMi.Infrastructure.Tests.csproj" />
+  <Project Path="src/JiuMi.Infrastructure/JiuMi.Infrastructure.csproj" />
+  <Project Path="src/JiuMi/JiuMi.csproj" />
 </Solution>

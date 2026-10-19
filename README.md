@@ -6,5 +6,6 @@
 
 ## 开发
 
-- 运行：`dotnet run --project JiuMi.Desktop`
+- 运行：`dotnet run --project src/JiuMi.Desktop`
+- 结构：`src/` 为产品项目，`test/` 为测试项目
 - 门禁：`pwsh ./verify.ps1`（Release 构建 + 测试 + 格式检查）
