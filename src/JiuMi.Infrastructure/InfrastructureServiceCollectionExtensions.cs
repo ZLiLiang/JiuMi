@@ -1,7 +1,9 @@
 ﻿using System.Reflection;
 using JiuMi.Application;
 using JiuMi.Application.Localization;
+using JiuMi.Application.Settings;
 using JiuMi.Infrastructure.Localization;
+using JiuMi.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JiuMi.Infrastructure;
@@ -25,6 +27,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IApplicationInfo>(new AssemblyApplicationInfo(entryAssembly));
         services.AddSingleton<ILocalizationSource>(
             _ => new LocalizationFileSource(Path.Combine(AppContext.BaseDirectory, "Assets", "i18n")));
+        services.AddSingleton<ISettingsLocationProvider>(_ => new SettingsLocationProvider(
+            AppContext.BaseDirectory,
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JiuMi")));
+        services.AddSingleton<ISettingsStore, JsonSettingsStore>();
+        services.AddSingleton<ISystemLauncher, ShellLauncher>();
         return services;
     }
 }

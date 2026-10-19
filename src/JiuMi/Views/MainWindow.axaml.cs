@@ -41,6 +41,17 @@ public partial class MainWindow : FAAppWindow
     }
 
     /// <inheritdoc />
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SaveOnExit();
+        }
+
+        base.OnClosing(e);
+    }
+
+    /// <inheritdoc />
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);

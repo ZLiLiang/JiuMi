@@ -8,6 +8,8 @@ namespace JiuMi.Infrastructure;
 /// </summary>
 public sealed class AssemblyApplicationInfo : IApplicationInfo
 {
+    private const string DefaultRepositoryUrl = "https://github.com/ZLiLiang/JiuMi";
+
     private readonly Assembly _assembly;
 
     /// <summary>
@@ -30,4 +32,7 @@ public sealed class AssemblyApplicationInfo : IApplicationInfo
     public string Version =>
         AppVersion.FromInformationalVersion(
             _assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
+
+    /// <inheritdoc />
+    public string RepositoryUrl => DefaultRepositoryUrl;
 }
