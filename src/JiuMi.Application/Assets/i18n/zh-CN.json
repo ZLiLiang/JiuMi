@@ -25,5 +25,15 @@
   "Tool.WorldClock.Name": "世界工作时间",
   "Tool.WorldClock.Description": "查看不同城市的工作时间重叠。",
   "Common.ComingSoon": "即将推出",
-  "Common.OpenFolder": "打开文件夹"
+  "Common.OpenFolder": "打开文件夹",
+  "Common.Retry": "重试",
+  "Common.CopyDetails": "复制详情",
+  "Common.Copied": "已复制",
+  "Common.Close": "关闭",
+  "Common.ErrorCountSuffix": "（已发生 {0} 次）",
+  "Error.Settings.SaveFailed": "设置没有保存成功。",
+  "Error.Settings.Corrupted": "设置文件已损坏，已备份并改用默认设置。",
+  "Error.Localization.SwitchFailed": "语言切换失败，已保留当前语言。",
+  "Error.Config.FallbackToAppData": "程序目录不可写，设置已保存到用户数据目录。",
+  "Error.Config.MemoryOnly": "两个设置目录都不可写，本次更改只在内存中保留。"
 }

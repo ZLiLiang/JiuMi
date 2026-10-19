@@ -3,6 +3,7 @@
                  xmlns:fa="using:FluentAvalonia.UI.Windowing"
                  xmlns:fac="using:FluentAvalonia.UI.Controls"
                  xmlns:loc="using:JiuMi.Localization"
+                 xmlns:views="using:JiuMi.Views"
                  xmlns:vm="using:JiuMi.ViewModels"
                  x:Class="JiuMi.Views.MainWindow"
                  x:DataType="vm:MainWindowViewModel"
@@ -128,11 +129,13 @@
         </Grid>
       </Border>
 
-      <ScrollViewer Grid.Column="1"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-        <ContentControl Content="{Binding CurrentPage}" />
-      </ScrollViewer>
+      <DockPanel Grid.Column="1">
+        <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+          <ContentControl Content="{Binding CurrentPage}" />
+        </ScrollViewer>
+      </DockPanel>
     </Grid>
   </Grid>
 </fa:FAAppWindow>

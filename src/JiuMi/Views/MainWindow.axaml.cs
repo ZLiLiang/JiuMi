@@ -20,6 +20,17 @@ public partial class MainWindow : FAAppWindow
         InitializeComponent();
         TitleBar.Height = 40;
         TitleBar.ExtendsContentIntoTitleBar = true;
+        Activated += OnFirstActivated;
+    }
+
+    private void OnFirstActivated(object? sender, EventArgs e)
+    {
+        Activated -= OnFirstActivated;
+
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.InfoBar.Activate();
+        }
     }
 
     /// <summary>

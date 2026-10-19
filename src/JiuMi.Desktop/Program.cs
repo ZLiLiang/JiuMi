@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using Avalonia;
+using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Infrastructure;
@@ -15,7 +16,7 @@ internal static class Program
     public static int Main(string[] args)
     {
         using ServiceProvider services = CreateServices();
-        services.GetRequiredService<ISettingsStore>().Load();
+        ReportStartupIssues(services);
 
         return AppBuilder.Configure(() => new App(() => services.GetRequiredService<MainWindow>()))
             .UsePlatformDetect()
@@ -48,10 +49,43 @@ internal static class Program
 
             return localization;
         });
+        services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();
+    }
+
+    private static void ReportStartupIssues(ServiceProvider services)
+    {
+        SettingsLoadResult result = services.GetRequiredService<ISettingsStore>().Load();
+        IErrorReporter reporter = services.GetRequiredService<IErrorReporter>();
+        ErrorRecordFactory recordFactory = services.GetRequiredService<ErrorRecordFactory>();
+
+        if (result.Issues.HasFlag(SettingsLoadIssue.Corrupted))
+        {
+            reporter.Report(recordFactory.Create(
+                ErrorLevel.Warning,
+                ErrorCodes.SettingsCorrupted,
+                "Settings.Load",
+                result.Error));
+        }
+
+        if (result.Issues.HasFlag(SettingsLoadIssue.FallbackToAppData))
+        {
+            reporter.Report(recordFactory.Create(
+                ErrorLevel.Warning,
+                ErrorCodes.ConfigFallbackToAppData,
+                "Settings.Load"));
+        }
+
+        if (result.Issues.HasFlag(SettingsLoadIssue.MemoryOnly))
+        {
+            reporter.Report(recordFactory.Create(
+                ErrorLevel.Error,
+                ErrorCodes.ConfigMemoryOnly,
+                "Settings.Load"));
+        }
     }
 }
 

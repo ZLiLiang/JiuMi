@@ -30,16 +30,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="applicationInfo">Application name and version shown by the shell.</param>
     /// <param name="localization">The localization service that supplies interface text.</param>
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
+    /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
     public MainWindowViewModel(
         IApplicationInfo applicationInfo,
         ILocalizationService localization,
         SettingsViewModel settingsPage,
+        InfoBarViewModel infoBar,
         ISettingsStore settingsStore)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsPage);
+        ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
 
         AppName = applicationInfo.Name;
@@ -50,6 +53,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         HomePage = new HomeViewModel();
         SettingsPage = settingsPage;
+        InfoBar = infoBar;
         _currentPage = HomePage;
 
         PrimaryNavigationItems =
@@ -213,6 +217,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets the application-wide error notice shown above the content.
+    /// </summary>
+    public InfoBarViewModel InfoBar
+    {
+        get;
+    }
+
+    /// <summary>
     /// Saves the navigation rail state as the main window closes; a failed write stays silent.
     /// </summary>
     public void SaveOnExit()
@@ -234,6 +246,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         _localization.PropertyChanged -= OnLocalizationChanged;
         SettingsPage.Dispose();
+        InfoBar.Dispose();
     }
 
     private ShellNavigationItem CreateItem(
