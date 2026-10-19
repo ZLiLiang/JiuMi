@@ -56,6 +56,51 @@ public sealed class ErrorNoticeBoardTests
     }
 
     [Fact]
+    public void Offer_GivenPersistentCurrentAndNewError_DefersPersistentUntilNewErrorCloses()
+    {
+        var board = new ErrorNoticeBoard();
+        board.Offer(CreateRecord(ErrorCodes.ConfigMemoryOnly, ErrorLevel.Error));
+        board.ShowNext();
+
+        Assert.True(board.Offer(CreateRecord(ErrorCodes.SettingsSaveFailed, ErrorLevel.Error)));
+        Assert.Null(board.Current);
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.SettingsSaveFailed, board.Current?.Code);
+
+        Assert.True(board.DismissCurrent());
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.ConfigMemoryOnly, board.Current?.Code);
+        Assert.False(board.DismissCurrent());
+    }
+
+    [Fact]
+    public void Offer_GivenPersistentCurrentAndNewWarning_DefersPersistentUntilWarningCloses()
+    {
+        var board = new ErrorNoticeBoard();
+        board.Offer(CreateRecord(ErrorCodes.ConfigMemoryOnly, ErrorLevel.Error));
+        board.ShowNext();
+
+        Assert.True(board.Offer(CreateRecord(ErrorCodes.SettingsCorrupted, ErrorLevel.Warning)));
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.SettingsCorrupted, board.Current?.Code);
+
+        Assert.True(board.DismissCurrent());
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.ConfigMemoryOnly, board.Current?.Code);
+    }
+
+    [Fact]
+    public void Offer_GivenRecordLevelMismatch_UsesTheRegisteredLevel()
+    {
+        var board = new ErrorNoticeBoard();
+        board.Offer(CreateRecord(ErrorCodes.SettingsCorrupted, ErrorLevel.Error));
+
+        board.ShowNext();
+
+        Assert.Equal(ErrorLevel.Warning, board.Current?.Level);
+    }
+
+    [Fact]
     public void DismissCurrent_GivenPersistentNotice_KeepsItVisible()
     {
         var board = new ErrorNoticeBoard();

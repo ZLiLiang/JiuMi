@@ -222,6 +222,20 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Records a failure to write the details to the clipboard.
+    /// </summary>
+    /// <param name="error">The clipboard failure.</param>
+    public void ReportCopyFailure(Exception error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+
+        _errorReporter.Report(_recordFactory.Create(
+            ErrorCodes.UnexpectedCopyFailed,
+            "Clipboard.Copy",
+            error));
+    }
+
+    /// <summary>
     /// Shows the copied feedback for the next two seconds.
     /// </summary>
     public void NotifyCopied()
@@ -321,7 +335,6 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         if (result.Error is { } error)
         {
             _errorReporter.Report(_recordFactory.Create(
-                ErrorLevel.Error,
                 ErrorCodes.SettingsSaveFailed,
                 "Settings.Save",
                 error));

@@ -1,10 +1,13 @@
 ﻿namespace JiuMi.Application.Errors;
 
 /// <summary>
-/// The stable event codes registered by the shell.
+/// The stable event codes used by the shell.
 /// </summary>
 public static class ErrorCodes
 {
+    /// <summary>The clipboard could not be written; recorded for diagnostics only.</summary>
+    public const string UnexpectedCopyFailed = "Unexpected.CopyFailed";
+
     /// <summary>The settings file could not be written.</summary>
     public const string SettingsSaveFailed = "Settings.SaveFailed";
 

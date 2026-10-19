@@ -73,9 +73,10 @@ public partial class InfoBarView : UserControl
             await clipboard.SetTextAsync(details);
             viewModel.NotifyCopied();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // Another process can hold the clipboard; the user can try the copy again.
+            // Another process can hold the clipboard; record it and let the user try again.
+            viewModel.ReportCopyFailure(exception);
         }
     }
 }

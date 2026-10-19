@@ -7,6 +7,7 @@ public sealed class ErrorNoticeBoard
 {
     private readonly HashSet<string> _announcedCodes = new(StringComparer.Ordinal);
     private readonly List<ErrorNotice> _pending = [];
+    private ErrorNotice? _deferredPersistent;
 
     /// <summary>
     /// Gets the notice currently shown, if any.
@@ -18,7 +19,8 @@ public sealed class ErrorNoticeBoard
     }
 
     /// <summary>
-    /// Offers a record for presentation; repeats of an announced code are ignored.
+    /// Offers a record for presentation; repeats of an announced code are ignored. A persistent
+    /// notice steps aside for the new notice and returns once the queue drains.
     /// </summary>
     /// <param name="record">The reported failure.</param>
     /// <returns><see langword="true"/> when a new notice was queued.</returns>
@@ -34,25 +36,44 @@ public sealed class ErrorNoticeBoard
             return false;
         }
 
-        var notice = new ErrorNotice(record.Code, record.Level, presentation.Action, presentation.IsPersistent);
+        var notice = new ErrorNotice(record.Code, presentation.Level, presentation.Action, presentation.IsPersistent);
+        if (Current is { IsPersistent: true } persistent)
+        {
+            _deferredPersistent = persistent;
+            Current = null;
+        }
+
         Insert(notice);
         return true;
     }
 
     /// <summary>
-    /// Makes the highest-priority queued notice current when nothing is shown.
+    /// Makes the highest-priority queued notice current when nothing is shown, restoring a
+    /// deferred persistent notice after the queue drains.
     /// </summary>
     /// <returns><see langword="true"/> when a queued notice became current.</returns>
     public bool ShowNext()
     {
-        if (Current is not null || _pending.Count == 0)
+        if (Current is not null)
         {
             return false;
         }
 
-        Current = _pending[0];
-        _pending.RemoveAt(0);
-        return true;
+        if (_pending.Count > 0)
+        {
+            Current = _pending[0];
+            _pending.RemoveAt(0);
+            return true;
+        }
+
+        if (_deferredPersistent is not null)
+        {
+            Current = _deferredPersistent;
+            _deferredPersistent = null;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -35,16 +35,11 @@ public sealed class ErrorRecordFactory
     /// <summary>
     /// Creates a record for a failure.
     /// </summary>
-    /// <param name="level">The severity of the failure.</param>
-    /// <param name="code">The stable event code.</param>
+    /// <param name="code">The stable event code; its registered level is used.</param>
     /// <param name="operation">The operation that failed.</param>
     /// <param name="error">The exception behind the failure, when there is one.</param>
     /// <returns>The record with the environment fields filled in.</returns>
-    public ErrorRecord Create(
-        ErrorLevel level,
-        string code,
-        string operation,
-        Exception? error = null)
+    public ErrorRecord Create(string code, string operation, Exception? error = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
@@ -52,7 +47,7 @@ public sealed class ErrorRecordFactory
         return new ErrorRecord
         {
             Timestamp = _timeProvider.GetLocalNow(),
-            Level = level,
+            Level = ErrorPresentationCatalog.Find(code)?.Level ?? ErrorLevel.Error,
             Code = code,
             Operation = operation,
             ExceptionType = error?.GetType().FullName,

@@ -7,11 +7,17 @@ public static class ErrorPresentationCatalog
 {
     private static readonly Dictionary<string, ErrorPresentation> _presentations = new(StringComparer.Ordinal)
     {
-        [ErrorCodes.SettingsSaveFailed] = new(ErrorCarrier.InfoBar, ErrorNoticeAction.Retry),
-        [ErrorCodes.SettingsCorrupted] = new(ErrorCarrier.InfoBar),
-        [ErrorCodes.LocalizationSwitchFailed] = new(ErrorCarrier.InfoBar),
-        [ErrorCodes.ConfigFallbackToAppData] = new(ErrorCarrier.InfoBar, ErrorNoticeAction.OpenFolder),
-        [ErrorCodes.ConfigMemoryOnly] = new(ErrorCarrier.InfoBar, IsPersistent: true),
+        [ErrorCodes.SettingsSaveFailed] = new(
+            ErrorLevel.Error,
+            ErrorCarrier.InfoBar,
+            ErrorNoticeAction.Retry),
+        [ErrorCodes.SettingsCorrupted] = new(ErrorLevel.Warning, ErrorCarrier.InfoBar),
+        [ErrorCodes.LocalizationSwitchFailed] = new(ErrorLevel.Warning, ErrorCarrier.InfoBar),
+        [ErrorCodes.ConfigFallbackToAppData] = new(
+            ErrorLevel.Warning,
+            ErrorCarrier.InfoBar,
+            ErrorNoticeAction.OpenFolder),
+        [ErrorCodes.ConfigMemoryOnly] = new(ErrorLevel.Error, ErrorCarrier.InfoBar, IsPersistent: true),
     };
 
     /// <summary>

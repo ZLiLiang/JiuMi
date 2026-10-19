@@ -45,6 +45,27 @@ public sealed class ErrorRecordFormatterTests
     }
 
     [Fact]
+    public void Format_GivenUserProfileInFields_ReplacesItWithPlaceholder()
+    {
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var record = new ErrorRecord
+        {
+            Timestamp = new DateTimeOffset(2026, 10, 19, 15, 12, 46, TimeSpan.FromHours(8)),
+            Level = ErrorLevel.Error,
+            Code = "Settings.SaveFailed",
+            Operation = "Settings.Save",
+            ExceptionMessage = "Cannot write " + Path.Combine(profile, "notes.json"),
+            StackTrace = "   at " + Path.Combine(profile, "Source", "File.cs"),
+            ConfigPath = Path.Combine(profile, "AppData", "JiuMi", "settings.json"),
+        };
+
+        string text = ErrorRecordFormatter.Format(record, "设置没有保存成功");
+
+        Assert.Contains("%USERPROFILE%", text, StringComparison.Ordinal);
+        Assert.DoesNotContain(profile, text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Format_GivenNoOptionalFields_OmitsTheirLines()
     {
         var record = new ErrorRecord

@@ -111,7 +111,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             {
                 // The language file is unavailable: keep showing the previous selection.
                 _errorReporter.Report(_recordFactory.Create(
-                    ErrorLevel.Warning,
                     ErrorCodes.LocalizationSwitchFailed,
                     "Localization.Switch"));
                 OnPropertyChanged();
@@ -128,7 +127,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             if (result.Error is { } error)
             {
                 _errorReporter.Report(_recordFactory.Create(
-                    ErrorLevel.Error,
                     ErrorCodes.SettingsSaveFailed,
                     "Settings.Save",
                     error));

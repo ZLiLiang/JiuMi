@@ -20,7 +20,7 @@ public static class ErrorRecordFormatter
         ArgumentNullException.ThrowIfNull(text);
 
         var builder = new StringBuilder();
-        builder.AppendLine(text);
+        builder.AppendLine(ErrorRedactor.Redact(text));
         AppendField(builder, "timestamp", record.Timestamp.ToString("O", CultureInfo.InvariantCulture));
         AppendField(builder, "level", record.Level.ToString());
         AppendField(builder, "code", record.Code);
@@ -42,6 +42,6 @@ public static class ErrorRecordFormatter
             return;
         }
 
-        builder.Append(key).Append(": ").AppendLine(value);
+        builder.Append(key).Append(": ").AppendLine(ErrorRedactor.Redact(value));
     }
 }

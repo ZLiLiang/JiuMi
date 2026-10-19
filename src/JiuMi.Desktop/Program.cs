@@ -65,7 +65,6 @@ internal static class Program
         if (result.Issues.HasFlag(SettingsLoadIssue.Corrupted))
         {
             reporter.Report(recordFactory.Create(
-                ErrorLevel.Warning,
                 ErrorCodes.SettingsCorrupted,
                 "Settings.Load",
                 result.Error));
@@ -74,7 +73,6 @@ internal static class Program
         if (result.Issues.HasFlag(SettingsLoadIssue.FallbackToAppData))
         {
             reporter.Report(recordFactory.Create(
-                ErrorLevel.Warning,
                 ErrorCodes.ConfigFallbackToAppData,
                 "Settings.Load"));
         }
@@ -82,7 +80,6 @@ internal static class Program
         if (result.Issues.HasFlag(SettingsLoadIssue.MemoryOnly))
         {
             reporter.Report(recordFactory.Create(
-                ErrorLevel.Error,
                 ErrorCodes.ConfigMemoryOnly,
                 "Settings.Load"));
         }
