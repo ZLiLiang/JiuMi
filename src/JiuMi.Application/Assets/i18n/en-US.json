@@ -35,5 +35,6 @@
   "Error.Settings.Corrupted": "The settings file was damaged. It has been backed up and defaults are in use.",
   "Error.Localization.SwitchFailed": "The language could not be changed. The current language is kept.",
   "Error.Config.FallbackToAppData": "The program folder is not writable. Settings are saved in your user data folder.",
-  "Error.Config.MemoryOnly": "Neither settings folder is writable. Changes last only until JiuMi closes."
+  "Error.Config.MemoryOnly": "Neither settings folder is writable. Changes last only until JiuMi closes.",
+  "Error.Unexpected.UiThreadException": "Something unexpected stopped the interface. The application may not behave correctly."
 }

@@ -3,6 +3,11 @@
 /// <summary>
 /// Maps each registered event code to the surface that presents it.
 /// </summary>
+/// <remarks>
+/// The error-window carrier is declarative: the window presenter is wired to the codes it shows, so the
+/// table records the presentation contract rather than dispatching at runtime. The info bar reads the
+/// table for the codes it queues.
+/// </remarks>
 public static class ErrorPresentationCatalog
 {
     private static readonly Dictionary<string, ErrorPresentation> _presentations = new(StringComparer.Ordinal)
@@ -18,6 +23,7 @@ public static class ErrorPresentationCatalog
             ErrorCarrier.InfoBar,
             ErrorNoticeAction.OpenFolder),
         [ErrorCodes.ConfigMemoryOnly] = new(ErrorLevel.Error, ErrorCarrier.InfoBar, IsPersistent: true),
+        [ErrorCodes.UnexpectedUiThreadException] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
     };
 
     /// <summary>
