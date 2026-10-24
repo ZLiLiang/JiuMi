@@ -42,6 +42,7 @@
     <Style Selector="TextBox.details">
       <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
       <Setter Property="FontSize" Value="12" />
+      <Setter Property="MinHeight" Value="0" />
     </Style>
   </Window.Styles>
 
@@ -70,11 +71,15 @@
                  Classes="headline"
                  Text="{Binding Headline}" />
 
-      <TextBlock Grid.Row="1"
-                 Grid.Column="1"
-                 Margin="0,8,0,0"
-                 Classes="body"
-                 Text="{Binding Body}" />
+      <ScrollViewer Grid.Row="1"
+                    Grid.Column="1"
+                    Margin="0,8,0,0"
+                    MaxHeight="80"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <TextBlock Classes="body"
+                   Text="{Binding Body}" />
+      </ScrollViewer>
     </Grid>
 
     <Expander Grid.Row="1"

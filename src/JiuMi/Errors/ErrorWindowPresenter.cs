@@ -70,7 +70,8 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
                 exception);
             _errorReporter.Report(reported);
 
-            // The buffer owns the merged count, so the copied details read the stored record.
+            // The buffer owns the merged count, so the copied details read the stored record. The first
+            // line is the localized Error.<code> text so the copy matches the info bar byte for byte.
             ErrorRecord stored = _errorReporter.Details.Find(reported.Code) ?? reported;
             ErrorWindowRequest? request = _coordinator.Open(
                 stored,
@@ -80,7 +81,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
             if (request is null)
             {
                 // One window per process: a second failure cannot stack another window.
-                _requestExit(1);
+                _requestExit(ExitCodes.Failure);
                 return;
             }
 
@@ -95,7 +96,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
                 ErrorCodes.UnexpectedErrorWindowFailed,
                 "ErrorWindow.Show",
                 failure));
-            _requestExit(1);
+            _requestExit(ExitCodes.Failure);
         }
     }
 

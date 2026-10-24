@@ -39,8 +39,8 @@ public sealed class ErrorRecordFactory
     /// <param name="operation">The operation that failed.</param>
     /// <param name="error">The exception behind the failure, when there is one.</param>
     /// <param name="level">
-    /// The severity to record. Needed for codes without a presentation, which are logged only and
-    /// therefore have no catalog level.
+    /// The severity to record for codes without a registered presentation, which are logged only and
+    /// therefore have no catalog level. A registered code always keeps its catalog level.
     /// </param>
     /// <returns>The record with the environment fields filled in.</returns>
     public ErrorRecord Create(
@@ -55,7 +55,7 @@ public sealed class ErrorRecordFactory
         return new ErrorRecord
         {
             Timestamp = _timeProvider.GetLocalNow(),
-            Level = level ?? ErrorPresentationCatalog.Find(code)?.Level ?? ErrorLevel.Error,
+            Level = ErrorPresentationCatalog.Find(code)?.Level ?? level ?? ErrorLevel.Error,
             Code = code,
             Operation = operation,
             ExceptionType = error?.GetType().FullName,

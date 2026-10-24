@@ -31,6 +31,19 @@ public sealed class ErrorRecordFactoryTests
         Assert.Equal("System.InvalidOperationException", record.ExceptionType);
     }
 
+    [Fact]
+    public void Create_GivenRegisteredCodeAndExplicitLevel_KeepsTheCatalogLevel()
+    {
+        var factory = new ErrorRecordFactory(new StubApplicationInfo(), new StubSettingsStore(), TimeProvider.System);
+
+        ErrorRecord record = factory.Create(
+            ErrorCodes.LocalizationSwitchFailed,
+            "Localization.Switch",
+            level: ErrorLevel.Error);
+
+        Assert.Equal(ErrorLevel.Warning, record.Level);
+    }
+
     private sealed class StubApplicationInfo : IApplicationInfo
     {
         public string Name => "JiuMi";

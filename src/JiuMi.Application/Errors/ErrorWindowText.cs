@@ -3,6 +3,8 @@
 /// <summary>
 /// The zh-CN text of the error window, embedded rather than localized: the window can appear before
 /// localization is ready or when its files are damaged, and its text must not change with the language.
+/// The copied details are the exception; they match what the info bar copies (see
+/// <see cref="ErrorWindowRequest.DetailsText"/>).
 /// </summary>
 public static class ErrorWindowText
 {
@@ -28,7 +30,11 @@ public static class ErrorWindowText
         "发生了未预期的错误",
         "应用遇到了未预期的问题。可以复制详情反馈给开发者，然后退出。");
 
-    private static readonly ErrorWindowMessage _uiThreadException = new(
+    private static readonly ErrorWindowMessage _uiThreadExceptionBlocking = new(
+        "发生未处理的错误",
+        "界面线程上出现了未处理的错误，应用无法继续。可以复制详情反馈给开发者，然后退出。");
+
+    private static readonly ErrorWindowMessage _uiThreadExceptionContinuing = new(
         "发生未处理的错误",
         "界面线程上出现了未处理的错误，但应用仍可继续使用。可以复制详情反馈给开发者，或继续运行。");
 
@@ -36,10 +42,12 @@ public static class ErrorWindowText
     /// Gets the headline and explanation for a failure.
     /// </summary>
     /// <param name="code">The stable event code.</param>
+    /// <param name="canContinue">Whether the window offers continuing after the failure.</param>
     /// <returns>The embedded text, or the generic text when the code has no specific wording.</returns>
-    public static ErrorWindowMessage MessageFor(string code) => code switch
+    public static ErrorWindowMessage MessageFor(string code, bool canContinue) => code switch
     {
-        ErrorCodes.UnexpectedUiThreadException => _uiThreadException,
+        ErrorCodes.UnexpectedUiThreadException when canContinue => _uiThreadExceptionContinuing,
+        ErrorCodes.UnexpectedUiThreadException => _uiThreadExceptionBlocking,
         _ => _default,
     };
 }

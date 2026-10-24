@@ -103,10 +103,10 @@ internal static class Program
         IErrorReporter reporter = services.GetRequiredService<IErrorReporter>();
         ErrorRecordFactory recordFactory = services.GetRequiredService<ErrorRecordFactory>();
 
-        // The UI is not safe to touch here: record what is known and let the runtime terminate.
+        // These subscriptions live as long as the process, so they are deliberately never removed.
+        // The UI is not safe to touch here: record what is known, then leave with the failure code.
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
-            Environment.ExitCode = 1;
             if (e.ExceptionObject is Exception error)
             {
                 reporter.Report(recordFactory.Create(
@@ -115,10 +115,7 @@ internal static class Program
                     error));
             }
 
-            if (!e.IsTerminating)
-            {
-                Environment.Exit(1);
-            }
+            Environment.Exit(ExitCodes.Failure);
         };
 
         // An abandoned task is not the user's problem: observe it and keep it out of the UI.

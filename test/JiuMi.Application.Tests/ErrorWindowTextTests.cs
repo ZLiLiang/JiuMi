@@ -16,9 +16,11 @@ public sealed class ErrorWindowTextTests
     }
 
     [Fact]
-    public void MessageFor_GivenUiThreadExceptionCode_DescribesAnUnhandledError()
+    public void MessageFor_GivenUiThreadExceptionCodeAndContinuing_OffersContinuing()
     {
-        ErrorWindowMessage message = ErrorWindowText.MessageFor(ErrorCodes.UnexpectedUiThreadException);
+        ErrorWindowMessage message = ErrorWindowText.MessageFor(
+            ErrorCodes.UnexpectedUiThreadException,
+            canContinue: true);
 
         Assert.Equal("发生未处理的错误", message.Headline);
         Assert.Equal(
@@ -27,9 +29,22 @@ public sealed class ErrorWindowTextTests
     }
 
     [Fact]
+    public void MessageFor_GivenUiThreadExceptionCodeAndBlocking_OmitsContinuing()
+    {
+        ErrorWindowMessage message = ErrorWindowText.MessageFor(
+            ErrorCodes.UnexpectedUiThreadException,
+            canContinue: false);
+
+        Assert.Equal("发生未处理的错误", message.Headline);
+        Assert.Equal(
+            "界面线程上出现了未处理的错误，应用无法继续。可以复制详情反馈给开发者，然后退出。",
+            message.Body);
+    }
+
+    [Fact]
     public void MessageFor_GivenUnregisteredCode_FallsBackToTheGenericMessage()
     {
-        ErrorWindowMessage message = ErrorWindowText.MessageFor("Unknown.Code");
+        ErrorWindowMessage message = ErrorWindowText.MessageFor("Unknown.Code", canContinue: false);
 
         Assert.Equal("发生了未预期的错误", message.Headline);
         Assert.Equal("应用遇到了未预期的问题。可以复制详情反馈给开发者，然后退出。", message.Body);

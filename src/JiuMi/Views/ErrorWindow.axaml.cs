@@ -15,8 +15,6 @@ namespace JiuMi.Views;
 /// </summary>
 public partial class ErrorWindow : Window
 {
-    private const int FailureExitCode = 1;
-
     private Action<int>? _requestExit;
     private Action<Exception>? _reportCopyFailure;
     private bool _completed;
@@ -130,7 +128,7 @@ public partial class ErrorWindow : Window
                 return;
             }
 
-            _requestExit(FailureExitCode);
+            _requestExit(ExitCodes.Failure);
             return;
         }
 

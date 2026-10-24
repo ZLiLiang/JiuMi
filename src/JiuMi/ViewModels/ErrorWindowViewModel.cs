@@ -21,7 +21,7 @@ public sealed class ErrorWindowViewModel : ViewModelBase, IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        ErrorWindowMessage message = ErrorWindowText.MessageFor(request.Record.Code);
+        ErrorWindowMessage message = ErrorWindowText.MessageFor(request.Record.Code, request.CanContinue);
         Request = request;
         Headline = message.Headline;
         Body = message.Body;
