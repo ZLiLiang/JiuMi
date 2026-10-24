@@ -25,5 +25,15 @@
   "Tool.WorldClock.Name": "World work hours",
   "Tool.WorldClock.Description": "See where working hours overlap across cities.",
   "Common.ComingSoon": "Coming soon",
-  "Common.OpenFolder": "Open folder"
+  "Common.OpenFolder": "Open folder",
+  "Common.Retry": "Retry",
+  "Common.CopyDetails": "Copy details",
+  "Common.Copied": "Copied",
+  "Common.Close": "Close",
+  "Common.ErrorCountSuffix": " ({0} times)",
+  "Error.Settings.SaveFailed": "The settings could not be saved.",
+  "Error.Settings.Corrupted": "The settings file was damaged. It has been backed up and defaults are in use.",
+  "Error.Localization.SwitchFailed": "The language could not be changed. The current language is kept.",
+  "Error.Config.FallbackToAppData": "The program folder is not writable. Settings are saved in your user data folder.",
+  "Error.Config.MemoryOnly": "Neither settings folder is writable. Changes last only until JiuMi closes."
 }

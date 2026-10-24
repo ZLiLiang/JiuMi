@@ -490,7 +490,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
 | `Settings.About.ExportDiagnostics` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
-| `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` | 错误呈现的操作与复制反馈 |
+| `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` / `Common.Close` | 错误呈现的操作、复制反馈与关闭按钮可访问名 |
 | `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
 | `Error.<事件码>` | 与 `ErrorRecord.code` 一一对应，如 `Error.Settings.SaveFailed`；事件码清单见错误呈现与诊断章节的场景映射 |
 

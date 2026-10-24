@@ -1,7 +1,9 @@
 ﻿using System.Reflection;
 using JiuMi.Application;
+using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Infrastructure.Errors;
 using JiuMi.Infrastructure.Localization;
 using JiuMi.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +34,11 @@ public static class InfrastructureServiceCollectionExtensions
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JiuMi")));
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
+        services.AddSingleton<IErrorReporter, ErrorReporter>();
+        services.AddSingleton(provider => new ErrorRecordFactory(
+            provider.GetRequiredService<IApplicationInfo>(),
+            provider.GetRequiredService<ISettingsStore>(),
+            TimeProvider.System));
         return services;
     }
 }

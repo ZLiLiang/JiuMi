@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using JiuMi.Application.Errors;
 
 namespace JiuMi.Application.Tests;
 
@@ -77,6 +78,24 @@ public sealed class LocalizationAssetsTests
                 JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path));
             Assert.NotNull(strings);
             Assert.NotEmpty(strings);
+        }
+    }
+
+    [Fact]
+    public void ErrorKeys_GivenEveryLanguage_MapToRegisteredEventCodes()
+    {
+        (string source, string[] codes) = ReadManifest();
+        Dictionary<string, Dictionary<string, string>> catalogs = ReadCatalogs(codes);
+
+        foreach (string key in catalogs[source].Keys.Where(
+            key => key.StartsWith("Error.", StringComparison.Ordinal)))
+        {
+            Assert.NotNull(ErrorPresentationCatalog.Find(key["Error.".Length..]));
+        }
+
+        foreach (string code in ErrorPresentationCatalog.Codes)
+        {
+            Assert.Contains("Error." + code, catalogs[source].Keys);
         }
     }
 

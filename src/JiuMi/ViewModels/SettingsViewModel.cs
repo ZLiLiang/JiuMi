@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
+using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 
@@ -13,6 +14,8 @@ namespace JiuMi.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly IApplicationInfo _applicationInfo;
+    private readonly IErrorReporter _errorReporter;
+    private readonly ErrorRecordFactory _recordFactory;
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
     private readonly ISystemLauncher _systemLauncher;
@@ -23,21 +26,29 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// Initializes a new instance of the <see cref="SettingsViewModel"/> class.
     /// </summary>
     /// <param name="applicationInfo">Product name, version and repository shown in the about section.</param>
+    /// <param name="errorReporter">Receives language switch and settings save failures.</param>
+    /// <param name="recordFactory">Creates the records reported from this page.</param>
     /// <param name="localization">The localization service that supplies interface text and languages.</param>
     /// <param name="settingsStore">The store that loads and saves the settings.</param>
     /// <param name="systemLauncher">Opens folders and links for the about section.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
+        IErrorReporter errorReporter,
+        ErrorRecordFactory recordFactory,
         ILocalizationService localization,
         ISettingsStore settingsStore,
         ISystemLauncher systemLauncher)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
+        ArgumentNullException.ThrowIfNull(errorReporter);
+        ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(systemLauncher);
 
         _applicationInfo = applicationInfo;
+        _errorReporter = errorReporter;
+        _recordFactory = recordFactory;
         _localization = localization;
         _settingsStore = settingsStore;
         _systemLauncher = systemLauncher;
@@ -99,16 +110,27 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             if (!_localization.TrySetLanguage(value.Code))
             {
                 // The language file is unavailable: keep showing the previous selection.
+                _errorReporter.Report(_recordFactory.Create(
+                    ErrorCodes.LocalizationSwitchFailed,
+                    "Localization.Switch"));
                 OnPropertyChanged();
                 return;
             }
 
             _selectedLanguage = value;
             OnPropertyChanged();
-            _ = _settingsStore.Save(_settingsStore.Current with
+
+            SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
             {
                 Language = value.Code,
             });
+            if (result.Error is { } error)
+            {
+                _errorReporter.Report(_recordFactory.Create(
+                    ErrorCodes.SettingsSaveFailed,
+                    "Settings.Save",
+                    error));
+            }
         }
     }
 
