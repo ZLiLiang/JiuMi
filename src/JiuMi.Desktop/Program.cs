@@ -1,8 +1,10 @@
 ﻿using System.Globalization;
 using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Errors;
 using JiuMi.Infrastructure;
 using JiuMi.ViewModels;
 using JiuMi.Views;
@@ -17,8 +19,11 @@ internal static class Program
     {
         using ServiceProvider services = CreateServices();
         ReportStartupIssues(services);
+        SubscribeProcessHandlers(services);
 
-        return AppBuilder.Configure(() => new App(() => services.GetRequiredService<MainWindow>()))
+        IErrorWindowPresenter errorWindows = services.GetRequiredService<IErrorWindowPresenter>();
+        return AppBuilder.Configure(
+                () => new App(() => services.GetRequiredService<MainWindow>(), errorWindows))
             .UsePlatformDetect()
             .StartWithClassicDesktopLifetime(args);
     }
@@ -53,6 +58,14 @@ internal static class Program
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
+        services.AddSingleton<ErrorWindowCoordinator>();
+        services.AddSingleton<IErrorWindowPresenter>(provider => new ErrorWindowPresenter(
+            provider.GetRequiredService<IErrorReporter>(),
+            provider.GetRequiredService<ErrorRecordFactory>(),
+            provider.GetRequiredService<ILocalizationService>(),
+            provider.GetRequiredService<ErrorWindowCoordinator>(),
+            IsMainWindowAvailable,
+            RequestExit));
         return services.BuildServiceProvider();
     }
 
@@ -83,6 +96,57 @@ internal static class Program
                 ErrorCodes.ConfigMemoryOnly,
                 "Settings.Load"));
         }
+    }
+
+    private static void SubscribeProcessHandlers(ServiceProvider services)
+    {
+        IErrorReporter reporter = services.GetRequiredService<IErrorReporter>();
+        ErrorRecordFactory recordFactory = services.GetRequiredService<ErrorRecordFactory>();
+
+        // The UI is not safe to touch here: record what is known and let the runtime terminate.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            Environment.ExitCode = 1;
+            if (e.ExceptionObject is Exception error)
+            {
+                reporter.Report(recordFactory.Create(
+                    ErrorCodes.UnexpectedAppDomainException,
+                    "AppDomain.UnhandledException",
+                    error));
+            }
+
+            if (!e.IsTerminating)
+            {
+                Environment.Exit(1);
+            }
+        };
+
+        // An abandoned task is not the user's problem: observe it and keep it out of the UI.
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            e.SetObserved();
+            reporter.Report(recordFactory.Create(
+                ErrorCodes.UnexpectedUnobservedTask,
+                "TaskScheduler.UnobservedTaskException",
+                e.Exception,
+                ErrorLevel.Warning));
+        };
+    }
+
+    private static bool IsMainWindowAvailable() =>
+        Avalonia.Application.Current?.ApplicationLifetime is
+            IClassicDesktopStyleApplicationLifetime { MainWindow: { IsLoaded: true } };
+
+    private static void RequestExit(int exitCode)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+            IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown(exitCode);
+            return;
+        }
+
+        Environment.Exit(exitCode);
     }
 }
 

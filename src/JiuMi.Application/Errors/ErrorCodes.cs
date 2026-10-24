@@ -22,4 +22,16 @@ public static class ErrorCodes
 
     /// <summary>No settings location is writable, so changes last for this session only.</summary>
     public const string ConfigMemoryOnly = "Config.MemoryOnly";
+
+    /// <summary>An exception escaped the UI thread dispatcher.</summary>
+    public const string UnexpectedUiThreadException = "Unexpected.UiThreadException";
+
+    /// <summary>A task failed after nobody awaited it; recorded for diagnostics only.</summary>
+    public const string UnexpectedUnobservedTask = "Unexpected.UnobservedTask";
+
+    /// <summary>An exception reached the process-wide handler; recorded for diagnostics only.</summary>
+    public const string UnexpectedAppDomainException = "Unexpected.AppDomainException";
+
+    /// <summary>The error window could not be created or shown; recorded for diagnostics only.</summary>
+    public const string UnexpectedErrorWindowFailed = "Unexpected.ErrorWindowFailed";
 }

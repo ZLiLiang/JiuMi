@@ -18,6 +18,7 @@ public static class ErrorPresentationCatalog
             ErrorCarrier.InfoBar,
             ErrorNoticeAction.OpenFolder),
         [ErrorCodes.ConfigMemoryOnly] = new(ErrorLevel.Error, ErrorCarrier.InfoBar, IsPersistent: true),
+        [ErrorCodes.UnexpectedUiThreadException] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
     };
 
     /// <summary>

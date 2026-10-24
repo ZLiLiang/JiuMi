@@ -1,0 +1,119 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:JiuMi.ViewModels"
+        x:Class="JiuMi.Views.ErrorWindow"
+        x:DataType="vm:ErrorWindowViewModel"
+        Title="{Binding Title}"
+        Width="420"
+        Height="240"
+        CanResize="False"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+  <Window.Resources>
+    <x:Double x:Key="ExpanderMinHeight">32</x:Double>
+    <Thickness x:Key="ExpanderHeaderPadding">0</Thickness>
+    <Thickness x:Key="ExpanderChevronMargin">8,0,0,0</Thickness>
+    <Thickness x:Key="ExpanderContentPadding">0,8,0,0</Thickness>
+  </Window.Resources>
+
+  <Window.Styles>
+    <Style Selector="TextBlock.headline">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LineHeight" Value="28" />
+      <Setter Property="MaxLines" Value="2" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.body">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="MaxLines" Value="4" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.dialog">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="12,0" />
+    </Style>
+    <Style Selector="TextBox.details">
+      <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="24" RowDefinitions="Auto,*,Auto">
+    <Grid Grid.Row="0" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*">
+      <Canvas Grid.Row="0"
+              Grid.Column="0"
+              Width="32"
+              Height="32"
+              Margin="0,2,12,0"
+              VerticalAlignment="Top">
+        <Ellipse Canvas.Left="2"
+                 Canvas.Top="2"
+                 Width="28"
+                 Height="28"
+                 Stroke="{DynamicResource SystemFillColorCriticalBrush}"
+                 StrokeThickness="2.5" />
+        <Path Data="M11,11 L21,21 M21,11 L11,21"
+              Stroke="{DynamicResource SystemFillColorCriticalBrush}"
+              StrokeThickness="2.5"
+              StrokeLineCap="Round" />
+      </Canvas>
+
+      <TextBlock Grid.Row="0"
+                 Grid.Column="1"
+                 Classes="headline"
+                 Text="{Binding Headline}" />
+
+      <TextBlock Grid.Row="1"
+                 Grid.Column="1"
+                 Margin="0,8,0,0"
+                 Classes="body"
+                 Text="{Binding Body}" />
+    </Grid>
+
+    <Expander Grid.Row="1"
+              Margin="44,12,0,0"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              Header="{Binding DetailsHeader}">
+      <TextBox Classes="details"
+               Text="{Binding DetailsText, Mode=OneWay}"
+               AutomationProperties.Name="{Binding DetailsHeader}"
+               IsReadOnly="True"
+               AcceptsReturn="True"
+               TextWrapping="NoWrap"
+               ScrollViewer.HorizontalScrollBarVisibility="Auto"
+               ScrollViewer.VerticalScrollBarVisibility="Auto" />
+    </Expander>
+
+    <StackPanel Grid.Row="2"
+                Margin="0,16,0,0"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="8">
+      <Button Classes="dialog"
+              Content="{Binding CopyText}"
+              Click="OnCopyDetailsClick" />
+      <Button Name="ExitButton"
+              Classes="dialog"
+              Classes.accent="{Binding IsBlocking}"
+              IsCancel="{Binding IsBlocking}"
+              IsDefault="{Binding IsBlocking}"
+              Content="{Binding ExitText}"
+              Click="OnExitClick" />
+      <Button Name="ContinueButton"
+              Classes="dialog accent"
+              IsVisible="{Binding CanContinue}"
+              IsCancel="{Binding CanContinue}"
+              IsDefault="{Binding CanContinue}"
+              Content="{Binding ContinueText}"
+              Click="OnContinueClick" />
+    </StackPanel>
+  </Grid>
+</Window>
