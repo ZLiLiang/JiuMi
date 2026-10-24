@@ -15,6 +15,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
     private readonly ErrorRecordFactory _recordFactory;
     private readonly ILocalizationService _localization;
     private readonly ErrorWindowCoordinator _coordinator;
+    private readonly Func<ErrorWindow> _createWindow;
     private readonly Func<bool> _isMainWindowAvailable;
     private readonly Action<int> _requestExit;
 
@@ -25,6 +26,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
     /// <param name="recordFactory">Creates the record for an escaped exception.</param>
     /// <param name="localization">Supplies the first line of the copied details.</param>
     /// <param name="coordinator">Guarantees at most one error window per process.</param>
+    /// <param name="createWindow">Creates the window once a failure must be shown.</param>
     /// <param name="isMainWindowAvailable">
     /// Reports whether the main window is usable, which decides between the blocking and the
     /// continue-running variant.
@@ -35,6 +37,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
         ErrorRecordFactory recordFactory,
         ILocalizationService localization,
         ErrorWindowCoordinator coordinator,
+        Func<ErrorWindow> createWindow,
         Func<bool> isMainWindowAvailable,
         Action<int> requestExit)
     {
@@ -42,6 +45,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(coordinator);
+        ArgumentNullException.ThrowIfNull(createWindow);
         ArgumentNullException.ThrowIfNull(isMainWindowAvailable);
         ArgumentNullException.ThrowIfNull(requestExit);
 
@@ -49,6 +53,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
         _recordFactory = recordFactory;
         _localization = localization;
         _coordinator = coordinator;
+        _createWindow = createWindow;
         _isMainWindowAvailable = isMainWindowAvailable;
         _requestExit = requestExit;
     }
@@ -85,7 +90,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
                 return;
             }
 
-            var window = new ErrorWindow();
+            ErrorWindow window = _createWindow();
             window.Closed += OnWindowClosed;
             window.ShowFailure(request, _requestExit, ReportCopyFailure);
         }

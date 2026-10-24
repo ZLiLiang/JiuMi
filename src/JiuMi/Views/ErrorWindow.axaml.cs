@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Avalonia.Controls;
-using Avalonia.Input.Platform;
+﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Styling;
@@ -84,27 +82,26 @@ public partial class ErrorWindow : Window
         Complete(viewModel.DefaultAction);
     }
 
-    [SuppressMessage(
-        "Design",
-        "CA1031:Do not catch general exception types",
-        Justification = "The clipboard is owned by the desktop; a failed copy must not crash the error window.")]
     private async void OnCopyDetailsClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not ErrorWindowViewModel viewModel ||
-            TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard)
+        if (DataContext is not ErrorWindowViewModel viewModel)
         {
             return;
         }
 
-        try
-        {
-            await clipboard.SetTextAsync(viewModel.DetailsText);
-            viewModel.NotifyCopied();
-        }
-        catch (Exception exception)
+        ClipboardCopy.Outcome outcome = await ClipboardCopy.TrySetTextAsync(
+            TopLevel.GetTopLevel(this),
+            viewModel.DetailsText);
+        if (outcome.Error is { } error)
         {
             // Another process can hold the clipboard; record it and leave the details readable.
-            _reportCopyFailure?.Invoke(exception);
+            _reportCopyFailure?.Invoke(error);
+            return;
+        }
+
+        if (outcome.Copied)
+        {
+            viewModel.NotifyCopied();
         }
     }
 

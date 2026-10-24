@@ -64,6 +64,7 @@ internal static class Program
             provider.GetRequiredService<ErrorRecordFactory>(),
             provider.GetRequiredService<ILocalizationService>(),
             provider.GetRequiredService<ErrorWindowCoordinator>(),
+            static () => new ErrorWindow(),
             IsMainWindowAvailable,
             RequestExit));
         return services.BuildServiceProvider();
