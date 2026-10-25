@@ -12,7 +12,7 @@ public sealed class FluentThemePaletteTests
     [Fact]
     public void HasPaletteFor_GivenDarkPalette_AcceptsDark()
     {
-        ResourceDictionary resources = CreateResources();
+        ResourceDictionary resources = new();
         resources.ThemeDictionaries[ThemeVariant.Dark] = CreatePalette();
 
         Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
@@ -21,7 +21,7 @@ public sealed class FluentThemePaletteTests
     [Fact]
     public void HasPaletteFor_GivenOnlyDefaultPalette_RejectsDark()
     {
-        ResourceDictionary resources = CreateResources();
+        ResourceDictionary resources = new();
         resources.ThemeDictionaries[ThemeVariant.Default] = CreatePalette();
 
         Assert.False(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
@@ -30,7 +30,7 @@ public sealed class FluentThemePaletteTests
     [Fact]
     public void HasPaletteFor_GivenLightPalette_AcceptsLight()
     {
-        ResourceDictionary resources = CreateResources();
+        ResourceDictionary resources = new();
         resources.ThemeDictionaries[ThemeVariant.Light] = CreatePalette();
 
         Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Light));
@@ -39,7 +39,7 @@ public sealed class FluentThemePaletteTests
     [Fact]
     public void HasPaletteFor_GivenOnlyDefaultPalette_AcceptsLight()
     {
-        ResourceDictionary resources = CreateResources();
+        ResourceDictionary resources = new();
         resources.ThemeDictionaries[ThemeVariant.Default] = CreatePalette();
 
         Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Light));
@@ -48,9 +48,9 @@ public sealed class FluentThemePaletteTests
     [Fact]
     public void HasPaletteFor_GivenPaletteInMergedDictionary_AcceptsIt()
     {
-        ResourceDictionary merged = CreateResources();
+        ResourceDictionary merged = new();
         merged.ThemeDictionaries[ThemeVariant.Dark] = CreatePalette();
-        ResourceDictionary resources = CreateResources();
+        ResourceDictionary resources = new();
         resources.MergedDictionaries.Add(merged);
 
         Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
@@ -63,16 +63,16 @@ public sealed class FluentThemePaletteTests
         {
             [ThemeResourceKeys.SolidBackgroundBrush] = new object(),
         };
-        ResourceDictionary resources = CreateResources();
+        ResourceDictionary resources = new();
         resources.ThemeDictionaries[ThemeVariant.Dark] = incomplete;
 
         Assert.False(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
     }
 
     [Fact]
-    public void HasPaletteFor_GivenAnyStore_AcceptsSystem()
+    public void HasPaletteFor_GivenAnyResourceProvider_AcceptsSystem()
     {
-        Assert.True(FluentThemePalette.HasPaletteFor(CreateResources(), AppTheme.System));
+        Assert.True(FluentThemePalette.HasPaletteFor(new ResourceDictionary(), AppTheme.System));
     }
 
     [Fact]
@@ -89,8 +89,6 @@ public sealed class FluentThemePaletteTests
             Assert.True(FluentThemePalette.HasPaletteFor(theme.Resources, AppTheme.Dark));
         });
     }
-
-    private static ResourceDictionary CreateResources() => new();
 
     private static ResourceDictionary CreatePalette() => new()
     {
