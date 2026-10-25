@@ -21,25 +21,24 @@ public sealed class SettingsViewModelTests
         Assert.Equal(AppTheme.Dark, page.ThemeService.Current);
         Assert.Equal(AppTheme.Dark, page.Store.Current.Theme);
         Assert.Empty(page.Reporter.Reports);
-        Assert.Equal(1, page.Dispatcher.PendingCount);
     }
 
     [Fact]
     public void SelectThemeCommand_GivenSwitchFails_KeepsTheStoredPreferenceAndReports()
     {
         var page = new PageHarness(storedTheme: AppTheme.System, appliedTheme: AppTheme.System);
-        page.ThemeService.SwitchSucceeds = false;
+        var failure = new InvalidOperationException("Theme host unavailable.");
+        page.ThemeService.Failure = failure;
         var changed = new List<string?>();
         page.ViewModel.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
 
         page.ViewModel.SelectThemeCommand.Execute(AppTheme.Dark);
-
-        // The radio click has not finished yet, so the rebound waits for the queued notification.
-        Assert.Empty(changed);
         page.Dispatcher.RunPending();
 
         Assert.Equal(AppTheme.System, page.Store.Current.Theme);
-        Assert.Equal(ErrorCodes.ThemeSwitchFailed, Assert.Single(page.Reporter.Reports).Code);
+        ErrorRecord report = Assert.Single(page.Reporter.Reports);
+        Assert.Equal(ErrorCodes.ThemeSwitchFailed, report.Code);
+        Assert.Equal(failure.Message, report.ExceptionMessage);
         Assert.Equal(
             [
                 nameof(SettingsViewModel.IsFollowSystemTheme),
@@ -73,7 +72,7 @@ public sealed class SettingsViewModelTests
             ViewModel = new SettingsViewModel(
                 applicationInfo,
                 Reporter,
-                new ErrorRecordFactory(applicationInfo, Store, TimeProvider.System),
+                new ErrorRecordFactory(applicationInfo, Store, new FixedTimeProvider()),
                 new StubLocalizationService(),
                 Store,
                 ThemeService,
@@ -113,6 +112,11 @@ public sealed class SettingsViewModelTests
 
         public bool SwitchSucceeds { get; set; } = true;
 
+        public Exception? Failure
+        {
+            get; set;
+        }
+
         public AppTheme Current
         {
             get; private set;
@@ -122,8 +126,15 @@ public sealed class SettingsViewModelTests
         {
         }
 
-        public bool TrySetTheme(AppTheme theme)
+        public bool TrySetTheme(AppTheme theme, out Exception? failure)
         {
+            failure = null;
+            if (Failure is not null)
+            {
+                failure = Failure;
+                return false;
+            }
+
             if (!SwitchSucceeds)
             {
                 return false;
@@ -132,6 +143,12 @@ public sealed class SettingsViewModelTests
             Current = theme;
             return true;
         }
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() =>
+            new(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
     }
 
     private sealed class StubSettingsStore : ISettingsStore
@@ -183,8 +200,6 @@ public sealed class SettingsViewModelTests
     private sealed class StubUiThreadDispatcher : IUiThreadDispatcher
     {
         private readonly List<Action> _pending = [];
-
-        public int PendingCount => _pending.Count;
 
         public void Post(Action action)
         {

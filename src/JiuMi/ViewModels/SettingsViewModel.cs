@@ -195,14 +195,15 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        bool applied = _themeService.TrySetTheme(theme);
+        bool applied = _themeService.TrySetTheme(theme, out Exception? failure);
         NotifyThemeSelectionChanged();
         if (!applied)
         {
             // The requested palette is unavailable and the previous preference is back in effect.
             _errorReporter.Report(_recordFactory.Create(
                 ErrorCodes.ThemeSwitchFailed,
-                "Theme.Switch"));
+                "Theme.Switch",
+                failure));
             return;
         }
 

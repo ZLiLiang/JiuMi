@@ -1,6 +1,5 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Styling;
-using FluentAvalonia.Styling;
 using JiuMi.Application.Settings;
 
 namespace JiuMi.Theming;
@@ -10,15 +9,18 @@ namespace JiuMi.Theming;
 /// </summary>
 internal static class FluentThemePalette
 {
+    private static readonly string[] _paletteKeys =
+        [ThemeResourceKeys.SolidBackgroundBrush, ThemeResourceKeys.PrimaryTextBrush];
+
     /// <summary>
-    /// Returns whether <paramref name="preference"/> has its own palette in <paramref name="theme"/>.
+    /// Returns whether <paramref name="resources"/> has the palette for <paramref name="preference"/>.
     /// </summary>
-    /// <param name="theme">The Fluent theme whose resources are inspected.</param>
+    /// <param name="resources">The themed resource host to inspect.</param>
     /// <param name="preference">The theme preference to check.</param>
-    /// <returns><see langword="true"/> when applying the preference cannot fall back to another palette.</returns>
-    public static bool Has(FluentAvaloniaTheme theme, AppTheme preference)
+    /// <returns><see langword="true"/> when applying the preference has a complete palette to use.</returns>
+    public static bool Has(IResourceProvider resources, AppTheme preference)
     {
-        ArgumentNullException.ThrowIfNull(theme);
+        ArgumentNullException.ThrowIfNull(resources);
 
         // "Default" resolves against the operating system at lookup time, so there is no palette to probe.
         if (preference == AppTheme.System)
@@ -28,12 +30,12 @@ internal static class FluentThemePalette
 
         if (preference == AppTheme.Dark)
         {
-            return HasVariant(theme.Resources, ThemeVariant.Dark);
+            return HasVariant(resources, ThemeVariant.Dark);
         }
 
         // Fluent keys its light palette as "Default"; a dedicated "Light" dictionary is optional.
-        return HasVariant(theme.Resources, ThemeVariant.Light) ||
-            HasVariant(theme.Resources, ThemeVariant.Default);
+        return HasVariant(resources, ThemeVariant.Light) ||
+            HasVariant(resources, ThemeVariant.Default);
     }
 
     private static bool HasVariant(IResourceProvider resources, ThemeVariant variant)
@@ -46,7 +48,7 @@ internal static class FluentThemePalette
         // A themed lookup through the resource host falls back to the default dictionary, which hides a
         // missing variant. Look for the variant's own palette instead, including in merged dictionaries.
         if (dictionary.ThemeDictionaries.TryGetValue(variant, out IThemeVariantProvider? palette) &&
-            palette.TryGetResource(ThemeResourceKeys.SolidBackgroundBrush, theme: null, out _))
+            HasAllKeys(palette))
         {
             return true;
         }
@@ -60,5 +62,18 @@ internal static class FluentThemePalette
         }
 
         return false;
+    }
+
+    private static bool HasAllKeys(IResourceProvider palette)
+    {
+        foreach (string key in _paletteKeys)
+        {
+            if (!palette.TryGetResource(key, theme: null, out _))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -23,9 +23,10 @@ public interface IThemeService
     /// Applies a theme preference and switches the interface immediately.
     /// </summary>
     /// <param name="theme">The requested preference.</param>
+    /// <param name="failure">The theme host failure when one occurred; otherwise <see langword="null"/>.</param>
     /// <returns>
     /// <see langword="true"/> when the interface now uses <paramref name="theme"/>; <see langword="false"/>
     /// when the switch failed, in which case the previous preference is restored when possible.
     /// </returns>
-    bool TrySetTheme(AppTheme theme);
+    bool TrySetTheme(AppTheme theme, out Exception? failure);
 }

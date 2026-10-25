@@ -26,5 +26,9 @@ internal sealed class NullThemeService : IThemeService
     }
 
     /// <inheritdoc />
-    public bool TrySetTheme(AppTheme theme) => theme == AppTheme.System;
+    public bool TrySetTheme(AppTheme theme, out Exception? failure)
+    {
+        failure = null;
+        return theme == AppTheme.System;
+    }
 }

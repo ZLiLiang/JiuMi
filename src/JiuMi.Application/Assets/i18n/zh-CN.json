@@ -40,7 +40,7 @@
   "Error.Settings.SaveFailed": "设置没有保存成功。",
   "Error.Settings.Corrupted": "设置文件已损坏，已备份并改用默认设置。",
   "Error.Localization.SwitchFailed": "语言切换失败，已保留当前语言。",
-  "Error.Theme.SwitchFailed": "主题切换失败。",
+  "Error.Theme.SwitchFailed": "主题切换失败，选择已回弹。",
   "Error.Config.FallbackToAppData": "程序目录不可写，设置已保存到用户数据目录。",
   "Error.Config.MemoryOnly": "两个设置目录都不可写，本次更改只在内存中保留。",
   "Error.Unexpected.UiThreadException": "界面线程上出现了未处理的错误，应用可能无法正常工作。"

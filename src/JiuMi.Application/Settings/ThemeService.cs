@@ -29,7 +29,7 @@ public sealed class ThemeService : IThemeService
     public void ApplyStoredTheme()
     {
         AppTheme stored = _settingsStore.Current.Theme;
-        if (_applier.TryApply(stored))
+        if (_applier.TryApply(stored, out _))
         {
             _current = stored;
             return;
@@ -41,21 +41,23 @@ public sealed class ThemeService : IThemeService
     }
 
     /// <inheritdoc />
-    public bool TrySetTheme(AppTheme theme)
+    public bool TrySetTheme(AppTheme theme, out Exception? failure)
     {
+        failure = null;
         if (theme == _current)
         {
             return true;
         }
 
-        if (_applier.TryApply(theme))
+        if (_applier.TryApply(theme, out failure))
         {
             _current = theme;
             return true;
         }
 
-        if (!_applier.TryApply(_current))
+        if (!_applier.TryApply(_current, out Exception? restoreFailure))
         {
+            failure ??= restoreFailure;
             FallBackToSystem();
         }
 
@@ -65,6 +67,6 @@ public sealed class ThemeService : IThemeService
     private void FallBackToSystem()
     {
         _current = AppTheme.System;
-        _ = _applier.TryApply(_current);
+        _ = _applier.TryApply(_current, out _);
     }
 }

@@ -47,11 +47,24 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
+    public void ApplyStoredTheme_GivenStoredSystem_AppliesItAndKeepsTheStoredValue()
+    {
+        var store = new StubSettingsStore(AppTheme.System);
+        var applier = CreateApplier();
+        var service = new ThemeService(store, applier);
+
+        service.ApplyStoredTheme();
+
+        Assert.Equal(new[] { AppTheme.System }, applier.Applied);
+        Assert.Equal(AppTheme.System, store.Current.Theme);
+    }
+
+    [Fact]
     public void TrySetTheme_GivenThemeCanBeApplied_AppliesIt()
     {
         var service = new ThemeService(new StubSettingsStore(AppTheme.System), CreateApplier());
 
-        bool applied = service.TrySetTheme(AppTheme.Light);
+        bool applied = service.TrySetTheme(AppTheme.Light, out _);
 
         Assert.True(applied);
         Assert.Equal(AppTheme.Light, service.Current);
@@ -65,13 +78,29 @@ public sealed class ThemeServiceTests
         service.ApplyStoredTheme();
         applier.Available.Remove(AppTheme.Dark);
 
-        bool applied = service.TrySetTheme(AppTheme.Dark);
+        bool applied = service.TrySetTheme(AppTheme.Dark, out _);
 
         Assert.False(applied);
         Assert.Equal(AppTheme.Light, service.Current);
         Assert.Equal(
             new[] { AppTheme.Light, AppTheme.Dark, AppTheme.Light },
             applier.Applied);
+    }
+
+    [Fact]
+    public void TrySetTheme_GivenThemeHostThrows_ReturnsTheFailureAndRestores()
+    {
+        var applier = CreateApplier();
+        var service = new ThemeService(new StubSettingsStore(AppTheme.Light), applier);
+        service.ApplyStoredTheme();
+        var expectedFailure = new InvalidOperationException("Theme host unavailable.");
+        applier.Failure = expectedFailure;
+
+        bool applied = service.TrySetTheme(AppTheme.Dark, out Exception? failure);
+
+        Assert.False(applied);
+        Assert.Same(expectedFailure, failure);
+        Assert.Equal(AppTheme.Light, service.Current);
     }
 
     [Fact]
@@ -83,7 +112,7 @@ public sealed class ThemeServiceTests
         applier.Available.Remove(AppTheme.Light);
         applier.Available.Remove(AppTheme.Dark);
 
-        bool applied = service.TrySetTheme(AppTheme.Dark);
+        bool applied = service.TrySetTheme(AppTheme.Dark, out _);
 
         Assert.False(applied);
         Assert.Equal(AppTheme.System, service.Current);
@@ -95,7 +124,7 @@ public sealed class ThemeServiceTests
         var applier = CreateApplier();
         var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier);
 
-        bool applied = service.TrySetTheme(AppTheme.System);
+        bool applied = service.TrySetTheme(AppTheme.System, out _);
 
         Assert.True(applied);
         Assert.Empty(applier.Applied);
@@ -114,9 +143,22 @@ public sealed class ThemeServiceTests
 
         public List<AppTheme> Applied { get; } = [];
 
-        public bool TryApply(AppTheme theme)
+        public Exception? Failure
         {
+            get; set;
+        }
+
+        public bool TryApply(AppTheme theme, out Exception? failure)
+        {
+            failure = null;
             Applied.Add(theme);
+            if (Failure is not null)
+            {
+                failure = Failure;
+                Failure = null;
+                return false;
+            }
+
             return Available.Contains(theme);
         }
     }

@@ -22,8 +22,9 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
     }
 
     /// <inheritdoc />
-    public bool TryApply(AppTheme theme)
+    public bool TryApply(AppTheme theme, out Exception? failure)
     {
+        failure = null;
         if (_applicationAccessor() is not { } application)
         {
             return false;
@@ -34,7 +35,7 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
             FluentAvaloniaTheme? fluentTheme = application.Styles
                 .OfType<FluentAvaloniaTheme>()
                 .FirstOrDefault();
-            if (fluentTheme is null || !FluentThemePalette.Has(fluentTheme, theme))
+            if (fluentTheme is null || !FluentThemePalette.Has(fluentTheme.Resources, theme))
             {
                 // Without the palette the requested theme would render with the default one.
                 return false;
@@ -50,9 +51,10 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
             };
             return true;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // The theme host is a UI framework boundary; fall back instead of crashing.
+            // The theme host is a UI framework boundary; hand the failure back instead of crashing.
+            failure = exception;
             return false;
         }
     }

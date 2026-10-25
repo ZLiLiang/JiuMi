@@ -1,10 +1,13 @@
 ﻿using Avalonia.Threading;
-using JiuMi.Threading;
 
-namespace JiuMi.Desktop;
+namespace JiuMi.Threading;
 
-internal sealed class AvaloniaUiThreadDispatcher : IUiThreadDispatcher
+/// <summary>
+/// Queues work on the Avalonia UI thread.
+/// </summary>
+public sealed class AvaloniaUiThreadDispatcher : IUiThreadDispatcher
 {
+    /// <inheritdoc />
     public void Post(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
