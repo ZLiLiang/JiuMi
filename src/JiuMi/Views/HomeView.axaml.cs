@@ -16,7 +16,7 @@ public partial class HomeView : UserControl
     private const double HeroMediaWidth = 340;
     private const double HeroMediaHeight = 200;
 
-    private static readonly Uri _heroMediaUri = new("avares://JiuMi/Assets/splash.gif");
+    private static readonly Uri _heroMediaUri = MediaUris.SplashAnimation;
 
     private GifStreamSource? _heroSource;
     private bool _isNarrow;

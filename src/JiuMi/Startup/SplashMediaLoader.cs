@@ -15,9 +15,6 @@ namespace JiuMi.Startup;
 /// </remarks>
 internal static class SplashMediaLoader
 {
-    private static readonly Uri _animationUri = new("avares://JiuMi/Assets/splash.gif");
-    private static readonly Uri _posterUri = new("avares://JiuMi/Assets/splash.png");
-
     /// <summary>
     /// Reads the best media the packaged assets can give.
     /// </summary>
@@ -25,11 +22,11 @@ internal static class SplashMediaLoader
     public static SplashMedia Load() =>
         TryLoadAnimation()
         ?? TryLoadPoster()
-        ?? new SplashMedia(SplashMediaKind.BackgroundOnly, TimeSpan.Zero, null, null);
+        ?? new SplashMedia(TimeSpan.Zero, null, null);
 
     private static SplashMedia? TryLoadAnimation()
     {
-        if (!AssetLoader.Exists(_animationUri))
+        if (!AssetLoader.Exists(MediaUris.SplashAnimation))
         {
             return null;
         }
@@ -37,7 +34,7 @@ internal static class SplashMediaLoader
         try
         {
             TimeSpan duration;
-            using (Stream stream = AssetLoader.Open(_animationUri))
+            using (Stream stream = AssetLoader.Open(MediaUris.SplashAnimation))
             {
                 if (!GifDurationReader.TryRead(stream, out duration))
                 {
@@ -48,10 +45,9 @@ internal static class SplashMediaLoader
             }
 
             return new SplashMedia(
-                SplashMediaKind.Animation,
                 duration,
 #pragma warning disable CA2000 // The source is not a local: SplashMedia takes it over and disposes it.
-                GifStreamSource.FromUri(_animationUri),
+                GifStreamSource.FromUri(MediaUris.SplashAnimation),
 #pragma warning restore CA2000
                 null);
         }
@@ -65,20 +61,16 @@ internal static class SplashMediaLoader
 
     private static SplashMedia? TryLoadPoster()
     {
-        if (!AssetLoader.Exists(_posterUri))
+        if (!AssetLoader.Exists(MediaUris.SplashPoster))
         {
             return null;
         }
 
         try
         {
-            using Stream stream = AssetLoader.Open(_posterUri);
-            return new SplashMedia(
-                SplashMediaKind.Poster,
-                TimeSpan.Zero,
-                null,
+            using Stream stream = AssetLoader.Open(MediaUris.SplashPoster);
 #pragma warning disable CA2000 // The bitmap is not a local: SplashMedia takes it over and disposes it.
-                new Bitmap(stream));
+            return new SplashMedia(TimeSpan.Zero, null, new Bitmap(stream));
 #pragma warning restore CA2000
         }
 #pragma warning disable CA1031 // A damaged poster is the same missing-asset case as a damaged animation.

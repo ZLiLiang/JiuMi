@@ -101,18 +101,19 @@ internal sealed class SplashSequence
 
     private void ApplyMedia(SplashWindow splash)
     {
-        switch (_media.Kind)
+        if (_media.Animation is { } animation)
         {
-            case SplashMediaKind.Animation when _media.Animation is { } animation:
-                splash.ShowAnimation(animation);
-                break;
-            case SplashMediaKind.Poster when _media.Poster is { } poster:
-                splash.ShowPoster(poster);
-                break;
-            default:
-                splash.ShowBackgroundOnly();
-                break;
+            splash.ShowAnimation(animation);
+            return;
         }
+
+        if (_media.Poster is { } poster)
+        {
+            splash.ShowPoster(poster);
+            return;
+        }
+
+        splash.ShowBackgroundOnly();
     }
 
     private void OnSplashOpened(object? sender, EventArgs e)
@@ -126,11 +127,12 @@ internal sealed class SplashSequence
     {
         if (_stage == SplashStage.SplashShown)
         {
-            _clock.Restart();
+            // Initialisation runs before the clock starts, because it blocks this thread and freezes
+            // the picture: time spent inside the steps was never shown to the user, so it must not be
+            // counted against the display gate.
             CompleteInitialization();
-            _stage = _media.Kind == SplashMediaKind.Animation
-                ? SplashStage.Animating
-                : SplashStage.Waiting;
+            _clock.Restart();
+            _stage = _media.Animation is null ? SplashStage.Waiting : SplashStage.Animating;
         }
 
         TimeSpan elapsed = _clock.Elapsed;
@@ -196,20 +198,21 @@ internal sealed class SplashSequence
         splash.Transitions = new Transitions { CreateFade() };
 
         // The fade starts from a painted frame at zero opacity; changing the value in the same tick as
-        // Show would have nothing to interpolate from.
+        // Show would have nothing to interpolate from. The countdown rides along with that first value
+        // change, otherwise it would spend part of the 200ms before either window began to fade.
         shell.RequestAnimationFrame(_ =>
         {
             shell.Opacity = 1d;
             splash.Opacity = 0d;
-        });
 
-        var crossFade = new DispatcherTimer { Interval = _crossFadeDuration };
-        crossFade.Tick += (_, _) =>
-        {
-            crossFade.Stop();
-            FinishHandoff(splash, shell);
-        };
-        crossFade.Start();
+            var crossFade = new DispatcherTimer { Interval = _crossFadeDuration };
+            crossFade.Tick += (_, _) =>
+            {
+                crossFade.Stop();
+                FinishHandoff(splash, shell);
+            };
+            crossFade.Start();
+        });
     }
 
     private void FinishHandoff(SplashWindow splash, MainWindow shell)

@@ -12,8 +12,7 @@
         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
   <Panel>
     <labs:GifImage x:Name="MediaGif"
-                   IsVisible="False"
-                   Stretch="UniformToFill" />
+                   IsVisible="False" />
     <Image x:Name="MediaPoster"
            IsVisible="False"
            Stretch="UniformToFill" />

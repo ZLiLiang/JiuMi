@@ -81,12 +81,8 @@ public static class GifDurationReader
         }
     }
 
-    /// <summary>
-    /// Gets the delay the decoder gives a frame, in milliseconds.
-    /// </summary>
-    /// <param name="delayCentiseconds">The delay stored in the frame's graphic control extension.</param>
-    /// <returns>The milliseconds the frame is on screen for.</returns>
-    public static int FrameDelayMilliseconds(int delayCentiseconds)
+    // The delay the decoder gives a frame, in milliseconds.
+    private static int FrameDelayMilliseconds(int delayCentiseconds)
     {
         int milliseconds = delayCentiseconds * 10;
 
