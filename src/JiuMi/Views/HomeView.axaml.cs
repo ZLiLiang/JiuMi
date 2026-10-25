@@ -13,8 +13,10 @@ public partial class HomeView : UserControl
 {
     private const double NarrowContentWidth = 760;
     private const double HeroTextSpacing = 16;
+    private const double HeroMediaWidth = 340;
+    private const double HeroMediaHeight = 200;
 
-    private static readonly Uri _heroMediaUri = new("avares://JiuMi/Assets/splash.gif");
+    private static readonly Uri _heroMediaUri = MediaUris.SplashAnimation;
 
     private GifStreamSource? _heroSource;
     private bool _isNarrow;
@@ -77,6 +79,7 @@ public partial class HomeView : UserControl
             HeroGif.Source = _heroSource;
             HeroGif.IsVisible = true;
             HeroPlaceholder.IsVisible = false;
+            SizeHeroMedia();
         }
 #pragma warning disable CA1031 // A broken decorative asset must degrade to the placeholder instead of failing the page.
         catch (Exception)
@@ -84,6 +87,28 @@ public partial class HomeView : UserControl
         {
             ShowHeroPlaceholder();
         }
+    }
+
+    /// <summary>
+    /// Fits the media area to the picture: the border takes the size the animation scales to inside
+    /// the hero slot, so the picture is neither stretched nor cropped and no empty band is left over.
+    /// </summary>
+    private void SizeHeroMedia()
+    {
+        if (_heroSource is not { } source)
+        {
+            return;
+        }
+
+        PixelSize frame = source.Size;
+        if (frame.Width <= 0 || frame.Height <= 0)
+        {
+            return;
+        }
+
+        double scale = Math.Min(HeroMediaWidth / frame.Width, HeroMediaHeight / frame.Height);
+        HeroMedia.Width = frame.Width * scale;
+        HeroMedia.Height = frame.Height * scale;
     }
 
     private void ShowHeroPlaceholder()
@@ -110,8 +135,8 @@ public partial class HomeView : UserControl
             Grid.SetColumn(HeroMedia, 0);
             Grid.SetRow(HeroText, 1);
             Grid.SetColumn(HeroText, 0);
-            HeroMedia.Width = double.NaN;
-            HeroMedia.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            SizeHeroMedia();
+            HeroMedia.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
             HeroText.Margin = new Thickness(0, HeroTextSpacing, 0, 0);
             HeroText.MaxWidth = double.PositiveInfinity;
 
@@ -130,7 +155,7 @@ public partial class HomeView : UserControl
         Grid.SetColumn(HeroMedia, 0);
         Grid.SetRow(HeroText, 0);
         Grid.SetColumn(HeroText, 1);
-        HeroMedia.Width = 340;
+        SizeHeroMedia();
         HeroMedia.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
         HeroText.Margin = new Thickness(0);
         HeroText.MaxWidth = 430;
