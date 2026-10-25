@@ -3,7 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using JiuMi.Application.Settings;
 using JiuMi.Errors;
+using JiuMi.Theming;
 using JiuMi.Views;
 
 namespace JiuMi;
@@ -15,13 +17,14 @@ public partial class App : Avalonia.Application
 {
     private readonly Func<MainWindow> _createMainWindow;
     private readonly IErrorWindowPresenter _errorWindows;
+    private readonly IThemeService _themeService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="App"/> class.
     /// </summary>
     /// <remarks>Required by the Avalonia runtime XAML loader; the host uses the factory overload.</remarks>
     public App()
-        : this(static () => new MainWindow(), NullErrorWindowPresenter.Instance)
+        : this(static () => new MainWindow(), NullErrorWindowPresenter.Instance, NullThemeService.Instance)
     {
     }
 
@@ -30,12 +33,18 @@ public partial class App : Avalonia.Application
     /// </summary>
     /// <param name="createMainWindow">Creates the shell window once the framework is ready.</param>
     /// <param name="errorWindows">Presents exceptions that escape the UI thread dispatcher.</param>
-    public App(Func<MainWindow> createMainWindow, IErrorWindowPresenter errorWindows)
+    /// <param name="themeService">Applies the persisted theme before the shell window is created.</param>
+    public App(
+        Func<MainWindow> createMainWindow,
+        IErrorWindowPresenter errorWindows,
+        IThemeService themeService)
     {
         ArgumentNullException.ThrowIfNull(createMainWindow);
         ArgumentNullException.ThrowIfNull(errorWindows);
+        ArgumentNullException.ThrowIfNull(themeService);
         _createMainWindow = createMainWindow;
         _errorWindows = errorWindows;
+        _themeService = themeService;
     }
 
     /// <inheritdoc />
@@ -49,6 +58,7 @@ public partial class App : Avalonia.Application
     {
         // The application lives as long as the process, so the subscription is deliberately never removed.
         Dispatcher.UIThread.UnhandledException += OnUiThreadUnhandledException;
+        _themeService.ApplyStoredTheme();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

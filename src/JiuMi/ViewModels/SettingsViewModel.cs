@@ -5,11 +5,12 @@ using JiuMi.Application;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Threading;
 
 namespace JiuMi.ViewModels;
 
 /// <summary>
-/// View model for the settings page: the language selector and the about section.
+/// View model for the settings page: language, appearance and the about section.
 /// </summary>
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
@@ -19,6 +20,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
     private readonly ISystemLauncher _systemLauncher;
+    private readonly IThemeService _themeService;
+    private readonly IUiThreadDispatcher _uiThreadDispatcher;
     private readonly Uri _repositoryUri;
     private LanguageOption _selectedLanguage;
 
@@ -30,6 +33,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="recordFactory">Creates the records reported from this page.</param>
     /// <param name="localization">The localization service that supplies interface text and languages.</param>
     /// <param name="settingsStore">The store that loads and saves the settings.</param>
+    /// <param name="themeService">Applies theme changes and reports the preference in effect.</param>
+    /// <param name="uiThreadDispatcher">Queues the theme selection update after the radio click finishes.</param>
     /// <param name="systemLauncher">Opens folders and links for the about section.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -37,6 +42,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ErrorRecordFactory recordFactory,
         ILocalizationService localization,
         ISettingsStore settingsStore,
+        IThemeService themeService,
+        IUiThreadDispatcher uiThreadDispatcher,
         ISystemLauncher systemLauncher)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -44,6 +51,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(themeService);
+        ArgumentNullException.ThrowIfNull(uiThreadDispatcher);
         ArgumentNullException.ThrowIfNull(systemLauncher);
 
         _applicationInfo = applicationInfo;
@@ -51,6 +60,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _recordFactory = recordFactory;
         _localization = localization;
         _settingsStore = settingsStore;
+        _themeService = themeService;
+        _uiThreadDispatcher = uiThreadDispatcher;
         _systemLauncher = systemLauncher;
         _repositoryUri = new Uri(applicationInfo.RepositoryUrl, UriKind.Absolute);
 
@@ -60,6 +71,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
         OpenConfigFolderCommand = new RelayCommand(OpenConfigFolder, () => CanOpenConfigFolder);
         OpenRepositoryCommand = new RelayCommand(OpenRepository);
+        SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
         _localization.PropertyChanged += OnLocalizationChanged;
     }
 
@@ -120,18 +132,34 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             _selectedLanguage = value;
             OnPropertyChanged();
 
-            SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
+            SaveSettings(_settingsStore.Current with
             {
                 Language = value.Code,
             });
-            if (result.Error is { } error)
-            {
-                _errorReporter.Report(_recordFactory.Create(
-                    ErrorCodes.SettingsSaveFailed,
-                    "Settings.Save",
-                    error));
-            }
         }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the interface follows the operating system theme.
+    /// </summary>
+    public bool IsFollowSystemTheme => _themeService.Current == AppTheme.System;
+
+    /// <summary>
+    /// Gets a value indicating whether the light theme is selected.
+    /// </summary>
+    public bool IsLightTheme => _themeService.Current == AppTheme.Light;
+
+    /// <summary>
+    /// Gets a value indicating whether the dark theme is selected.
+    /// </summary>
+    public bool IsDarkTheme => _themeService.Current == AppTheme.Dark;
+
+    /// <summary>
+    /// Gets the command that switches the appearance theme.
+    /// </summary>
+    public IRelayCommand<AppTheme> SelectThemeCommand
+    {
+        get;
     }
 
     /// <summary>
@@ -152,6 +180,66 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <inheritdoc />
     public void Dispose() => _localization.PropertyChanged -= OnLocalizationChanged;
+
+    private void SelectTheme(AppTheme theme)
+    {
+        if (theme == _themeService.Current)
+        {
+            // Startup may fall back to a theme other than the stored one; selecting what is on screen
+            // must still make it the stored preference.
+            if (theme != _settingsStore.Current.Theme)
+            {
+                SaveTheme(theme);
+            }
+
+            return;
+        }
+
+        bool applied = _themeService.TrySetTheme(theme, out Exception? failure);
+        NotifyThemeSelectionChanged();
+        if (!applied)
+        {
+            // The requested palette is unavailable and the previous preference is back in effect.
+            _errorReporter.Report(_recordFactory.Create(
+                ErrorCodes.ThemeSwitchFailed,
+                "Theme.Switch",
+                failure));
+            return;
+        }
+
+        SaveTheme(theme);
+    }
+
+    private void SaveTheme(AppTheme theme) =>
+        SaveSettings(_settingsStore.Current with
+        {
+            Theme = theme,
+        });
+
+    private void SaveSettings(AppSettings settings)
+    {
+        SettingsSaveResult result = _settingsStore.Save(settings);
+        if (result.Error is { } error)
+        {
+            _errorReporter.Report(_recordFactory.Create(
+                ErrorCodes.SettingsSaveFailed,
+                "Settings.Save",
+                error));
+        }
+    }
+
+    private void NotifyThemeSelectionChanged()
+    {
+        // The radio group finishes the click after the command returns, so push the selection on a later
+        // turn; otherwise the clicked radio overwrites a rejected change.
+        _uiThreadDispatcher.Post(
+            () =>
+            {
+                OnPropertyChanged(nameof(IsFollowSystemTheme));
+                OnPropertyChanged(nameof(IsLightTheme));
+                OnPropertyChanged(nameof(IsDarkTheme));
+            });
+    }
 
     private LanguageOption? FindLanguage(string languageCode)
     {

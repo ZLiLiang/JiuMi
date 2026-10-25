@@ -2,6 +2,7 @@
 using Avalonia.Controls;
 using Avalonia.Media;
 using FluentAvalonia.UI.Windowing;
+using JiuMi.Theming;
 using JiuMi.ViewModels;
 
 namespace JiuMi.Views;
@@ -20,6 +21,7 @@ public partial class MainWindow : FAAppWindow
         InitializeComponent();
         TitleBar.Height = 40;
         TitleBar.ExtendsContentIntoTitleBar = true;
+        ActualThemeVariantChanged += OnActualThemeVariantChanged;
         Activated += OnFirstActivated;
     }
 
@@ -52,6 +54,13 @@ public partial class MainWindow : FAAppWindow
     }
 
     /// <inheritdoc />
+    protected override void OnClosed(EventArgs e)
+    {
+        ActualThemeVariantChanged -= OnActualThemeVariantChanged;
+        base.OnClosed(e);
+    }
+
+    /// <inheritdoc />
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         if (DataContext is MainWindowViewModel viewModel)
@@ -73,6 +82,8 @@ public partial class MainWindow : FAAppWindow
         }
     }
 
+    private void OnActualThemeVariantChanged(object? sender, EventArgs e) => UpdateBackdrop();
+
     private void UpdateBackdrop()
     {
         if (ActualTransparencyLevel == WindowTransparencyLevel.Mica)
@@ -81,7 +92,12 @@ public partial class MainWindow : FAAppWindow
             return;
         }
 
-        if (this.TryFindResource("SolidBackgroundFillColorBaseBrush", out object? solidBrush) &&
+        // A themed lookup must name the variant, otherwise it returns the default (light) brush.
+        if (ResourceNodeExtensions.TryFindResource(
+                this,
+                ThemeResourceKeys.SolidBackgroundBrush,
+                ActualThemeVariant,
+                out object? solidBrush) &&
             solidBrush is IBrush brush)
         {
             Background = brush;

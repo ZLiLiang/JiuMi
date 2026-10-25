@@ -1,4 +1,5 @@
-﻿using JiuMi.Application.Settings;
+﻿using System.Text.Json;
+using JiuMi.Application.Settings;
 using JiuMi.Infrastructure.Settings;
 
 namespace JiuMi.Infrastructure.Tests;
@@ -87,6 +88,46 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Equal(AppTheme.Dark, reloaded.Settings.Theme);
         Assert.False(reloaded.Settings.NavExpanded);
         Assert.Equal(SettingsLoadIssue.None, reloaded.Issues);
+    }
+
+    [Theory]
+    [InlineData(AppTheme.System, "system")]
+    [InlineData(AppTheme.Light, "light")]
+    [InlineData(AppTheme.Dark, "dark")]
+    public void Save_GivenTheme_WritesStorageValueAndRoundTrips(AppTheme theme, string storageValue)
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+
+        SettingsSaveResult result = store.Save(new AppSettings { Theme = theme });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        Assert.Equal(storageValue, document.RootElement.GetProperty("theme").GetString());
+        Assert.Equal(theme, CreateStore().Load().Settings.Theme);
+    }
+
+    [Theory]
+    [InlineData("system", AppTheme.System)]
+    [InlineData("light", AppTheme.Light)]
+    [InlineData("dark", AppTheme.Dark)]
+    [InlineData("sepia", AppTheme.System)]
+    [InlineData("", AppTheme.System)]
+    public void Load_GivenThemeString_UsesKnownValueOrFallsBackToSystem(
+        string storedValue,
+        AppTheme expected)
+    {
+        WriteSettings($$"""{ "theme": "{{storedValue}}" }""");
+
+        Assert.Equal(expected, CreateStore().Load().Settings.Theme);
+    }
+
+    [Fact]
+    public void Load_GivenNonStringTheme_FallsBackToSystem()
+    {
+        WriteSettings("""{ "theme": 2 }""");
+
+        Assert.Equal(AppTheme.System, CreateStore().Load().Settings.Theme);
     }
 
     [Fact]
