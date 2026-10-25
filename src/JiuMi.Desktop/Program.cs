@@ -37,9 +37,11 @@ internal static class Program
     {
         var services = new ServiceCollection();
         services.AddInfrastructure();
-        services.AddSingleton<IThemeService>(provider => new ThemeService(
-            provider.GetRequiredService<ISettingsStore>(),
-            static () => Avalonia.Application.Current));
+        services.AddSingleton<IThemeApplier>(provider => new AvaloniaThemeApplier(
+            static () => Avalonia.Application.Current,
+            provider.GetRequiredService<IErrorReporter>(),
+            provider.GetRequiredService<ErrorRecordFactory>()));
+        services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<ILocalizationService>(provider =>
         {
             ISettingsStore settingsStore = provider.GetRequiredService<ISettingsStore>();

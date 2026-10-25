@@ -17,6 +17,7 @@ internal sealed class NullThemeService : IThemeService
     }
 
     /// <inheritdoc />
+    /// <remarks>Only the default theme is in effect; explicit choices have no host to apply them.</remarks>
     public AppTheme Current => AppTheme.System;
 
     /// <inheritdoc />
@@ -25,5 +26,5 @@ internal sealed class NullThemeService : IThemeService
     }
 
     /// <inheritdoc />
-    public bool TrySetTheme(AppTheme _) => true;
+    public bool TrySetTheme(AppTheme theme) => theme == AppTheme.System;
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
 using JiuMi.Application.Errors;
@@ -65,6 +66,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
         OpenConfigFolderCommand = new RelayCommand(OpenConfigFolder, () => CanOpenConfigFolder);
         OpenRepositoryCommand = new RelayCommand(OpenRepository);
+        SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
         _localization.PropertyChanged += OnLocalizationChanged;
     }
 
@@ -125,45 +127,34 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             _selectedLanguage = value;
             OnPropertyChanged();
 
-            SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
+            SaveSettings(_settingsStore.Current with
             {
                 Language = value.Code,
             });
-            if (result.Error is { } error)
-            {
-                _errorReporter.Report(_recordFactory.Create(
-                    ErrorCodes.SettingsSaveFailed,
-                    "Settings.Save",
-                    error));
-            }
         }
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the interface follows the operating system theme.
+    /// Gets a value indicating whether the interface follows the operating system theme.
     /// </summary>
-    public bool IsFollowSystemTheme
-    {
-        get => _themeService.Current == AppTheme.System;
-        set => SelectThemeIfChecked(AppTheme.System, value);
-    }
+    public bool IsFollowSystemTheme => _themeService.Current == AppTheme.System;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the light theme is selected.
+    /// Gets a value indicating whether the light theme is selected.
     /// </summary>
-    public bool IsLightTheme
-    {
-        get => _themeService.Current == AppTheme.Light;
-        set => SelectThemeIfChecked(AppTheme.Light, value);
-    }
+    public bool IsLightTheme => _themeService.Current == AppTheme.Light;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the dark theme is selected.
+    /// Gets a value indicating whether the dark theme is selected.
     /// </summary>
-    public bool IsDarkTheme
+    public bool IsDarkTheme => _themeService.Current == AppTheme.Dark;
+
+    /// <summary>
+    /// Gets the command that switches the appearance theme.
+    /// </summary>
+    public IRelayCommand<AppTheme> SelectThemeCommand
     {
-        get => _themeService.Current == AppTheme.Dark;
-        set => SelectThemeIfChecked(AppTheme.Dark, value);
+        get;
     }
 
     /// <summary>
@@ -185,14 +176,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <inheritdoc />
     public void Dispose() => _localization.PropertyChanged -= OnLocalizationChanged;
 
-    private void SelectThemeIfChecked(AppTheme theme, bool isChecked)
-    {
-        if (isChecked)
-        {
-            SelectTheme(theme);
-        }
-    }
-
     private void SelectTheme(AppTheme theme)
     {
         if (theme == _themeService.Current)
@@ -200,22 +183,26 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        if (!_themeService.TrySetTheme(theme))
+        bool applied = _themeService.TrySetTheme(theme);
+        NotifyThemeSelectionChanged();
+        if (!applied)
         {
-            // The requested resources are unavailable: keep the applied theme and move the selection back.
+            // The requested palette is unavailable and the previous preference is back in effect.
             _errorReporter.Report(_recordFactory.Create(
                 ErrorCodes.ThemeSwitchFailed,
                 "Theme.Switch"));
-            NotifyThemeSelectionChanged();
             return;
         }
 
-        NotifyThemeSelectionChanged();
-
-        SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
+        SaveSettings(_settingsStore.Current with
         {
             Theme = theme,
         });
+    }
+
+    private void SaveSettings(AppSettings settings)
+    {
+        SettingsSaveResult result = _settingsStore.Save(settings);
         if (result.Error is { } error)
         {
             _errorReporter.Report(_recordFactory.Create(
@@ -227,9 +214,16 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     private void NotifyThemeSelectionChanged()
     {
-        OnPropertyChanged(nameof(IsFollowSystemTheme));
-        OnPropertyChanged(nameof(IsLightTheme));
-        OnPropertyChanged(nameof(IsDarkTheme));
+        // The radio group finishes the click after the command returns, so push the selection on a later
+        // turn; otherwise the clicked radio overwrites a rejected change.
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                OnPropertyChanged(nameof(IsFollowSystemTheme));
+                OnPropertyChanged(nameof(IsLightTheme));
+                OnPropertyChanged(nameof(IsDarkTheme));
+            },
+            DispatcherPriority.Background);
     }
 
     private LanguageOption? FindLanguage(string languageCode)

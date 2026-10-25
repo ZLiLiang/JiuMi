@@ -20,6 +20,9 @@ public static class ErrorCodes
     /// <summary>The requested theme could not be applied and the previous one was kept.</summary>
     public const string ThemeSwitchFailed = "Theme.SwitchFailed";
 
+    /// <summary>The stored or system theme could not be applied; recorded for diagnostics only.</summary>
+    public const string ThemeApplyFailed = "Theme.ApplyFailed";
+
     /// <summary>The executable-side settings directory was not writable.</summary>
     public const string ConfigFallbackToAppData = "Config.FallbackToAppData";
 
