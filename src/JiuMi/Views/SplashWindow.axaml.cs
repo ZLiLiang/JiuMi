@@ -67,6 +67,8 @@ public partial class SplashWindow : Window
     {
         // The colour resolved here is copied into a plain solid brush on purpose. The user theme is
         // applied later in startup, and a themed reference would repaint the splash mid-animation.
+        // No fallback branch for a miss: the theme always ships this key — the shell window reads the
+        // same one for its backdrop — and the XAML reference keeps the splash opaque if it ever didn't.
         if (ResourceNodeExtensions.TryFindResource(
                 this,
                 ThemeResourceKeys.SolidBackgroundBrush,
