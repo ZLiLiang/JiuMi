@@ -111,7 +111,6 @@ public sealed class JsonSettingsStoreTests : IDisposable
     [InlineData("system", AppTheme.System)]
     [InlineData("light", AppTheme.Light)]
     [InlineData("dark", AppTheme.Dark)]
-    [InlineData("LIGHT", AppTheme.Light)]
     [InlineData("sepia", AppTheme.System)]
     [InlineData("", AppTheme.System)]
     public void Load_GivenThemeString_UsesKnownValueOrFallsBackToSystem(

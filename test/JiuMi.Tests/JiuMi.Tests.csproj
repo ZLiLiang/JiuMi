@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Runs the real Fluent theme headlessly; the Avalonia XUnit adapter would force xunit v3. -->
     <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
