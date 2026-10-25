@@ -35,7 +35,7 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
             FluentAvaloniaTheme? fluentTheme = application.Styles
                 .OfType<FluentAvaloniaTheme>()
                 .FirstOrDefault();
-            if (fluentTheme is null || !FluentThemePalette.Has(fluentTheme.Resources, theme))
+            if (fluentTheme is null || !FluentThemePalette.HasPaletteFor(fluentTheme.Resources, theme))
             {
                 // Without the palette the requested theme would render with the default one.
                 return false;

@@ -1,61 +1,63 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Styling;
+using FluentAvalonia.Styling;
 using JiuMi.Application.Settings;
 using JiuMi.Theming;
 
 namespace JiuMi.Tests;
 
+[Collection(AvaloniaTestGroup.Name)]
 public sealed class FluentThemePaletteTests
 {
     [Fact]
-    public void Has_GivenDarkPalette_AcceptsDark()
+    public void HasPaletteFor_GivenDarkPalette_AcceptsDark()
     {
         ResourceDictionary resources = CreateResources();
         resources.ThemeDictionaries[ThemeVariant.Dark] = CreatePalette();
 
-        Assert.True(FluentThemePalette.Has(resources, AppTheme.Dark));
+        Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
     }
 
     [Fact]
-    public void Has_GivenOnlyDefaultPalette_RejectsDark()
+    public void HasPaletteFor_GivenOnlyDefaultPalette_RejectsDark()
     {
         ResourceDictionary resources = CreateResources();
         resources.ThemeDictionaries[ThemeVariant.Default] = CreatePalette();
 
-        Assert.False(FluentThemePalette.Has(resources, AppTheme.Dark));
+        Assert.False(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
     }
 
     [Fact]
-    public void Has_GivenLightPalette_AcceptsLight()
+    public void HasPaletteFor_GivenLightPalette_AcceptsLight()
     {
         ResourceDictionary resources = CreateResources();
         resources.ThemeDictionaries[ThemeVariant.Light] = CreatePalette();
 
-        Assert.True(FluentThemePalette.Has(resources, AppTheme.Light));
+        Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Light));
     }
 
     [Fact]
-    public void Has_GivenOnlyDefaultPalette_AcceptsLight()
+    public void HasPaletteFor_GivenOnlyDefaultPalette_AcceptsLight()
     {
         ResourceDictionary resources = CreateResources();
         resources.ThemeDictionaries[ThemeVariant.Default] = CreatePalette();
 
-        Assert.True(FluentThemePalette.Has(resources, AppTheme.Light));
+        Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Light));
     }
 
     [Fact]
-    public void Has_GivenPaletteInMergedDictionary_AcceptsIt()
+    public void HasPaletteFor_GivenPaletteInMergedDictionary_AcceptsIt()
     {
         ResourceDictionary merged = CreateResources();
         merged.ThemeDictionaries[ThemeVariant.Dark] = CreatePalette();
         ResourceDictionary resources = CreateResources();
         resources.MergedDictionaries.Add(merged);
 
-        Assert.True(FluentThemePalette.Has(resources, AppTheme.Dark));
+        Assert.True(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
     }
 
     [Fact]
-    public void Has_GivenIncompletePalette_RejectsIt()
+    public void HasPaletteFor_GivenIncompletePalette_RejectsIt()
     {
         var incomplete = new ResourceDictionary
         {
@@ -64,13 +66,27 @@ public sealed class FluentThemePaletteTests
         ResourceDictionary resources = CreateResources();
         resources.ThemeDictionaries[ThemeVariant.Dark] = incomplete;
 
-        Assert.False(FluentThemePalette.Has(resources, AppTheme.Dark));
+        Assert.False(FluentThemePalette.HasPaletteFor(resources, AppTheme.Dark));
     }
 
     [Fact]
-    public void Has_GivenAnyStore_AcceptsSystem()
+    public void HasPaletteFor_GivenAnyStore_AcceptsSystem()
     {
-        Assert.True(FluentThemePalette.Has(CreateResources(), AppTheme.System));
+        Assert.True(FluentThemePalette.HasPaletteFor(CreateResources(), AppTheme.System));
+    }
+
+    [Fact]
+    public void HasPaletteFor_GivenTheFluentTheme_AcceptsBothExplicitThemes()
+    {
+        HeadlessTest.Run(() =>
+        {
+            // The synthetic dictionaries above cannot detect a probe that rejects the real Fluent layout.
+            var theme = Assert.Single(
+                global::Avalonia.Application.Current!.Styles.OfType<FluentAvaloniaTheme>());
+
+            Assert.True(FluentThemePalette.HasPaletteFor(theme.Resources, AppTheme.Light));
+            Assert.True(FluentThemePalette.HasPaletteFor(theme.Resources, AppTheme.Dark));
+        });
     }
 
     private static ResourceDictionary CreateResources() => new();

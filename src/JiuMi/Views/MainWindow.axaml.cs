@@ -92,13 +92,6 @@ public partial class MainWindow : FAAppWindow
             return;
         }
 
-        // A platform that rejects Mica leaves the window transparent; settle for a solid surface.
-        if (ActualTransparencyLevel == WindowTransparencyLevel.Transparent &&
-            TransparencyLevelHint.Contains(WindowTransparencyLevel.Mica))
-        {
-            TransparencyLevelHint = [WindowTransparencyLevel.None];
-        }
-
         // A themed lookup must name the variant, otherwise it returns the default (light) brush.
         if (this.TryFindResource(
                 ThemeResourceKeys.SolidBackgroundBrush,

@@ -185,13 +185,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         if (theme == _themeService.Current)
         {
-            // A rejected startup theme can leave the applied preference behind the stored one; record
-            // the choice so the next start does not retry the unavailable theme.
-            if (_settingsStore.Current.Theme != theme)
-            {
-                SaveTheme(theme);
-            }
-
             return;
         }
 

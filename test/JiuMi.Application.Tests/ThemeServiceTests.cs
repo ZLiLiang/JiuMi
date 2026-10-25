@@ -19,17 +19,18 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
-    public void ApplyStoredTheme_GivenStoredThemeFails_FallsBackToSystem()
+    public void ApplyStoredTheme_GivenStoredThemeFails_FallsBackToTheDefaultTheme()
     {
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
-        applier.Available.Add(AppTheme.System);
+        applier.Available.Add(AppTheme.Light);
         var service = new ThemeService(store, applier);
 
         service.ApplyStoredTheme();
 
-        Assert.Equal(AppTheme.System, service.Current);
-        Assert.Equal(new[] { AppTheme.Dark, AppTheme.System }, applier.Applied);
+        // The light palette is Fluent's default; "Default" would resolve against the operating system.
+        Assert.Equal(AppTheme.Light, service.Current);
+        Assert.Equal(new[] { AppTheme.Dark, AppTheme.Light }, applier.Applied);
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public sealed class ThemeServiceTests
     {
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
-        applier.Available.Add(AppTheme.System);
+        applier.Available.Add(AppTheme.Light);
         var service = new ThemeService(store, applier);
 
         service.ApplyStoredTheme();
@@ -104,18 +105,19 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
-    public void TrySetTheme_GivenSwitchAndRestoreFail_FallsBackToSystem()
+    public void TrySetTheme_GivenSwitchAndRestoreFail_FallsBackToTheDefaultTheme()
     {
         var applier = CreateApplier();
-        var service = new ThemeService(new StubSettingsStore(AppTheme.Light), applier);
+        var service = new ThemeService(new StubSettingsStore(AppTheme.Dark), applier);
         service.ApplyStoredTheme();
         applier.Available.Remove(AppTheme.Light);
         applier.Available.Remove(AppTheme.Dark);
 
-        bool applied = service.TrySetTheme(AppTheme.Dark, out _);
+        bool applied = service.TrySetTheme(AppTheme.Light, out _);
 
         Assert.False(applied);
-        Assert.Equal(AppTheme.System, service.Current);
+        // The fallback must not re-enter the OS theme, which could be the missing dark palette.
+        Assert.Equal(AppTheme.Light, service.Current);
     }
 
     [Fact]

@@ -1,7 +1,8 @@
 ﻿namespace JiuMi.Application.Settings;
 
 /// <summary>
-/// Keeps the theme preference in effect and falls back to the system theme when one cannot be applied.
+/// Keeps the theme preference in effect and falls back to the Fluent default theme when one cannot be
+/// applied.
 /// </summary>
 public sealed class ThemeService : IThemeService
 {
@@ -36,8 +37,10 @@ public sealed class ThemeService : IThemeService
         }
 
         // The file keeps the user's choice: the failure may be temporary, and the parser already
-        // normalizes values that are not part of the preference model.
-        FallBackToSystem();
+        // normalizes values that are not part of the preference model. Architecture maps this path to
+        // a Debug log entry; the log pipeline belongs to ADR-0004, so the host failure is converted
+        // into the fallback instead of reaching the user.
+        FallBackToDefault();
     }
 
     /// <inheritdoc />
@@ -58,15 +61,17 @@ public sealed class ThemeService : IThemeService
         if (!_applier.TryApply(_current, out Exception? restoreFailure))
         {
             failure ??= restoreFailure;
-            FallBackToSystem();
+            FallBackToDefault();
         }
 
         return false;
     }
 
-    private void FallBackToSystem()
+    private void FallBackToDefault()
     {
-        _current = AppTheme.System;
+        // Fluent's fallback palette is the light one; "Default" resolves against the operating system,
+        // which may hand back the very palette that just failed.
+        _current = AppTheme.Light;
         _ = _applier.TryApply(_current, out _);
     }
 }

@@ -18,7 +18,7 @@ internal static class FluentThemePalette
     /// <param name="resources">The themed resource host to inspect.</param>
     /// <param name="preference">The theme preference to check.</param>
     /// <returns><see langword="true"/> when applying the preference has a complete palette to use.</returns>
-    public static bool Has(IResourceProvider resources, AppTheme preference)
+    public static bool HasPaletteFor(IResourceProvider resources, AppTheme preference)
     {
         ArgumentNullException.ThrowIfNull(resources);
 

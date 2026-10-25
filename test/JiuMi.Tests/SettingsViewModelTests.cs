@@ -48,18 +48,6 @@ public sealed class SettingsViewModelTests
             changed);
     }
 
-    [Fact]
-    public void SelectThemeCommand_GivenAppliedThemeDiffersFromStored_RecordsTheChoice()
-    {
-        // The stored theme failed at startup, so the applied preference is behind the file.
-        var page = new PageHarness(storedTheme: AppTheme.Dark, appliedTheme: AppTheme.System);
-
-        page.ViewModel.SelectThemeCommand.Execute(AppTheme.System);
-
-        Assert.Equal(AppTheme.System, page.Store.Current.Theme);
-        Assert.Empty(page.Reporter.Reports);
-    }
-
     private sealed class PageHarness
     {
         public PageHarness(AppTheme storedTheme, AppTheme appliedTheme)
