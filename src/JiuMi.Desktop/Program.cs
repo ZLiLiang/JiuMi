@@ -24,7 +24,13 @@ internal static class Program
         SubscribeProcessHandlers(services);
 
         IErrorWindowPresenter errorWindows = services.GetRequiredService<IErrorWindowPresenter>();
-        return AppBuilder.Configure(() => new App(CreateInitialization(services), errorWindows))
+        IShellStartup startup = new SplashStartup(
+            CreateInitialization(services),
+            services.GetRequiredService<IErrorReporter>(),
+            services.GetRequiredService<ErrorRecordFactory>(),
+            errorWindows);
+
+        return AppBuilder.Configure(() => new App(startup, errorWindows))
             .UsePlatformDetect()
             .StartWithClassicDesktopLifetime(args);
     }
@@ -40,13 +46,20 @@ internal static class Program
         IThemeService themeService = services.GetRequiredService<IThemeService>();
 
         // The probe has to precede the first settings read, the text catalogue has to exist before the
-        // interface is built, and the shell window has to be the last thing constructed.
+        // interface is built, and the theme is a UI resource that must switch on the interface thread.
+        // The settings and localization contracts are synchronous file I/O; offloading them keeps the
+        // splash drawing, which is what makes the readiness timeout observable. Revisit when those
+        // contracts grow async APIs.
         return new ShellInitialization(
             [
-                () => RunConfigProbe(settingsStore),
-                () => ReportStartupIssues(services),
-                () => RunLocalization(services),
-                () => themeService.ApplyStoredTheme(),
+                () => Task.Run(() => RunConfigProbe(settingsStore)),
+                () => Task.Run(() => ReportStartupIssues(services)),
+                () => RunLocalizationAsync(services),
+                () =>
+                {
+                    themeService.ApplyStoredTheme();
+                    return Task.CompletedTask;
+                },
             ],
             () => services.GetRequiredService<MainWindow>());
     }
@@ -57,10 +70,40 @@ internal static class Program
         _ = settingsStore.Location;
     }
 
-    private static void RunLocalization(ServiceProvider services)
+    private static async Task RunLocalizationAsync(ServiceProvider services)
     {
-        // Building the catalogue settles the language and writes the resolved code back.
-        _ = services.GetRequiredService<ILocalizationService>();
+        ISettingsStore settingsStore = services.GetRequiredService<ISettingsStore>();
+
+        // Settings are read and the catalogue is loaded off the interface thread. The service itself
+        // is built below, on the interface thread, because it applies the interface culture to the
+        // calling thread.
+        string? storedLanguage = await Task.Run(() =>
+        {
+            SettingsLoadResult result = settingsStore.Load();
+            _ = services.GetRequiredService<LocalizationCatalog>();
+            return result.Settings.Language;
+        });
+
+        ILocalizationService localization = services.GetRequiredService<ILocalizationService>();
+
+        // The fallback may have built the shell before this step ran, which constructed the service
+        // with the defaults. Applying the stored code here is what makes the late result land hot.
+        if (storedLanguage is not null)
+        {
+            _ = localization.TrySetLanguage(storedLanguage);
+        }
+
+        if (!string.Equals(
+            settingsStore.Current.Language,
+            localization.CurrentLanguage,
+            StringComparison.Ordinal))
+        {
+            // Persist the resolved concrete code so the next start does not repeat the resolution.
+            await Task.Run(() => settingsStore.Save(settingsStore.Current with
+            {
+                Language = localization.CurrentLanguage,
+            }));
+        }
     }
 
     private static ServiceProvider CreateServices()
@@ -71,27 +114,15 @@ internal static class Program
             static () => Avalonia.Application.Current));
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IUiThreadDispatcher, AvaloniaUiThreadDispatcher>();
+        services.AddSingleton<LocalizationCatalog>(
+            provider => provider.GetRequiredService<ILocalizationSource>().Load());
         services.AddSingleton<ILocalizationService>(provider =>
         {
             ISettingsStore settingsStore = provider.GetRequiredService<ISettingsStore>();
-            LocalizationCatalog catalog = provider.GetRequiredService<ILocalizationSource>().Load();
-            var localization = new LocalizationService(
+            LocalizationCatalog catalog = provider.GetRequiredService<LocalizationCatalog>();
+            return new LocalizationService(
                 catalog,
                 settingsStore.Current.Language ?? CultureInfo.CurrentUICulture.Name);
-
-            if (!string.Equals(
-                settingsStore.Current.Language,
-                localization.CurrentLanguage,
-                StringComparison.Ordinal))
-            {
-                // Persist the resolved concrete code so the next start does not repeat the resolution.
-                _ = settingsStore.Save(settingsStore.Current with
-                {
-                    Language = localization.CurrentLanguage,
-                });
-            }
-
-            return localization;
         });
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
@@ -101,7 +132,7 @@ internal static class Program
         services.AddSingleton<IErrorWindowPresenter>(provider => new ErrorWindowPresenter(
             provider.GetRequiredService<IErrorReporter>(),
             provider.GetRequiredService<ErrorRecordFactory>(),
-            provider.GetRequiredService<ILocalizationService>(),
+            () => provider.GetRequiredService<ILocalizationService>(),
             provider.GetRequiredService<ErrorWindowCoordinator>(),
             static () => new ErrorWindow(),
             IsMainWindowAvailable,

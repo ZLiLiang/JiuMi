@@ -16,7 +16,7 @@ JiuMi 应用外壳的设计基线。本文件记录跨模块的结构性规则�
 | `Waiting` | 动画已停、初始化未就绪；停画（`Source = null`）并显示不确定进度环 | 就绪，或 10 秒兜底到点 |
 | `Handoff` | 已过 `max(1000ms, GIF 时长)` **且**（就绪 **或** 已过 10000ms） | 200ms 交叉淡入淡出完成 |
 | `Running` | splash 关闭、主窗口不透明度 1 并激活 | —— |
-| `Faulted` | 初始化抛未捕获异常、拿不到可用状态 | 终态：不进主窗口，呈现见错误呈现章节 |
+| `Faulted` | 初始化在交接前抛未捕获异常，拿不到可用主窗口 | 终态：不进主窗口，显示阻断错误窗口 |
 
 `Handoff` 的判定是一个表达式，不是三个定时器各自触发：`elapsed >= max(1000ms, gifDuration) && (ready || elapsed >= 10000ms)`。
 
@@ -31,12 +31,14 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 全部完成后置「就绪」。单实例抢占与启动期的激活请求见单实例与窗口生命周期章节。
 
+配置探针、设置加载、本地化读取目前都是同步文件 I/O；它们在工作线程执行，界面线程只负责主题与应用文化，否则界面被占住时 10 秒兜底无法被观察。本地化服务本身仍在界面线程构造，以便当前文化落到界面线程。契约提供异步 API 后应改回普通异步调用。
+
 ### 计时
 
 - **起点**：splash 的 `Opened` 事件之后的**下一个动画帧**（`TopLevel.RequestAnimationFrame`），不是窗口创建时刻——否则首帧渲染会吞掉动画开头。
 - **GIF 时长**：按帧延时累加。解码器规则为 `delayMs = delayCentiseconds * 10`，`delayMs <= 10` 时按 100ms 计。到点即 `Source = null` 停止绘制。
 - **最短展示**：1000ms。GIF 短于 1 秒时补到 1 秒；长于 1 秒时以 GIF 时长为准，不截断。
-- **就绪兜底**：10000ms。到点强制交接并记 Error。
+- **就绪兜底**：10000ms。到点强制交接并记 Warning（`Startup.Timeout`）。
 - 三者始终取晚者，不相加。
 - 超过 10 秒进入主窗口后，**迟到的初始化静默应用**（主题与语言走既有热切换路径），并记一条 Error 说明「初始化超时后完成」。
 
@@ -213,13 +215,15 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
-| 初始化抛未捕获异常（`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
+| 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
+| 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
+| 交接后启动步骤才失败 | 非阻断 | `Startup.Faulted` | 错误窗口 | 继续运行 / 退出 / 复制详情 |
 | 主窗口构造或显示失败 | 阻断 | `Shell.MainWindowFailed` | 错误窗口 | 复制详情 + 退出 |
 | UI 线程未捕获异常（主窗口可用） | 非阻断 | `Unexpected.UiThreadException` | 错误窗口 | 继续运行 / 退出 / 复制详情 |
 
 横切规则：
 
-- 同一 `code` 在一次会话内合并为一条并显示次数；Error 排在 Warning 之前。
+- 同一 `code` 在一次会话内合并为一条并显示次数；Error 排在 Warning 之前。新的 Error 顶替正在显示的 Warning，Warning 在 Error 关闭后重新出现。
 - 未登记的 `code` 默认仅日志，不弹任何载体。
 - 「重试」= 用当前内存状态重跑一次该操作；再失败只把次数 +1，不新增提示。
 - 映射表是「每个 `Error.*` 文案键都能被某个 `code` 映射到」这条单测的依据（见本地化章节单测第 5 项）。

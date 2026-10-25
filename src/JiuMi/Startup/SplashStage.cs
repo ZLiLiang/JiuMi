@@ -1,8 +1,7 @@
 ﻿namespace JiuMi.Startup;
 
 /// <summary>
-/// The startup stages the splash drives. A start that fails outright has its own terminal stage in
-/// the architecture, which this slice does not reach.
+/// The startup stages the splash drives.
 /// </summary>
 internal enum SplashStage
 {
@@ -23,4 +22,7 @@ internal enum SplashStage
 
     /// <summary>The shell is up and the splash is gone.</summary>
     Running,
+
+    /// <summary>Startup failed; the error window decides whether the process can continue.</summary>
+    Faulted,
 }

@@ -26,6 +26,18 @@ public static class ErrorCodes
     /// <summary>No settings location is writable, so changes last for this session only.</summary>
     public const string ConfigMemoryOnly = "Config.MemoryOnly";
 
+    /// <summary>Startup overran the readiness timeout, so the shell was shown before the work was done.</summary>
+    public const string StartupTimeout = "Startup.Timeout";
+
+    /// <summary>Startup work failed after the splash had already left; recorded for diagnostics only.</summary>
+    public const string StartupLateCompletion = "Startup.LateCompletion";
+
+    /// <summary>A startup step failed outright, so the shell never opened.</summary>
+    public const string StartupFaulted = "Startup.Faulted";
+
+    /// <summary>The main window could not be built or shown.</summary>
+    public const string ShellMainWindowFailed = "Shell.MainWindowFailed";
+
     /// <summary>An exception escaped the UI thread dispatcher.</summary>
     public const string UnexpectedUiThreadException = "Unexpected.UiThreadException";
 

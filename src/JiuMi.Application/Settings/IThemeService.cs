@@ -1,10 +1,12 @@
-﻿namespace JiuMi.Application.Settings;
+﻿using System.ComponentModel;
+
+namespace JiuMi.Application.Settings;
 
 /// <summary>
 /// Applies the theme preference to the running interface.
 /// </summary>
 /// <remarks>The underlying host is a UI resource, so switching happens on the UI thread.</remarks>
-public interface IThemeService
+public interface IThemeService : INotifyPropertyChanged
 {
     /// <summary>
     /// Gets the preference currently applied.

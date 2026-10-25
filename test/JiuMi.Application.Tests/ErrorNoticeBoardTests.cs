@@ -5,6 +5,33 @@ namespace JiuMi.Application.Tests;
 public sealed class ErrorNoticeBoardTests
 {
     [Fact]
+    public void Offer_GivenStartupTimeout_QueuesTheWarningNotice()
+    {
+        var board = new ErrorNoticeBoard();
+
+        Assert.True(board.Offer(CreateRecord(ErrorCodes.StartupTimeout, ErrorLevel.Warning)));
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.StartupTimeout, board.Current?.Code);
+        Assert.Equal(ErrorLevel.Warning, board.Current?.Level);
+    }
+
+    [Fact]
+    public void Offer_GivenWarningShowingAndErrorArrives_PreemptsTheWarning()
+    {
+        var board = new ErrorNoticeBoard();
+        board.Offer(CreateRecord(ErrorCodes.SettingsCorrupted, ErrorLevel.Warning));
+        board.ShowNext();
+
+        Assert.True(board.Offer(CreateRecord(ErrorCodes.SettingsSaveFailed, ErrorLevel.Error)));
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.SettingsSaveFailed, board.Current?.Code);
+
+        Assert.True(board.DismissCurrent());
+        Assert.True(board.ShowNext());
+        Assert.Equal(ErrorCodes.SettingsCorrupted, board.Current?.Code);
+    }
+
+    [Fact]
     public void Offer_GivenUnregisteredCode_DoesNotPresentANotice()
     {
         var board = new ErrorNoticeBoard();

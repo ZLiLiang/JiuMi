@@ -20,4 +20,12 @@ internal sealed class NullErrorWindowPresenter : IErrorWindowPresenter
 
     /// <inheritdoc />
     public void PresentUnhandledException(Exception exception) => ArgumentNullException.ThrowIfNull(exception);
+
+    /// <inheritdoc />
+    public void PresentFailure(string code, string operation, Exception exception)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        ArgumentNullException.ThrowIfNull(exception);
+    }
 }
