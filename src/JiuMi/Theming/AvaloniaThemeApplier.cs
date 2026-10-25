@@ -30,11 +30,13 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
             return false;
         }
 
+        FluentAvaloniaTheme? fluentTheme = application.Styles
+            .OfType<FluentAvaloniaTheme>()
+            .FirstOrDefault();
+        bool previousPreferSystemTheme = fluentTheme?.PreferSystemTheme ?? false;
+        ThemeVariant? previousVariant = application.RequestedThemeVariant;
         try
         {
-            FluentAvaloniaTheme? fluentTheme = application.Styles
-                .OfType<FluentAvaloniaTheme>()
-                .FirstOrDefault();
             if (fluentTheme is null || !FluentThemePalette.HasPaletteFor(fluentTheme.Resources, theme))
             {
                 // Without the palette the requested theme would render with the default one.
@@ -54,8 +56,33 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
         catch (Exception exception)
         {
             // The theme host is a UI framework boundary; hand the failure back instead of crashing.
+            // A half-applied host would contradict the contract, so put both properties back.
+            TryRestore(fluentTheme, application, previousVariant, previousPreferSystemTheme);
             failure = exception;
             return false;
         }
+    }
+
+    private static void TryRestore(
+        FluentAvaloniaTheme? fluentTheme,
+        global::Avalonia.Application application,
+        ThemeVariant? variant,
+        bool preferSystemTheme)
+    {
+#pragma warning disable CA1031 // A host that failed once may fail again while restoring.
+        try
+        {
+            if (fluentTheme is not null)
+            {
+                fluentTheme.PreferSystemTheme = preferSystemTheme;
+            }
+
+            application.RequestedThemeVariant = variant;
+        }
+        catch (Exception)
+        {
+            // Report the original failure rather than a secondary restore error.
+        }
+#pragma warning restore CA1031
     }
 }
