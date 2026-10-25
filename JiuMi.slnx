@@ -3,6 +3,7 @@
   <Project Path="src/JiuMi.Application/JiuMi.Application.csproj" />
   <Project Path="src/JiuMi.Desktop/JiuMi.Desktop.csproj" />
   <Project Path="test/JiuMi.Infrastructure.Tests/JiuMi.Infrastructure.Tests.csproj" />
+  <Project Path="test/JiuMi.Tests/JiuMi.Tests.csproj" />
   <Project Path="src/JiuMi.Infrastructure/JiuMi.Infrastructure.csproj" />
   <Project Path="src/JiuMi/JiuMi.csproj" />
 </Solution>

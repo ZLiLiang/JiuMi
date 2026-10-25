@@ -2,6 +2,7 @@
 using Avalonia.Controls;
 using Avalonia.Media;
 using FluentAvalonia.UI.Windowing;
+using JiuMi.Theming;
 using JiuMi.ViewModels;
 
 namespace JiuMi.Views;
@@ -100,7 +101,7 @@ public partial class MainWindow : FAAppWindow
 
         // A themed lookup must name the variant, otherwise it returns the default (light) brush.
         if (this.TryFindResource(
-                "SolidBackgroundFillColorBaseBrush",
+                ThemeResourceKeys.SolidBackgroundBrush,
                 ActualThemeVariant,
                 out object? solidBrush) &&
             solidBrush is IBrush brush)

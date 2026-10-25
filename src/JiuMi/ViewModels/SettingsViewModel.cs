@@ -1,11 +1,11 @@
 ﻿using System;
 using System.ComponentModel;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Threading;
 
 namespace JiuMi.ViewModels;
 
@@ -21,6 +21,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly ISettingsStore _settingsStore;
     private readonly ISystemLauncher _systemLauncher;
     private readonly IThemeService _themeService;
+    private readonly IUiThreadDispatcher _uiThreadDispatcher;
     private readonly Uri _repositoryUri;
     private LanguageOption _selectedLanguage;
 
@@ -33,6 +34,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="localization">The localization service that supplies interface text and languages.</param>
     /// <param name="settingsStore">The store that loads and saves the settings.</param>
     /// <param name="themeService">Applies theme changes and reports the preference in effect.</param>
+    /// <param name="uiThreadDispatcher">Queues the theme selection update after the radio click finishes.</param>
     /// <param name="systemLauncher">Opens folders and links for the about section.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -41,6 +43,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ILocalizationService localization,
         ISettingsStore settingsStore,
         IThemeService themeService,
+        IUiThreadDispatcher uiThreadDispatcher,
         ISystemLauncher systemLauncher)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -49,6 +52,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(themeService);
+        ArgumentNullException.ThrowIfNull(uiThreadDispatcher);
         ArgumentNullException.ThrowIfNull(systemLauncher);
 
         _applicationInfo = applicationInfo;
@@ -57,6 +61,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _localization = localization;
         _settingsStore = settingsStore;
         _themeService = themeService;
+        _uiThreadDispatcher = uiThreadDispatcher;
         _systemLauncher = systemLauncher;
         _repositoryUri = new Uri(applicationInfo.RepositoryUrl, UriKind.Absolute);
 
@@ -180,6 +185,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         if (theme == _themeService.Current)
         {
+            // A rejected startup theme can leave the applied preference behind the stored one; record
+            // the choice so the next start does not retry the unavailable theme.
+            if (_settingsStore.Current.Theme != theme)
+            {
+                SaveTheme(theme);
+            }
+
             return;
         }
 
@@ -194,11 +206,14 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        SaveTheme(theme);
+    }
+
+    private void SaveTheme(AppTheme theme) =>
         SaveSettings(_settingsStore.Current with
         {
             Theme = theme,
         });
-    }
 
     private void SaveSettings(AppSettings settings)
     {
@@ -216,14 +231,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         // The radio group finishes the click after the command returns, so push the selection on a later
         // turn; otherwise the clicked radio overwrites a rejected change.
-        Dispatcher.UIThread.Post(
+        _uiThreadDispatcher.Post(
             () =>
             {
                 OnPropertyChanged(nameof(IsFollowSystemTheme));
                 OnPropertyChanged(nameof(IsLightTheme));
                 OnPropertyChanged(nameof(IsDarkTheme));
-            },
-            DispatcherPriority.Background);
+            });
     }
 
     private LanguageOption? FindLanguage(string languageCode)

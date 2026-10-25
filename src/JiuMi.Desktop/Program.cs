@@ -7,6 +7,7 @@ using JiuMi.Application.Settings;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
 using JiuMi.Theming;
+using JiuMi.Threading;
 using JiuMi.ViewModels;
 using JiuMi.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,11 +38,10 @@ internal static class Program
     {
         var services = new ServiceCollection();
         services.AddInfrastructure();
-        services.AddSingleton<IThemeApplier>(provider => new AvaloniaThemeApplier(
-            static () => Avalonia.Application.Current,
-            provider.GetRequiredService<IErrorReporter>(),
-            provider.GetRequiredService<ErrorRecordFactory>()));
+        services.AddSingleton<IThemeApplier>(new AvaloniaThemeApplier(
+            static () => Avalonia.Application.Current));
         services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<IUiThreadDispatcher, AvaloniaUiThreadDispatcher>();
         services.AddSingleton<ILocalizationService>(provider =>
         {
             ISettingsStore settingsStore = provider.GetRequiredService<ISettingsStore>();

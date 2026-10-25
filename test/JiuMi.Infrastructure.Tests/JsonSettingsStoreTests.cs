@@ -1,4 +1,5 @@
-﻿using JiuMi.Application.Settings;
+﻿using System.Text.Json;
+using JiuMi.Application.Settings;
 using JiuMi.Infrastructure.Settings;
 
 namespace JiuMi.Infrastructure.Tests;
@@ -101,7 +102,8 @@ public sealed class JsonSettingsStoreTests : IDisposable
         SettingsSaveResult result = store.Save(new AppSettings { Theme = theme });
 
         Assert.True(result.Persisted);
-        Assert.Contains($"\"theme\": \"{storageValue}\"", File.ReadAllText(_settingsPath));
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        Assert.Equal(storageValue, document.RootElement.GetProperty("theme").GetString());
         Assert.Equal(theme, CreateStore().Load().Settings.Theme);
     }
 
