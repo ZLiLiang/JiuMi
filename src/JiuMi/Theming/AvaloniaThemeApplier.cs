@@ -69,7 +69,7 @@ public sealed class AvaloniaThemeApplier : IThemeApplier
         ThemeVariant? variant,
         bool preferSystemTheme)
     {
-#pragma warning disable CA1031 // A host that failed once may fail again while restoring.
+#pragma warning disable CA1031 // Best effort: a host that failed once may fail again while restoring.
         try
         {
             if (fluentTheme is not null)

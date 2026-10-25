@@ -3,6 +3,7 @@
 /// <summary>
 /// Applies a theme preference to the running interface.
 /// </summary>
+/// <remarks>Implementations touch UI resources, so calls must happen on the UI thread.</remarks>
 public interface IThemeApplier
 {
     /// <summary>
