@@ -44,9 +44,9 @@ public static class ErrorCodes
     /// <summary>A task failed after nobody awaited it; recorded for diagnostics only.</summary>
     public const string UnexpectedUnobservedTask = "Unexpected.UnobservedTask";
 
-    /// <summary>An exception reached the process-wide handler; recorded for diagnostics only.</summary>
-    public const string UnexpectedAppDomainException = "Unexpected.AppDomainException";
-
     /// <summary>The error window could not be created or shown; recorded for diagnostics only.</summary>
     public const string UnexpectedErrorWindowFailed = "Unexpected.ErrorWindowFailed";
+
+    /// <summary>The diagnostics bundle could not be written.</summary>
+    public const string DiagnosticsExportFailed = "Diagnostics.ExportFailed";
 }

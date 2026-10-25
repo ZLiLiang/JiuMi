@@ -9,6 +9,7 @@ namespace JiuMi.Application.Localization;
 public sealed class LocalizationService : ILocalizationService
 {
     private readonly LocalizationCatalog _catalog;
+    private readonly Serilog.ILogger _logger;
     private string _currentLanguage;
     private CultureInfo _culture;
 
@@ -20,18 +21,24 @@ public sealed class LocalizationService : ILocalizationService
     /// The language to display first, such as the stored setting or the operating system language;
     /// resolved through the catalog's manifest.
     /// </param>
+    /// <param name="logger">Receives language resolution, switching and fallback events.</param>
     /// <remarks>
     /// The resolved culture is applied to the current and default threads, so date and number
     /// formatting follow the interface language rather than the operating system.
     /// </remarks>
-    public LocalizationService(LocalizationCatalog catalog, string? requestedLanguageCode)
+    public LocalizationService(
+        LocalizationCatalog catalog,
+        string? requestedLanguageCode,
+        Serilog.ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
 
         _catalog = catalog;
+        _logger = logger ?? Serilog.Core.Logger.None;
         _currentLanguage = LanguageResolver.Resolve(requestedLanguageCode, catalog.Manifest);
         _culture = CultureInfo.GetCultureInfo(_currentLanguage);
         ApplyCulture(_culture);
+        _logger.Information("Language resolved to {LanguageCode}", _currentLanguage);
     }
 
     /// <inheritdoc />
@@ -71,6 +78,7 @@ public sealed class LocalizationService : ILocalizationService
         string resolved = LanguageResolver.Resolve(languageCode, _catalog.Manifest);
         if (!_catalog.TryGetStrings(resolved, out _))
         {
+            _logger.Debug("Language {LanguageCode} has no readable text", resolved);
             return false;
         }
 
@@ -82,6 +90,7 @@ public sealed class LocalizationService : ILocalizationService
         _currentLanguage = resolved;
         _culture = CultureInfo.GetCultureInfo(resolved);
         ApplyCulture(_culture);
+        _logger.Information("Language switched to {LanguageCode}", resolved);
 
         OnPropertyChanged("Item[]");
         OnPropertyChanged(nameof(CurrentLanguage));
@@ -100,9 +109,14 @@ public sealed class LocalizationService : ILocalizationService
         if (_catalog.TryGetStrings(_catalog.Manifest.Source, out IReadOnlyDictionary<string, string>? source) &&
             source.TryGetValue(key, out string? fallback))
         {
+            _logger.Debug(
+                "Key {Key} is missing in {Language}; using the source language",
+                key,
+                _currentLanguage);
             return fallback;
         }
 
+        _logger.Debug("Key {Key} is missing in every language", key);
         return key;
     }
 

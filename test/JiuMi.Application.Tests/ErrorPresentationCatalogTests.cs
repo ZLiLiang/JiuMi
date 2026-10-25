@@ -19,4 +19,15 @@ public sealed class ErrorPresentationCatalogTests
         Assert.Equal(level, presentation.Level);
         Assert.Equal(carrier, presentation.Carrier);
     }
+
+    [Fact]
+    public void Find_GivenDiagnosticsExportFailed_OffersTheRetryAction()
+    {
+        ErrorPresentation? presentation = ErrorPresentationCatalog.Find(ErrorCodes.DiagnosticsExportFailed);
+
+        Assert.NotNull(presentation);
+        Assert.Equal(ErrorLevel.Error, presentation.Level);
+        Assert.Equal(ErrorCarrier.InfoBar, presentation.Carrier);
+        Assert.Equal(ErrorNoticeAction.Retry, presentation.Action);
+    }
 }

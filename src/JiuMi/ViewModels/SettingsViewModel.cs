@@ -2,9 +2,12 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
+using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
+using JiuMi.Application.Logging;
 using JiuMi.Application.Settings;
+using JiuMi.Diagnostics;
 using JiuMi.Threading;
 
 namespace JiuMi.ViewModels;
@@ -15,7 +18,11 @@ namespace JiuMi.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly IApplicationInfo _applicationInfo;
+    private readonly IDiagnosticsExporter _diagnosticsExporter;
     private readonly IErrorReporter _errorReporter;
+    private readonly DiagnosticsExportController _exportController;
+    private readonly ILoggingStatus _loggingStatus;
+    private readonly Serilog.ILogger _logger;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
@@ -36,6 +43,10 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="themeService">Applies theme changes and reports the preference in effect.</param>
     /// <param name="uiThreadDispatcher">Queues the theme selection update after the radio click finishes.</param>
     /// <param name="systemLauncher">Opens folders and links for the about section.</param>
+    /// <param name="diagnosticsExporter">Supplies the default bundle name and directory.</param>
+    /// <param name="exportController">Runs the export and reports its failures.</param>
+    /// <param name="loggingStatus">Reports whether file logging is working.</param>
+    /// <param name="logger">Receives settings saves from this page.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
         IErrorReporter errorReporter,
@@ -44,7 +55,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ISettingsStore settingsStore,
         IThemeService themeService,
         IUiThreadDispatcher uiThreadDispatcher,
-        ISystemLauncher systemLauncher)
+        ISystemLauncher systemLauncher,
+        IDiagnosticsExporter diagnosticsExporter,
+        DiagnosticsExportController exportController,
+        ILoggingStatus loggingStatus,
+        Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(errorReporter);
@@ -54,9 +69,17 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(themeService);
         ArgumentNullException.ThrowIfNull(uiThreadDispatcher);
         ArgumentNullException.ThrowIfNull(systemLauncher);
+        ArgumentNullException.ThrowIfNull(diagnosticsExporter);
+        ArgumentNullException.ThrowIfNull(exportController);
+        ArgumentNullException.ThrowIfNull(loggingStatus);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _applicationInfo = applicationInfo;
+        _diagnosticsExporter = diagnosticsExporter;
         _errorReporter = errorReporter;
+        _exportController = exportController;
+        _loggingStatus = loggingStatus;
+        _logger = logger;
         _recordFactory = recordFactory;
         _localization = localization;
         _settingsStore = settingsStore;
@@ -74,6 +97,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
         _localization.PropertyChanged += OnLocalizationChanged;
         _themeService.PropertyChanged += OnThemeServiceChanged;
+        _loggingStatus.PropertyChanged += OnLoggingStatusChanged;
+        _exportController.ExportingChanged += OnExportingChanged;
     }
 
     /// <summary>
@@ -106,6 +131,50 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// Gets a value indicating whether the settings directory can be opened.
     /// </summary>
     public bool CanOpenConfigFolder => _settingsStore.Location.DirectoryPath is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether file logging is currently working.
+    /// </summary>
+    public bool IsFileLoggingAvailable => _loggingStatus.IsFileLoggingAvailable;
+
+    /// <summary>
+    /// Gets a value indicating whether the about section shows the unavailable warning.
+    /// </summary>
+    public bool IsLoggingUnavailable => !IsFileLoggingAvailable;
+
+    /// <summary>
+    /// Gets a value indicating whether a diagnostics export is running.
+    /// </summary>
+    public bool IsExporting => _exportController.IsExporting;
+
+    /// <summary>
+    /// Gets a value indicating whether the export button can start a new export.
+    /// </summary>
+    public bool CanExportDiagnostics => !IsExporting;
+
+    /// <summary>
+    /// Gets the file name the save dialog starts with.
+    /// </summary>
+    public string DefaultDiagnosticsFileName => _diagnosticsExporter.CreateDefaultFileName();
+
+    /// <summary>
+    /// Gets the directory the save dialog starts in, or <see langword="null"/> when there is no log directory.
+    /// </summary>
+    public string? DiagnosticsDirectory => _diagnosticsExporter.LogDirectory;
+
+    /// <summary>
+    /// Exports the diagnostics bundle to the chosen path.
+    /// </summary>
+    /// <param name="destinationPath">The zip file the user chose.</param>
+    /// <returns>The outcome, with failures already reported.</returns>
+    public Task<DiagnosticsExportResult> ExportDiagnosticsAsync(string destinationPath) =>
+        _exportController.ExportAsync(destinationPath);
+
+    /// <summary>
+    /// Reports a failure that happened before the export started, such as a save-dialog error.
+    /// </summary>
+    /// <param name="exception">The failure.</param>
+    public void ReportDiagnosticsFailure(Exception exception) => _exportController.ReportFailure(exception);
 
     /// <summary>
     /// Gets or sets the language shown by the interface; a change applies and saves immediately.
@@ -184,6 +253,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         _localization.PropertyChanged -= OnLocalizationChanged;
         _themeService.PropertyChanged -= OnThemeServiceChanged;
+        _loggingStatus.PropertyChanged -= OnLoggingStatusChanged;
+        _exportController.ExportingChanged -= OnExportingChanged;
     }
 
     private void SelectTheme(AppTheme theme)
@@ -230,6 +301,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                 ErrorCodes.SettingsSaveFailed,
                 "Settings.Save",
                 error));
+            return;
+        }
+
+        if (result.Persisted)
+        {
+            _logger.Debug("Settings saved");
         }
     }
 
@@ -298,4 +375,29 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             NotifyThemeSelectionChanged();
         }
     }
+
+    private void OnLoggingStatusChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!string.Equals(
+            e.PropertyName,
+            nameof(ILoggingStatus.IsFileLoggingAvailable),
+            StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        // Writes can fail on any thread; the about section is only safe to update on the UI thread.
+        _uiThreadDispatcher.Post(() =>
+        {
+            OnPropertyChanged(nameof(IsFileLoggingAvailable));
+            OnPropertyChanged(nameof(IsLoggingUnavailable));
+        });
+    }
+
+    private void OnExportingChanged(object? sender, EventArgs e) =>
+        _uiThreadDispatcher.Post(() =>
+        {
+            OnPropertyChanged(nameof(IsExporting));
+            OnPropertyChanged(nameof(CanExportDiagnostics));
+        });
 }

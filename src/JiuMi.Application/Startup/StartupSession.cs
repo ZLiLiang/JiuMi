@@ -11,6 +11,7 @@ public sealed class StartupSession
     private bool _isReady;
     private bool _hasFaulted;
     private bool _hasTimedOut;
+    private StartupState _state = StartupState.Bootstrapping;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="StartupSession"/> class.
@@ -21,6 +22,17 @@ public sealed class StartupSession
         ArgumentNullException.ThrowIfNull(gate);
         _gate = gate;
     }
+
+    /// <summary>
+    /// Raised after the startup stage changes, so logging can follow the sequence without the splash
+    /// sequence knowing who observes it.
+    /// </summary>
+    public event EventHandler<StartupState>? StateChanged;
+
+    /// <summary>
+    /// Gets the stage the sequence is in.
+    /// </summary>
+    public StartupState State => _state;
 
     /// <summary>
     /// Gets a value indicating whether every startup step has completed.
@@ -68,7 +80,26 @@ public sealed class StartupSession
     }
 
     /// <summary>
+    /// Moves the sequence to a new stage and notifies observers of the change.
+    /// </summary>
+    /// <param name="state">The stage that was just entered.</param>
+    public void TransitionTo(StartupState state)
+    {
+        if (_state == state)
+        {
+            return;
+        }
+
+        _state = state;
+        StateChanged?.Invoke(this, state);
+    }
+
+    /// <summary>
     /// Marks the startup work as failed; the state is terminal.
     /// </summary>
-    public void MarkFaulted() => _hasFaulted = true;
+    public void MarkFaulted()
+    {
+        _hasFaulted = true;
+        TransitionTo(StartupState.Faulted);
+    }
 }

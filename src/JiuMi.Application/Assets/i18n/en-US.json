@@ -22,6 +22,8 @@
   "Settings.About.Section": "About",
   "Settings.About.Version": "Version {0}",
   "Settings.About.Repository": "GitHub repository",
+  "Settings.About.ExportDiagnostics": "Export diagnostics",
+  "Settings.About.LoggingUnavailable": "Logging unavailable",
   "Tool.WeChatDownload.Name": "WeChat video download",
   "Tool.WeChatDownload.Description": "Save videos from WeChat to your disk.",
   "Tool.BatchRename.Name": "Batch rename",
@@ -46,5 +48,6 @@
   "Error.Startup.Timeout": "Startup was not fully ready; the main window was opened early.",
   "Error.Startup.Faulted": "Startup encountered an error.",
   "Error.Shell.MainWindowFailed": "The main window could not be opened. The application cannot continue.",
-  "Error.Unexpected.UiThreadException": "Something unexpected stopped the interface. The application may not behave correctly."
+  "Error.Unexpected.UiThreadException": "Something unexpected stopped the interface. The application may not behave correctly.",
+  "Error.Diagnostics.ExportFailed": "The diagnostics bundle could not be exported."
 }
