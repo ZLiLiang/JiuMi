@@ -17,6 +17,9 @@ public static class ErrorCodes
     /// <summary>The requested display language has no usable text and was not applied.</summary>
     public const string LocalizationSwitchFailed = "Localization.SwitchFailed";
 
+    /// <summary>The requested theme could not be applied and the previous one was kept.</summary>
+    public const string ThemeSwitchFailed = "Theme.SwitchFailed";
+
     /// <summary>The executable-side settings directory was not writable.</summary>
     public const string ConfigFallbackToAppData = "Config.FallbackToAppData";
 

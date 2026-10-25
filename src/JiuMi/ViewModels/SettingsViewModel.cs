@@ -9,7 +9,7 @@ using JiuMi.Application.Settings;
 namespace JiuMi.ViewModels;
 
 /// <summary>
-/// View model for the settings page: the language selector and the about section.
+/// View model for the settings page: language, appearance and the about section.
 /// </summary>
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
@@ -19,6 +19,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
     private readonly ISystemLauncher _systemLauncher;
+    private readonly IThemeService _themeService;
     private readonly Uri _repositoryUri;
     private LanguageOption _selectedLanguage;
 
@@ -30,6 +31,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="recordFactory">Creates the records reported from this page.</param>
     /// <param name="localization">The localization service that supplies interface text and languages.</param>
     /// <param name="settingsStore">The store that loads and saves the settings.</param>
+    /// <param name="themeService">Applies theme changes and reports the preference in effect.</param>
     /// <param name="systemLauncher">Opens folders and links for the about section.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -37,6 +39,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ErrorRecordFactory recordFactory,
         ILocalizationService localization,
         ISettingsStore settingsStore,
+        IThemeService themeService,
         ISystemLauncher systemLauncher)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -44,6 +47,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(themeService);
         ArgumentNullException.ThrowIfNull(systemLauncher);
 
         _applicationInfo = applicationInfo;
@@ -51,6 +55,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _recordFactory = recordFactory;
         _localization = localization;
         _settingsStore = settingsStore;
+        _themeService = themeService;
         _systemLauncher = systemLauncher;
         _repositoryUri = new Uri(applicationInfo.RepositoryUrl, UriKind.Absolute);
 
@@ -135,6 +140,33 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the interface follows the operating system theme.
+    /// </summary>
+    public bool IsFollowSystemTheme
+    {
+        get => _themeService.Current == AppTheme.System;
+        set => SelectThemeIfChecked(AppTheme.System, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the light theme is selected.
+    /// </summary>
+    public bool IsLightTheme
+    {
+        get => _themeService.Current == AppTheme.Light;
+        set => SelectThemeIfChecked(AppTheme.Light, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the dark theme is selected.
+    /// </summary>
+    public bool IsDarkTheme
+    {
+        get => _themeService.Current == AppTheme.Dark;
+        set => SelectThemeIfChecked(AppTheme.Dark, value);
+    }
+
+    /// <summary>
     /// Gets the command that opens the effective settings directory.
     /// </summary>
     public IRelayCommand OpenConfigFolderCommand
@@ -152,6 +184,53 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <inheritdoc />
     public void Dispose() => _localization.PropertyChanged -= OnLocalizationChanged;
+
+    private void SelectThemeIfChecked(AppTheme theme, bool isChecked)
+    {
+        if (isChecked)
+        {
+            SelectTheme(theme);
+        }
+    }
+
+    private void SelectTheme(AppTheme theme)
+    {
+        if (theme == _themeService.Current)
+        {
+            return;
+        }
+
+        if (!_themeService.TrySetTheme(theme))
+        {
+            // The requested resources are unavailable: keep the applied theme and move the selection back.
+            _errorReporter.Report(_recordFactory.Create(
+                ErrorCodes.ThemeSwitchFailed,
+                "Theme.Switch"));
+            NotifyThemeSelectionChanged();
+            return;
+        }
+
+        NotifyThemeSelectionChanged();
+
+        SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
+        {
+            Theme = theme,
+        });
+        if (result.Error is { } error)
+        {
+            _errorReporter.Report(_recordFactory.Create(
+                ErrorCodes.SettingsSaveFailed,
+                "Settings.Save",
+                error));
+        }
+    }
+
+    private void NotifyThemeSelectionChanged()
+    {
+        OnPropertyChanged(nameof(IsFollowSystemTheme));
+        OnPropertyChanged(nameof(IsLightTheme));
+        OnPropertyChanged(nameof(IsDarkTheme));
+    }
 
     private LanguageOption? FindLanguage(string languageCode)
     {

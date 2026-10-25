@@ -18,6 +18,7 @@ public static class ErrorPresentationCatalog
             ErrorNoticeAction.Retry),
         [ErrorCodes.SettingsCorrupted] = new(ErrorLevel.Warning, ErrorCarrier.InfoBar),
         [ErrorCodes.LocalizationSwitchFailed] = new(ErrorLevel.Warning, ErrorCarrier.InfoBar),
+        [ErrorCodes.ThemeSwitchFailed] = new(ErrorLevel.Warning, ErrorCarrier.InfoBar),
         [ErrorCodes.ConfigFallbackToAppData] = new(
             ErrorLevel.Warning,
             ErrorCarrier.InfoBar,

@@ -6,6 +6,7 @@ using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
+using JiuMi.Theming;
 using JiuMi.ViewModels;
 using JiuMi.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +23,12 @@ internal static class Program
         SubscribeProcessHandlers(services);
 
         IErrorWindowPresenter errorWindows = services.GetRequiredService<IErrorWindowPresenter>();
+        IThemeService themeService = services.GetRequiredService<IThemeService>();
         return AppBuilder.Configure(
-                () => new App(() => services.GetRequiredService<MainWindow>(), errorWindows))
+                () => new App(
+                    () => services.GetRequiredService<MainWindow>(),
+                    errorWindows,
+                    themeService))
             .UsePlatformDetect()
             .StartWithClassicDesktopLifetime(args);
     }
@@ -32,6 +37,9 @@ internal static class Program
     {
         var services = new ServiceCollection();
         services.AddInfrastructure();
+        services.AddSingleton<IThemeService>(provider => new ThemeService(
+            provider.GetRequiredService<ISettingsStore>(),
+            static () => Avalonia.Application.Current));
         services.AddSingleton<ILocalizationService>(provider =>
         {
             ISettingsStore settingsStore = provider.GetRequiredService<ISettingsStore>();

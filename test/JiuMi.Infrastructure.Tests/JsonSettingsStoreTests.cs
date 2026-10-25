@@ -89,6 +89,46 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Equal(SettingsLoadIssue.None, reloaded.Issues);
     }
 
+    [Theory]
+    [InlineData(AppTheme.System, "system")]
+    [InlineData(AppTheme.Light, "light")]
+    [InlineData(AppTheme.Dark, "dark")]
+    public void Save_GivenTheme_WritesStorageValueAndRoundTrips(AppTheme theme, string storageValue)
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+
+        SettingsSaveResult result = store.Save(new AppSettings { Theme = theme });
+
+        Assert.True(result.Persisted);
+        Assert.Contains($"\"theme\": \"{storageValue}\"", File.ReadAllText(_settingsPath));
+        Assert.Equal(theme, CreateStore().Load().Settings.Theme);
+    }
+
+    [Theory]
+    [InlineData("system", AppTheme.System)]
+    [InlineData("light", AppTheme.Light)]
+    [InlineData("dark", AppTheme.Dark)]
+    [InlineData("LIGHT", AppTheme.Light)]
+    [InlineData("sepia", AppTheme.System)]
+    [InlineData("", AppTheme.System)]
+    public void Load_GivenThemeString_UsesKnownValueOrFallsBackToSystem(
+        string storedValue,
+        AppTheme expected)
+    {
+        WriteSettings($$"""{ "theme": "{{storedValue}}" }""");
+
+        Assert.Equal(expected, CreateStore().Load().Settings.Theme);
+    }
+
+    [Fact]
+    public void Load_GivenNonStringTheme_FallsBackToSystem()
+    {
+        WriteSettings("""{ "theme": 2 }""");
+
+        Assert.Equal(AppTheme.System, CreateStore().Load().Settings.Theme);
+    }
+
     [Fact]
     public void Load_GivenMissingKeys_UsesDefaults()
     {
