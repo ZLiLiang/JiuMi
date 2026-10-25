@@ -13,7 +13,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
 {
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
-    private readonly ILocalizationService _localization;
+    private readonly Func<ILocalizationService> _localization;
     private readonly ErrorWindowCoordinator _coordinator;
     private readonly Func<ErrorWindow> _createWindow;
     private readonly Func<bool> _isMainWindowAvailable;
@@ -24,7 +24,10 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
     /// </summary>
     /// <param name="errorReporter">Stores the record that becomes the copied details.</param>
     /// <param name="recordFactory">Creates the record for an escaped exception.</param>
-    /// <param name="localization">Supplies the first line of the copied details.</param>
+    /// <param name="localization">
+    /// Supplies the first line of the copied details. It is resolved only when a failure is shown,
+    /// because localization is itself a startup step that may be the thing that failed.
+    /// </param>
     /// <param name="coordinator">Guarantees at most one error window per process.</param>
     /// <param name="createWindow">Creates the window once a failure must be shown.</param>
     /// <param name="isMainWindowAvailable">
@@ -35,7 +38,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
     public ErrorWindowPresenter(
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
-        ILocalizationService localization,
+        Func<ILocalizationService> localization,
         ErrorWindowCoordinator coordinator,
         Func<ErrorWindow> createWindow,
         Func<bool> isMainWindowAvailable,
@@ -59,20 +62,23 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
     }
 
     /// <inheritdoc />
+    public void PresentUnhandledException(Exception exception) =>
+        PresentFailure(ErrorCodes.UnexpectedUiThreadException, "Dispatcher.UnhandledException", exception);
+
+    /// <inheritdoc />
     [SuppressMessage(
         "Design",
         "CA1031:Do not catch general exception types",
         Justification = "The error window is the last reported surface; failing to show it must exit instead of crashing.")]
-    public void PresentUnhandledException(Exception exception)
+    public void PresentFailure(string code, string operation, Exception exception)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
         ArgumentNullException.ThrowIfNull(exception);
 
         try
         {
-            ErrorRecord reported = _recordFactory.Create(
-                ErrorCodes.UnexpectedUiThreadException,
-                "Dispatcher.UnhandledException",
-                exception);
+            ErrorRecord reported = _recordFactory.Create(code, operation, exception);
             _errorReporter.Report(reported);
 
             // The buffer owns the merged count, so the copied details read the stored record. The first
@@ -81,7 +87,7 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
             ErrorWindowRequest? request = _coordinator.Open(
                 stored,
                 _isMainWindowAvailable(),
-                _localization["Error." + stored.Code]);
+                ResolveMessage(stored.Code));
 
             if (request is null)
             {
@@ -102,6 +108,22 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
                 "ErrorWindow.Show",
                 failure));
             _requestExit(ExitCodes.Failure);
+        }
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Localization may be the startup step that failed; the code still names the failure.")]
+    private string ResolveMessage(string code)
+    {
+        try
+        {
+            return _localization()["Error." + code];
+        }
+        catch (Exception)
+        {
+            return code;
         }
     }
 

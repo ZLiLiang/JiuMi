@@ -24,6 +24,9 @@ public static class ErrorPresentationCatalog
             ErrorCarrier.InfoBar,
             ErrorNoticeAction.OpenFolder),
         [ErrorCodes.ConfigMemoryOnly] = new(ErrorLevel.Error, ErrorCarrier.InfoBar, IsPersistent: true),
+        [ErrorCodes.StartupTimeout] = new(ErrorLevel.Warning, ErrorCarrier.InfoBar),
+        [ErrorCodes.StartupFaulted] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
+        [ErrorCodes.ShellMainWindowFailed] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
         [ErrorCodes.UnexpectedUiThreadException] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
     };
 

@@ -1,4 +1,6 @@
-﻿namespace JiuMi.Application.Settings;
+﻿using System.ComponentModel;
+
+namespace JiuMi.Application.Settings;
 
 /// <summary>
 /// Keeps the theme preference in effect and falls back to Fluent's light palette when the stored
@@ -24,6 +26,9 @@ public sealed class ThemeService : IThemeService
     }
 
     /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <inheritdoc />
     public AppTheme Current => _current;
 
     /// <inheritdoc />
@@ -32,7 +37,7 @@ public sealed class ThemeService : IThemeService
         AppTheme stored = _settingsStore.Current.Theme;
         if (_applier.TryApply(stored, out _))
         {
-            _current = stored;
+            SetCurrent(stored);
             return;
         }
 
@@ -54,7 +59,7 @@ public sealed class ThemeService : IThemeService
 
         if (_applier.TryApply(theme, out failure))
         {
-            _current = theme;
+            SetCurrent(theme);
             return true;
         }
 
@@ -75,7 +80,21 @@ public sealed class ThemeService : IThemeService
         // applied preference in place, matching the applier's "nothing changed" contract.
         if (_applier.TryApply(AppTheme.Light, out _))
         {
-            _current = AppTheme.Light;
+            SetCurrent(AppTheme.Light);
         }
+    }
+
+    private void SetCurrent(AppTheme theme)
+    {
+        if (theme == _current)
+        {
+            return;
+        }
+
+        _current = theme;
+
+        // Late startup work can change the theme after the shell is up; the settings page reads this
+        // notification to keep its selection on the theme that is actually in effect.
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Current)));
     }
 }

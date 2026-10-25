@@ -5,7 +5,6 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using JiuMi.Errors;
 using JiuMi.Startup;
-using JiuMi.Views;
 
 namespace JiuMi;
 
@@ -14,7 +13,7 @@ namespace JiuMi;
 /// </summary>
 public partial class App : Avalonia.Application
 {
-    private readonly ShellInitialization _initialization;
+    private readonly IShellStartup _startup;
     private readonly IErrorWindowPresenter _errorWindows;
 
     /// <summary>
@@ -22,20 +21,20 @@ public partial class App : Avalonia.Application
     /// </summary>
     /// <remarks>Required by the Avalonia runtime XAML loader; the host uses the factory overload.</remarks>
     public App()
-        : this(new ShellInitialization([], static () => new MainWindow()), NullErrorWindowPresenter.Instance)
+        : this(NullShellStartup.Instance, NullErrorWindowPresenter.Instance)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="App"/> class.
     /// </summary>
-    /// <param name="initialization">The startup work the splash runs, with the shell window last.</param>
+    /// <param name="startup">Puts the startup sequence on screen and starts the work behind it.</param>
     /// <param name="errorWindows">Presents exceptions that escape the UI thread dispatcher.</param>
-    public App(ShellInitialization initialization, IErrorWindowPresenter errorWindows)
+    public App(IShellStartup startup, IErrorWindowPresenter errorWindows)
     {
-        ArgumentNullException.ThrowIfNull(initialization);
+        ArgumentNullException.ThrowIfNull(startup);
         ArgumentNullException.ThrowIfNull(errorWindows);
-        _initialization = initialization;
+        _startup = startup;
         _errorWindows = errorWindows;
     }
 
@@ -56,11 +55,7 @@ public partial class App : Avalonia.Application
             // The shell window is assigned by the sequence before it closes the splash, which is what
             // keeps this shutdown rule from ending the process at the handoff.
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
-            new SplashSequence(
-                desktop,
-                _initialization,
-                SplashMediaLoader.Load(),
-                static () => new SplashWindow()).Start();
+            _startup.Start(desktop);
         }
 
         base.OnFrameworkInitializationCompleted();

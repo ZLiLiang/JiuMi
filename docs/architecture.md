@@ -36,7 +36,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - **起点**：splash 的 `Opened` 事件之后的**下一个动画帧**（`TopLevel.RequestAnimationFrame`），不是窗口创建时刻——否则首帧渲染会吞掉动画开头。
 - **GIF 时长**：按帧延时累加。解码器规则为 `delayMs = delayCentiseconds * 10`，`delayMs <= 10` 时按 100ms 计。到点即 `Source = null` 停止绘制。
 - **最短展示**：1000ms。GIF 短于 1 秒时补到 1 秒；长于 1 秒时以 GIF 时长为准，不截断。
-- **就绪兜底**：10000ms。到点强制交接并记 Error。
+- **就绪兜底**：10000ms。到点强制交接并记 Warning（`Startup.Timeout`）。
 - 三者始终取晚者，不相加。
 - 超过 10 秒进入主窗口后，**迟到的初始化静默应用**（主题与语言走既有热切换路径），并记一条 Error 说明「初始化超时后完成」。
 

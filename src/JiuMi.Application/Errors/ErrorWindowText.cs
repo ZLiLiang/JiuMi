@@ -38,6 +38,14 @@ public static class ErrorWindowText
         "发生未处理的错误",
         "界面线程上出现了未处理的错误，但应用仍可继续使用。可以复制详情反馈给开发者，或继续运行。");
 
+    private static readonly ErrorWindowMessage _startupFaulted = new(
+        "启动没有完成",
+        "启动过程中发生了错误，应用无法进入主窗口。可以复制详情反馈给开发者，然后退出。");
+
+    private static readonly ErrorWindowMessage _mainWindowFailed = new(
+        "无法打开主窗口",
+        "主窗口没有成功打开，应用无法继续。可以复制详情反馈给开发者，然后退出。");
+
     /// <summary>
     /// Gets the headline and explanation for a failure.
     /// </summary>
@@ -48,6 +56,8 @@ public static class ErrorWindowText
     {
         ErrorCodes.UnexpectedUiThreadException when canContinue => _uiThreadExceptionContinuing,
         ErrorCodes.UnexpectedUiThreadException => _uiThreadExceptionBlocking,
+        ErrorCodes.StartupFaulted => _startupFaulted,
+        ErrorCodes.ShellMainWindowFailed => _mainWindowFailed,
         _ => _default,
     };
 }

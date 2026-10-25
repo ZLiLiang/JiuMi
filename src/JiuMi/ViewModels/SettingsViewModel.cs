@@ -73,6 +73,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OpenRepositoryCommand = new RelayCommand(OpenRepository);
         SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
         _localization.PropertyChanged += OnLocalizationChanged;
+        _themeService.PropertyChanged += OnThemeServiceChanged;
     }
 
     /// <summary>
@@ -179,7 +180,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <inheritdoc />
-    public void Dispose() => _localization.PropertyChanged -= OnLocalizationChanged;
+    public void Dispose()
+    {
+        _localization.PropertyChanged -= OnLocalizationChanged;
+        _themeService.PropertyChanged -= OnThemeServiceChanged;
+    }
 
     private void SelectTheme(AppTheme theme)
     {
@@ -282,6 +287,15 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         {
             _selectedLanguage = current;
             OnPropertyChanged(nameof(SelectedLanguage));
+        }
+    }
+
+    private void OnThemeServiceChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.Equals(e.PropertyName, nameof(IThemeService.Current), StringComparison.Ordinal))
+        {
+            // The applied theme can change after the shell is up when startup finishes late.
+            NotifyThemeSelectionChanged();
         }
     }
 }

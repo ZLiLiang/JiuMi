@@ -72,6 +72,22 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
+    public void ApplyStoredTheme_GivenAThemeChange_NotifiesTheCurrentPreference()
+    {
+        var store = new StubSettingsStore(AppTheme.Dark);
+        var applier = new StubThemeApplier();
+        applier.Available.Add(AppTheme.Dark);
+        var service = new ThemeService(store, applier);
+        string? changedProperty = null;
+        service.PropertyChanged += (_, e) => changedProperty = e.PropertyName;
+
+        service.ApplyStoredTheme();
+
+        // A late startup theme is applied after the shell is up, so the settings page needs this.
+        Assert.Equal(nameof(IThemeService.Current), changedProperty);
+    }
+
+    [Fact]
     public void TrySetTheme_GivenSwitchFails_RestoresThePreviousTheme()
     {
         var applier = CreateApplier();

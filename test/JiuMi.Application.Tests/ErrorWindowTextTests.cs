@@ -42,6 +42,32 @@ public sealed class ErrorWindowTextTests
     }
 
     [Fact]
+    public void MessageFor_GivenStartupFault_ExplainsTheApplicationCannotReachTheShell()
+    {
+        ErrorWindowMessage message = ErrorWindowText.MessageFor(
+            ErrorCodes.StartupFaulted,
+            canContinue: false);
+
+        Assert.Equal("启动没有完成", message.Headline);
+        Assert.Equal(
+            "启动过程中发生了错误，应用无法进入主窗口。可以复制详情反馈给开发者，然后退出。",
+            message.Body);
+    }
+
+    [Fact]
+    public void MessageFor_GivenMainWindowFailure_ExplainsTheShellCouldNotOpen()
+    {
+        ErrorWindowMessage message = ErrorWindowText.MessageFor(
+            ErrorCodes.ShellMainWindowFailed,
+            canContinue: false);
+
+        Assert.Equal("无法打开主窗口", message.Headline);
+        Assert.Equal(
+            "主窗口没有成功打开，应用无法继续。可以复制详情反馈给开发者，然后退出。",
+            message.Body);
+    }
+
+    [Fact]
     public void MessageFor_GivenUnregisteredCode_FallsBackToTheGenericMessage()
     {
         ErrorWindowMessage message = ErrorWindowText.MessageFor("Unknown.Code", canContinue: false);
