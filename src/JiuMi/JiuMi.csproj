@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="JiuMi.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\JiuMi.Application\JiuMi.Application.csproj" />
   </ItemGroup>
 
