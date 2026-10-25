@@ -14,7 +14,7 @@ public interface IThemeService
     }
 
     /// <summary>
-    /// Applies the preference stored in the settings, falling back to the Fluent default theme when it
+    /// Applies the preference stored in the settings, falling back to Fluent's light palette when it
     /// cannot be applied.
     /// </summary>
     void ApplyStoredTheme();

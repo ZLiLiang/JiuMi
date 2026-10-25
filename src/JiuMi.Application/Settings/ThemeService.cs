@@ -1,8 +1,8 @@
 ﻿namespace JiuMi.Application.Settings;
 
 /// <summary>
-/// Keeps the theme preference in effect and falls back to the Fluent default theme when one cannot be
-/// applied.
+/// Keeps the theme preference in effect and falls back to Fluent's light palette when the stored
+/// theme cannot be applied.
 /// </summary>
 public sealed class ThemeService : IThemeService
 {
@@ -60,8 +60,9 @@ public sealed class ThemeService : IThemeService
 
         if (!_applier.TryApply(_current, out Exception? restoreFailure))
         {
+            // An explicit switch never falls back to a third theme: the preference that was on screen
+            // stays current, and the caller reports the rejection.
             failure ??= restoreFailure;
-            FallBackToLight();
         }
 
         return false;

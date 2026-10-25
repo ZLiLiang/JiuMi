@@ -105,7 +105,7 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
-    public void TrySetTheme_GivenSwitchAndRestoreFail_FallsBackToTheLightPalette()
+    public void TrySetTheme_GivenSwitchAndRestoreFail_KeepsTheLastAppliedTheme()
     {
         var applier = CreateApplier();
         var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier);
@@ -116,9 +116,9 @@ public sealed class ThemeServiceTests
         bool applied = service.TrySetTheme(AppTheme.Dark, out _);
 
         Assert.False(applied);
-        // The fallback must not re-enter the OS theme, which could be the missing dark palette.
-        Assert.Equal(AppTheme.Light, service.Current);
-        Assert.Equal(AppTheme.Light, applier.Applied[^1]);
+        // A failed switch must not pick a third theme; the preference on screen stays current.
+        Assert.Equal(AppTheme.System, service.Current);
+        Assert.Equal(AppTheme.System, applier.Applied[^1]);
     }
 
     [Fact]
