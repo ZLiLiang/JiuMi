@@ -87,11 +87,11 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 内边距 | 20 24 |
 | 圆角 | 12 |
 | 填充 / 描边 | `CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush` |
-| 布局 | 横向两列：媒体区固定宽 + 文案区 `*`，纵向居中，列间距 26 |
-| 媒体区 | 340 × 200，圆角 10，裁切到圆角 |
+| 布局 | 横向两列：媒体区按素材适配 + 文案区 `*`，纵向居中，列间距 26 |
+| 媒体区 | 槽位上限 340 × 200，圆角 10，裁切到圆角；容器取素材等比适配后的尺寸 |
 | 文案区 | 标题 24px / SemiBold；正文 13px / Regular / `TextFillColorSecondaryBrush`，行高 1.6，最大宽度 430，与标题间距 8 |
 
-- 媒体区播放 `splash.gif`，`IterationCount` 保持 `Infinite`（主页要一直动），`Stretch=UniformToFill` 填满并裁切。
+- 媒体区播放 `splash.gif`，`IterationCount` 保持 `Infinite`（主页要一直动）：素材在 340 × 200 槽位内等比适配，容器跟随适配结果——不拉伸、不裁切，也不留空带。
 - 媒体加载失败时按「容器内占位」降级，不改变 hero 高度。
 - 媒体是装饰性动画，不设可访问名：信息由右侧文案承担。
 - 文案键：`Home.Hero.Title`、`Home.Hero.Body`。
@@ -156,10 +156,10 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 | 项 | 值 |
 | --- | --- |
-| 尺寸 | 480 × 320，固定 |
-| 内边距 | 40 |
-| 媒体区 | 400 × 240，居中 |
-| 媒体适配 | `Stretch=Uniform`，多余留白与背景同色：不裁切、不拉伸 |
+| 尺寸 | 320 × 320，固定：与 `splash.gif` 的方形画面同比例，窗口内不出现边框带 |
+| 内边距 | 0，媒体铺满整个窗口 |
+| 媒体区 | 与窗口同尺寸 |
+| 媒体适配 | `Stretch=UniformToFill`：铺满并裁切超出部分，不用 `Uniform` 以免留下与背景同色的留白带 |
 | 进度环 | 32 × 32，环宽 3，`AccentFillColorDefaultBrush`，与媒体区同心 |
 | 文字 | 无 |
 

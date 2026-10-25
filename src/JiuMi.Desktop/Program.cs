@@ -6,6 +6,7 @@ using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
+using JiuMi.Startup;
 using JiuMi.Theming;
 using JiuMi.Threading;
 using JiuMi.ViewModels;
@@ -20,18 +21,46 @@ internal static class Program
     public static int Main(string[] args)
     {
         using ServiceProvider services = CreateServices();
-        ReportStartupIssues(services);
         SubscribeProcessHandlers(services);
 
         IErrorWindowPresenter errorWindows = services.GetRequiredService<IErrorWindowPresenter>();
-        IThemeService themeService = services.GetRequiredService<IThemeService>();
-        return AppBuilder.Configure(
-                () => new App(
-                    () => services.GetRequiredService<MainWindow>(),
-                    errorWindows,
-                    themeService))
+        return AppBuilder.Configure(() => new App(CreateInitialization(services), errorWindows))
             .UsePlatformDetect()
             .StartWithClassicDesktopLifetime(args);
+    }
+
+    /// <summary>
+    /// Builds the startup work the splash covers, in the order the architecture fixes it.
+    /// </summary>
+    /// <param name="services">The composition root every step reads from.</param>
+    /// <returns>The ordered steps, with the shell window construction after them.</returns>
+    private static ShellInitialization CreateInitialization(ServiceProvider services)
+    {
+        ISettingsStore settingsStore = services.GetRequiredService<ISettingsStore>();
+        IThemeService themeService = services.GetRequiredService<IThemeService>();
+
+        // The probe has to precede the first settings read, the text catalogue has to exist before the
+        // interface is built, and the shell window has to be the last thing constructed.
+        return new ShellInitialization(
+            [
+                () => RunConfigProbe(settingsStore),
+                () => ReportStartupIssues(services),
+                () => RunLocalization(services),
+                () => themeService.ApplyStoredTheme(),
+            ],
+            () => services.GetRequiredService<MainWindow>());
+    }
+
+    private static void RunConfigProbe(ISettingsStore settingsStore)
+    {
+        // Settling the location is the probe: this session reads and writes wherever it lands.
+        _ = settingsStore.Location;
+    }
+
+    private static void RunLocalization(ServiceProvider services)
+    {
+        // Building the catalogue settles the language and writes the resolved code back.
+        _ = services.GetRequiredService<ILocalizationService>();
     }
 
     private static ServiceProvider CreateServices()

@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JiuMi.Application\JiuMi.Application.csproj" />
   </ItemGroup>
 

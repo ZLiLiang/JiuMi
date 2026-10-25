@@ -36,7 +36,7 @@
                   CornerRadius="10"
                   ClipToBounds="True">
             <Panel>
-              <labs:GifImage x:Name="HeroGif" Stretch="UniformToFill" IsVisible="False" />
+              <labs:GifImage x:Name="HeroGif" IsVisible="False" />
               <Panel x:Name="HeroPlaceholder" IsVisible="False">
                 <Rectangle Stroke="{DynamicResource ControlStrokeColorDefaultBrush}"
                            StrokeThickness="1"
