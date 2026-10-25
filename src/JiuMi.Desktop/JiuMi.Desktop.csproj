@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Product>JiuMi</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JiuMi\JiuMi.csproj" />
+    <ProjectReference Include="..\JiuMi.Application\JiuMi.Application.csproj" />
+    <ProjectReference Include="..\JiuMi.Infrastructure\JiuMi.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+  </ItemGroup>
+
+</Project>

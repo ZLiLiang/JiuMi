@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fac="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="using:JiuMi.ViewModels"
+             x:Class="JiuMi.Views.InfoBarView"
+             x:DataType="vm:InfoBarViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.bar">
+      <Setter Property="Margin" Value="16,12,16,0" />
+      <Setter Property="Padding" Value="16,12" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+    </Style>
+    <Style Selector="Border.bar.error">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+    </Style>
+    <Style Selector="Border.bar.warning">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+    </Style>
+    <Style Selector="Button.action">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.close">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="Button.close:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="HyperlinkButton.copy">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Padding" Value="4,0,0,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="bar"
+          Classes.error="{Binding IsError}"
+          Classes.warning="{Binding IsWarning}"
+          IsVisible="{Binding IsOpen}"
+          AutomationProperties.LiveSetting="Polite">
+    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+      <Grid Grid.Row="0"
+            Grid.Column="0"
+            Width="16"
+            Height="16"
+            Margin="0,2,0,0"
+            VerticalAlignment="Top">
+        <Canvas Width="16" Height="16" IsVisible="{Binding IsError}">
+          <Ellipse Canvas.Left="1"
+                   Canvas.Top="1"
+                   Width="14"
+                   Height="14"
+                   Stroke="{DynamicResource SystemFillColorCriticalBrush}"
+                   StrokeThickness="1.5" />
+          <Path Data="M5.5,5.5 L10.5,10.5 M10.5,5.5 L5.5,10.5"
+                Stroke="{DynamicResource SystemFillColorCriticalBrush}"
+                StrokeThickness="1.5"
+                StrokeLineCap="Round" />
+        </Canvas>
+        <Canvas Width="16" Height="16" IsVisible="{Binding IsWarning}">
+          <Path Data="M8,1.5 L14.8,13.8 L1.2,13.8 Z"
+                Stroke="{DynamicResource SystemFillColorCautionBrush}"
+                StrokeThickness="1.5"
+                StrokeJoin="Round" />
+          <Path Data="M8,5.5 L8,9.5 M8,11.2 L8,12.3"
+                Stroke="{DynamicResource SystemFillColorCautionBrush}"
+                StrokeThickness="1.5"
+                StrokeLineCap="Round" />
+        </Canvas>
+      </Grid>
+
+      <WrapPanel Grid.Row="0"
+                 Grid.Column="1"
+                 VerticalAlignment="Center"
+                 Orientation="Horizontal">
+        <TextBlock FontSize="14"
+                   LineHeight="20"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   AutomationProperties.Name="{Binding AccessibleName}"
+                   Text="{Binding Message}" />
+        <HyperlinkButton Classes="copy"
+                         Content="{Binding CopyText}"
+                         Click="OnCopyDetailsClick" />
+      </WrapPanel>
+
+      <Button x:Name="ActionButton"
+              Grid.Row="0"
+              Grid.Column="2"
+              Classes="action"
+              HorizontalAlignment="Right"
+              IsVisible="{Binding HasAction}"
+              Command="{Binding ActionCommand}"
+              Content="{Binding ActionText}" />
+
+      <Button Grid.Row="0"
+              Grid.Column="3"
+              Classes="close"
+              IsVisible="{Binding CanClose}"
+              Command="{Binding CloseCommand}"
+              AutomationProperties.Name="{Binding CloseAccessibleName}">
+        <fac:FASymbolIcon Symbol="Dismiss"
+                          FontSize="12"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center" />
+      </Button>
+    </Grid>
+  </Border>
+</UserControl>

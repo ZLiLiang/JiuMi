@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:JiuMi.Localization"
+             xmlns:lo="using:JiuMi.Application.Localization"
+             xmlns:settings="using:JiuMi.Application.Settings"
+             xmlns:vm="using:JiuMi.ViewModels"
+             x:Class="JiuMi.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <Border Padding="44,32,44,36">
+    <Grid MaxWidth="800" HorizontalAlignment="Left">
+      <StackPanel>
+        <TextBlock FontSize="28"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   Text="{loc:Localize Settings.Title}" />
+        <TextBlock Margin="0,6,0,0"
+                   FontSize="13"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Localize Settings.Subtitle}" />
+
+        <StackPanel Margin="0,26,0,0" Spacing="26">
+          <StackPanel>
+            <TextBlock Margin="0,0,0,8"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Settings.Language.Section}" />
+            <Border CornerRadius="8"
+                    ClipToBounds="True"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+              <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                  <TextBlock FontSize="13"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Settings.Language.Label}" />
+                  <TextBlock Margin="0,2,0,0"
+                             FontSize="11.5"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{loc:Localize Settings.Language.Hint}" />
+                </StackPanel>
+                <ComboBox Grid.Column="1"
+                          MinWidth="220"
+                          Height="32"
+                          VerticalAlignment="Center"
+                          CornerRadius="4"
+                          FontSize="13"
+                          ItemsSource="{Binding Languages}"
+                          SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="lo:LanguageOption">
+                      <TextBlock Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <StackPanel>
+            <TextBlock Margin="0,0,0,8"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Settings.Appearance.Section}" />
+            <Border CornerRadius="8"
+                    ClipToBounds="True"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+              <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                  <TextBlock FontSize="13"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Settings.Appearance.Label}" />
+                  <TextBlock Margin="0,2,0,0"
+                             FontSize="11.5"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{loc:Localize Settings.Appearance.Hint}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="14"
+                            VerticalAlignment="Center">
+                  <RadioButton GroupName="AppearanceTheme"
+                               FontSize="13"
+                               Content="{loc:Localize Settings.Appearance.FollowSystem}"
+                               IsChecked="{Binding IsFollowSystemTheme, Mode=OneWay}"
+                               Command="{Binding SelectThemeCommand}"
+                               CommandParameter="{x:Static settings:AppTheme.System}" />
+                  <RadioButton GroupName="AppearanceTheme"
+                               FontSize="13"
+                               Content="{loc:Localize Settings.Appearance.Light}"
+                               IsChecked="{Binding IsLightTheme, Mode=OneWay}"
+                               Command="{Binding SelectThemeCommand}"
+                               CommandParameter="{x:Static settings:AppTheme.Light}" />
+                  <RadioButton GroupName="AppearanceTheme"
+                               FontSize="13"
+                               Content="{loc:Localize Settings.Appearance.Dark}"
+                               IsChecked="{Binding IsDarkTheme, Mode=OneWay}"
+                               Command="{Binding SelectThemeCommand}"
+                               CommandParameter="{x:Static settings:AppTheme.Dark}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <StackPanel>
+            <TextBlock Margin="0,0,0,8"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Settings.About.Section}" />
+            <Border CornerRadius="8"
+                    ClipToBounds="True"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+              <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                  <TextBlock FontSize="13"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{Binding AppName}" />
+                  <TextBlock Margin="0,2,0,0"
+                             FontSize="12"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{Binding VersionText}" />
+                  <TextBlock Margin="0,4,0,0"
+                             FontFamily="Consolas"
+                             FontSize="11.5"
+                             TextWrapping="NoWrap"
+                             TextTrimming="CharacterEllipsis"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             ToolTip.Tip="{Binding ConfigPath}"
+                             Text="{Binding ConfigPath}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                  <Button IsEnabled="{Binding CanOpenConfigFolder}"
+                          Command="{Binding OpenConfigFolderCommand}"
+                          Content="{loc:Localize Common.OpenFolder}" />
+                  <HyperlinkButton FontSize="12.5"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                   Command="{Binding OpenRepositoryCommand}"
+                                   Content="{loc:Localize Settings.About.Repository}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

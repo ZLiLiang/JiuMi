@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fac="using:FluentAvalonia.UI.Controls"
+        xmlns:labs="using:Avalonia.Labs.Gif"
+        x:Class="JiuMi.Views.SplashWindow"
+        Width="320"
+        Height="320"
+        CanResize="False"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+  <Panel>
+    <labs:GifImage x:Name="MediaGif"
+                   IsVisible="False" />
+    <Image x:Name="MediaPoster"
+           IsVisible="False"
+           Stretch="UniformToFill" />
+    <fac:FAProgressRing x:Name="MediaRing"
+                        Width="32"
+                        Height="32"
+                        IsVisible="False"
+                        IsIndeterminate="True"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+  </Panel>
+</Window>

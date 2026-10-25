@@ -1,0 +1,261 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fac="using:FluentAvalonia.UI.Controls"
+             xmlns:labs="using:Avalonia.Labs.Gif"
+             xmlns:loc="using:JiuMi.Localization"
+             xmlns:vm="using:JiuMi.ViewModels"
+             x:Class="JiuMi.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+  <Border Padding="44,32,44,36">
+    <Grid x:Name="PageContent" RowDefinitions="Auto,Auto,Auto">
+      <StackPanel Grid.Row="0">
+        <TextBlock FontSize="28"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   Text="{loc:Localize Home.Title}" />
+        <TextBlock Margin="0,6,0,0"
+                   FontSize="13"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Localize Home.Subtitle}" />
+      </StackPanel>
+
+      <Border Grid.Row="1"
+              Margin="0,22,0,0"
+              Padding="20,24"
+              CornerRadius="12"
+              Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+              BorderThickness="1">
+        <Grid x:Name="HeroLayout" ColumnDefinitions="Auto,*" ColumnSpacing="26">
+          <Border x:Name="HeroMedia"
+                  Grid.Column="0"
+                  Width="340"
+                  Height="200"
+                  HorizontalAlignment="Left"
+                  CornerRadius="10"
+                  ClipToBounds="True">
+            <Panel>
+              <labs:GifImage x:Name="HeroGif" IsVisible="False" />
+              <Panel x:Name="HeroPlaceholder" IsVisible="False">
+                <Rectangle Stroke="{DynamicResource ControlStrokeColorDefaultBrush}"
+                           StrokeThickness="1"
+                           StrokeDashArray="4,4"
+                           RadiusX="4"
+                           RadiusY="4" />
+                <fac:FASymbolIcon Symbol="Video"
+                                  FontSize="24"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+              </Panel>
+            </Panel>
+          </Border>
+
+          <StackPanel x:Name="HeroText"
+                      Grid.Column="1"
+                      MaxWidth="430"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Center">
+            <TextBlock FontSize="24"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Home.Hero.Title}" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="13"
+                       LineHeight="21"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{loc:Localize Home.Hero.Body}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <StackPanel Grid.Row="2">
+        <TextBlock Margin="0,26,0,10"
+                   FontSize="14"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   Text="{loc:Localize Home.Tools.Title}" />
+        <Grid x:Name="ToolGrid"
+              ColumnDefinitions="*,*"
+              RowDefinitions="Auto,Auto"
+              ColumnSpacing="16"
+              RowSpacing="16">
+          <Border x:Name="WeChatCard"
+                  Grid.Row="0"
+                  Grid.Column="0"
+                  Padding="18"
+                  CornerRadius="8"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+              <Border Width="40"
+                      Height="40"
+                      VerticalAlignment="Top"
+                      CornerRadius="8"
+                      Background="#2E7D32">
+                <fac:FASymbolIcon Symbol="Video"
+                                  FontSize="20"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Foreground="White" />
+              </Border>
+              <StackPanel Grid.Column="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Grid.Column="0"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Tool.WeChatDownload.Name}" />
+                  <ContentControl Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Theme="{StaticResource ComingSoonBadgeTheme}"
+                                  Content="{loc:Localize Common.ComingSoon}" />
+                </Grid>
+                <TextBlock Margin="0,5,0,0"
+                           FontSize="12"
+                           LineHeight="18"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.WeChatDownload.Description}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border x:Name="BatchRenameCard"
+                  Grid.Row="0"
+                  Grid.Column="1"
+                  Padding="18"
+                  CornerRadius="8"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+              <Border Width="40"
+                      Height="40"
+                      VerticalAlignment="Top"
+                      CornerRadius="8"
+                      Background="#1565C0">
+                <fac:FASymbolIcon Symbol="Rename"
+                                  FontSize="20"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Foreground="White" />
+              </Border>
+              <StackPanel Grid.Column="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Grid.Column="0"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Tool.BatchRename.Name}" />
+                  <ContentControl Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Theme="{StaticResource ComingSoonBadgeTheme}"
+                                  Content="{loc:Localize Common.ComingSoon}" />
+                </Grid>
+                <TextBlock Margin="0,5,0,0"
+                           FontSize="12"
+                           LineHeight="18"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.BatchRename.Description}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border x:Name="IconConvertCard"
+                  Grid.Row="1"
+                  Grid.Column="0"
+                  Padding="18"
+                  CornerRadius="8"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+              <Border Width="40"
+                      Height="40"
+                      VerticalAlignment="Top"
+                      CornerRadius="8"
+                      Background="#6A3EC8">
+                <fac:FASymbolIcon Symbol="Image"
+                                  FontSize="20"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Foreground="White" />
+              </Border>
+              <StackPanel Grid.Column="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Grid.Column="0"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Tool.IconConvert.Name}" />
+                  <ContentControl Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Theme="{StaticResource ComingSoonBadgeTheme}"
+                                  Content="{loc:Localize Common.ComingSoon}" />
+                </Grid>
+                <TextBlock Margin="0,5,0,0"
+                           FontSize="12"
+                           LineHeight="18"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.IconConvert.Description}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border x:Name="WorldClockCard"
+                  Grid.Row="1"
+                  Grid.Column="1"
+                  Padding="18"
+                  CornerRadius="8"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+              <Border Width="40"
+                      Height="40"
+                      VerticalAlignment="Top"
+                      CornerRadius="8"
+                      Background="#C26A00">
+                <fac:FASymbolIcon Symbol="Clock"
+                                  FontSize="20"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Foreground="White" />
+              </Border>
+              <StackPanel Grid.Column="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Grid.Column="0"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Tool.WorldClock.Name}" />
+                  <ContentControl Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Theme="{StaticResource ComingSoonBadgeTheme}"
+                                  Content="{loc:Localize Common.ComingSoon}" />
+                </Grid>
+                <TextBlock Margin="0,5,0,0"
+                           FontSize="12"
+                           LineHeight="18"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.WorldClock.Description}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>
