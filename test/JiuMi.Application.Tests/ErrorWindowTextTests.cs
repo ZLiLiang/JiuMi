@@ -55,6 +55,19 @@ public sealed class ErrorWindowTextTests
     }
 
     [Fact]
+    public void MessageFor_GivenStartupFaultAndContinuing_OffersContinuing()
+    {
+        ErrorWindowMessage message = ErrorWindowText.MessageFor(
+            ErrorCodes.StartupFaulted,
+            canContinue: true);
+
+        Assert.Equal("启动过程中有一步失败", message.Headline);
+        Assert.Equal(
+            "主窗口已经打开，应用仍可继续使用。可以复制详情反馈给开发者，或继续运行。",
+            message.Body);
+    }
+
+    [Fact]
     public void MessageFor_GivenMainWindowFailure_ExplainsTheShellCouldNotOpen()
     {
         ErrorWindowMessage message = ErrorWindowText.MessageFor(

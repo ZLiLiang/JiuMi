@@ -42,6 +42,10 @@ public static class ErrorWindowText
         "启动没有完成",
         "启动过程中发生了错误，应用无法进入主窗口。可以复制详情反馈给开发者，然后退出。");
 
+    private static readonly ErrorWindowMessage _startupFaultedContinuing = new(
+        "启动过程中有一步失败",
+        "主窗口已经打开，应用仍可继续使用。可以复制详情反馈给开发者，或继续运行。");
+
     private static readonly ErrorWindowMessage _mainWindowFailed = new(
         "无法打开主窗口",
         "主窗口没有成功打开，应用无法继续。可以复制详情反馈给开发者，然后退出。");
@@ -56,6 +60,7 @@ public static class ErrorWindowText
     {
         ErrorCodes.UnexpectedUiThreadException when canContinue => _uiThreadExceptionContinuing,
         ErrorCodes.UnexpectedUiThreadException => _uiThreadExceptionBlocking,
+        ErrorCodes.StartupFaulted when canContinue => _startupFaultedContinuing,
         ErrorCodes.StartupFaulted => _startupFaulted,
         ErrorCodes.ShellMainWindowFailed => _mainWindowFailed,
         _ => _default,

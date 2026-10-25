@@ -213,10 +213,13 @@ internal sealed class SplashSequence
     private bool IsMeasuring =>
         _stage is SplashStage.SplashShown or SplashStage.Animating or SplashStage.Waiting;
 
+    private bool HasLeftSplash =>
+        _stage is SplashStage.Handoff or SplashStage.Running or SplashStage.Faulted;
+
     private void StartInitialization()
     {
-        // Deliberately not awaited: the frame loop owns the interface, and the method handles every
-        // failure itself before posting the completion back.
+        // The frame loop owns the interface, so the task is not awaited here. InitializeAsync catches
+        // every failure and posts the outcome, so the discarded task cannot fault.
         _ = InitializeAsync();
     }
 
@@ -246,14 +249,16 @@ internal sealed class SplashSequence
             return;
         }
 
-        if (_session.MarkReady())
+        bool completedLate = _session.HasTimedOut;
+        _session.MarkReady();
+        if (completedLate)
         {
             // The splash left at the timeout; the theme and language just applied are the late results
             // the architecture promises to keep.
             ReportLateCompletion();
         }
 
-        if (_stage is SplashStage.Handoff or SplashStage.Running or SplashStage.Faulted)
+        if (HasLeftSplash)
         {
             return;
         }
@@ -275,29 +280,24 @@ internal sealed class SplashSequence
             return true;
         }
 
-        try
+        MainWindow? created = null;
+        bool succeeded = TryShellOperation("Shell.MainWindow.Create", () =>
         {
-            shell = _initialization.CreateMainWindow();
+            created = _initialization.CreateMainWindow();
 
             // Assigned before any handoff: once the shutdown rule is OnMainWindowClose, closing the splash
             // after this point must not take the process down with it.
-            _desktop.MainWindow = shell;
-            _shell = shell;
-            return true;
-        }
-#pragma warning disable CA1031 // The shell window is a UI boundary; its failure is presented, not rethrown.
-        catch (Exception exception)
-#pragma warning restore CA1031
-        {
-            shell = null;
-            Fault(ErrorCodes.ShellMainWindowFailed, "Shell.MainWindow.Create", exception);
-            return false;
-        }
+            _desktop.MainWindow = created;
+            _shell = created;
+        });
+
+        shell = succeeded ? created : null;
+        return succeeded;
     }
 
     private void ShowShellDirectly(MainWindow shell)
     {
-        if (_stage is SplashStage.Handoff or SplashStage.Running or SplashStage.Faulted)
+        if (HasLeftSplash)
         {
             return;
         }
@@ -305,33 +305,20 @@ internal sealed class SplashSequence
         _stage = SplashStage.Handoff;
         StopNoWindowWatch();
 
-        try
+        if (!TryShellOperation("Shell.MainWindow.Show", () =>
+            {
+                shell.Show();
+                shell.Activate();
+            }))
         {
-            shell.Show();
-            shell.Activate();
-            _stage = SplashStage.Running;
+            return;
         }
-#pragma warning disable CA1031 // Showing the shell is a UI boundary; its failure is presented, not rethrown.
-        catch (Exception exception)
-#pragma warning restore CA1031
-        {
-            Fault(ErrorCodes.ShellMainWindowFailed, "Shell.MainWindow.Show", exception);
-        }
+
+        _stage = SplashStage.Running;
     }
 
-    private void TryBeginHandoff(SplashWindow splash, MainWindow shell)
-    {
-        try
-        {
-            BeginHandoff(splash, shell);
-        }
-#pragma warning disable CA1031 // Showing the shell is a UI boundary; its failure is presented, not rethrown.
-        catch (Exception exception)
-#pragma warning restore CA1031
-        {
-            Fault(ErrorCodes.ShellMainWindowFailed, "Shell.MainWindow.Show", exception);
-        }
-    }
+    private void TryBeginHandoff(SplashWindow splash, MainWindow shell) =>
+        _ = TryShellOperation("Shell.MainWindow.Show", () => BeginHandoff(splash, shell));
 
     private void BeginHandoff(SplashWindow splash, MainWindow shell)
     {
@@ -366,7 +353,7 @@ internal sealed class SplashSequence
 
     private void FinishHandoff(SplashWindow splash, MainWindow shell)
     {
-        try
+        _ = TryShellOperation("Shell.MainWindow.Activate", () =>
         {
             shell.Opacity = 1d;
 
@@ -378,12 +365,24 @@ internal sealed class SplashSequence
 
             shell.Activate();
             _stage = SplashStage.Running;
-        }
-#pragma warning disable CA1031 // Finishing the handoff is a UI boundary; its failure is presented, not rethrown.
-        catch (Exception exception)
-#pragma warning restore CA1031
+        });
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Showing or activating the shell is a UI boundary; its failure is presented, not rethrown.")]
+    private bool TryShellOperation(string operation, Action action)
+    {
+        try
         {
-            Fault(ErrorCodes.ShellMainWindowFailed, "Shell.MainWindow.Activate", exception);
+            action();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Fault(ErrorCodes.ShellMainWindowFailed, operation, exception);
+            return false;
         }
     }
 
@@ -465,6 +464,28 @@ internal sealed class SplashSequence
 
         // The presenter records the failure and decides the blocking variant from the main window.
         _errorWindows.PresentFailure(code, operation, exception);
+        CloseSplash();
+    }
+
+    private void CloseSplash()
+    {
+        if (_splash is not { } splash)
+        {
+            return;
+        }
+
+        _splash = null;
+        splash.Opened -= OnSplashOpened;
+
+#pragma warning disable CA1031 // The error window is already the user's surface; closing the splash must not replace it with a crash.
+        try
+        {
+            splash.Close();
+        }
+        catch (Exception)
+        {
+        }
+#pragma warning restore CA1031
     }
 
     private void DisposeMedia()

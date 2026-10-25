@@ -31,6 +31,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 全部完成后置「就绪」。单实例抢占与启动期的激活请求见单实例与窗口生命周期章节。
 
+配置探针、设置加载、本地化读取目前都是同步文件 I/O；它们在工作线程执行，界面线程只负责主题与应用文化，否则界面被占住时 10 秒兜底无法被观察。本地化服务本身仍在界面线程构造，以便当前文化落到界面线程。契约提供异步 API 后应改回普通异步调用。
+
 ### 计时
 
 - **起点**：splash 的 `Opened` 事件之后的**下一个动画帧**（`TopLevel.RequestAnimationFrame`），不是窗口创建时刻——否则首帧渲染会吞掉动画开头。
@@ -213,6 +215,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
+| 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
 | 初始化抛未捕获异常（`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
 | 主窗口构造或显示失败 | 阻断 | `Shell.MainWindowFailed` | 错误窗口 | 复制详情 + 退出 |
 | UI 线程未捕获异常（主窗口可用） | 非阻断 | `Unexpected.UiThreadException` | 错误窗口 | 继续运行 / 退出 / 复制详情 |

@@ -5,43 +5,41 @@ namespace JiuMi.Application.Tests;
 public sealed class StartupSessionTests
 {
     [Fact]
-    public void MarkReady_GivenFinishedBeforeTheTimeout_IsNotRetroactive()
+    public void MarkReady_GivenFinishedBeforeTheTimeout_LeavesTheSessionTimedOutFalse()
     {
         StartupSession session = CreateSession();
         Assert.Equal(SplashHandoffDecision.Wait, session.Evaluate(TimeSpan.FromSeconds(2)));
 
-        bool completedLate = session.MarkReady();
+        session.MarkReady();
 
-        Assert.False(completedLate);
         Assert.True(session.IsReady);
         Assert.False(session.HasTimedOut);
     }
 
     [Fact]
-    public void MarkReady_GivenForcedHandoff_ReportsALateCompletion()
+    public void MarkReady_GivenForcedHandoff_LeavesTheSessionTimedOut()
     {
         StartupSession session = CreateSession();
         Assert.Equal(
             SplashHandoffDecision.ForcedHandoff,
             session.Evaluate(TimeSpan.FromSeconds(10)));
 
-        bool completedLate = session.MarkReady();
+        session.MarkReady();
 
-        Assert.True(completedLate);
         Assert.True(session.HasTimedOut);
         Assert.True(session.IsReady);
     }
 
     [Fact]
-    public void MarkFaulted_GivenAFailedStep_LeavesAReadySessionUntouched()
+    public void MarkFaulted_GivenAFailedStep_BlocksReadiness()
     {
         StartupSession session = CreateSession();
         session.Evaluate(TimeSpan.FromSeconds(2));
 
         session.MarkFaulted();
+        session.MarkReady();
 
         Assert.True(session.HasFaulted);
-        Assert.False(session.MarkReady());
         Assert.False(session.IsReady);
     }
 
@@ -61,7 +59,7 @@ public sealed class StartupSessionTests
     public void Evaluate_GivenAReadySession_HandsOffAfterTheDisplayGate()
     {
         StartupSession session = CreateSession();
-        Assert.False(session.MarkReady());
+        session.MarkReady();
 
         Assert.Equal(SplashHandoffDecision.Wait, session.Evaluate(TimeSpan.FromMilliseconds(999)));
         Assert.Equal(SplashHandoffDecision.Handoff, session.Evaluate(TimeSpan.FromMilliseconds(1000)));

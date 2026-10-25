@@ -84,9 +84,14 @@ public sealed class ErrorWindowPresenter : IErrorWindowPresenter
             // The buffer owns the merged count, so the copied details read the stored record. The first
             // line is the localized Error.<code> text so the copy matches the info bar byte for byte.
             ErrorRecord stored = _errorReporter.Details.Find(reported.Code) ?? reported;
+
+            // A late startup failure can continue on the shell that is already up. A failed shell
+            // cannot, even if some part of it is loaded: there is nothing trustworthy to continue on.
+            bool canContinue = _isMainWindowAvailable() &&
+                !string.Equals(code, ErrorCodes.ShellMainWindowFailed, StringComparison.Ordinal);
             ErrorWindowRequest? request = _coordinator.Open(
                 stored,
-                _isMainWindowAvailable(),
+                canContinue,
                 ResolveMessage(stored.Code));
 
             if (request is null)

@@ -54,18 +54,16 @@ public sealed class StartupSession
     }
 
     /// <summary>
-    /// Marks the startup work complete.
+    /// Marks the startup work complete; the session then reports whether it had already timed out.
     /// </summary>
-    /// <returns><see langword="true"/> when the work finished after the splash had to leave.</returns>
-    public bool MarkReady()
+    public void MarkReady()
     {
         if (_hasFaulted)
         {
-            return false;
+            return;
         }
 
         _isReady = true;
-        return _hasTimedOut;
     }
 
     /// <summary>
