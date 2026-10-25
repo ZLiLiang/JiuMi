@@ -24,6 +24,17 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public void SelectThemeCommand_GivenFallbackThemeIsSelected_SavesIt()
+    {
+        var page = new PageHarness(storedTheme: AppTheme.Dark, appliedTheme: AppTheme.Light);
+
+        page.ViewModel.SelectThemeCommand.Execute(AppTheme.Light);
+
+        Assert.Equal(AppTheme.Light, page.Store.Current.Theme);
+        Assert.Empty(page.Reporter.Reports);
+    }
+
+    [Fact]
     public void SelectThemeCommand_GivenSwitchFails_KeepsTheStoredPreferenceAndReports()
     {
         var page = new PageHarness(storedTheme: AppTheme.System, appliedTheme: AppTheme.System);

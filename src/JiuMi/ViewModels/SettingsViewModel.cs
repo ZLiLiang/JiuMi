@@ -185,6 +185,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         if (theme == _themeService.Current)
         {
+            // Startup may fall back to a theme other than the stored one; selecting what is on screen
+            // must still make it the stored preference.
+            if (theme != _settingsStore.Current.Theme)
+            {
+                SaveTheme(theme);
+            }
+
             return;
         }
 
