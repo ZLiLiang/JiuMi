@@ -1,7 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using JiuMi.ViewModels;
@@ -50,14 +48,9 @@ public partial class InfoBarView : UserControl
         }
     }
 
-    [SuppressMessage(
-        "Design",
-        "CA1031:Do not catch general exception types",
-        Justification = "The clipboard is owned by the desktop; a failed copy must not crash the shell.")]
     private async void OnCopyDetailsClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not InfoBarViewModel viewModel ||
-            TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard)
+        if (DataContext is not InfoBarViewModel viewModel)
         {
             return;
         }
@@ -68,15 +61,17 @@ public partial class InfoBarView : UserControl
             return;
         }
 
-        try
-        {
-            await clipboard.SetTextAsync(details);
-            viewModel.NotifyCopied();
-        }
-        catch (Exception exception)
+        ClipboardCopy.Outcome outcome = await ClipboardCopy.TrySetTextAsync(TopLevel.GetTopLevel(this), details);
+        if (outcome.Error is { } error)
         {
             // Another process can hold the clipboard; record it and let the user try again.
-            viewModel.ReportCopyFailure(exception);
+            viewModel.ReportCopyFailure(error);
+            return;
+        }
+
+        if (outcome.Copied)
+        {
+            viewModel.NotifyCopied();
         }
     }
 }
