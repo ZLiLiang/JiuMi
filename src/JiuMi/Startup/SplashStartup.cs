@@ -53,6 +53,9 @@ public sealed class SplashStartup : IShellStartup
         SplashMedia media = SplashMediaLoader.Load();
         var session = new StartupSession(SplashHandoffGate.ForGif(media.Duration));
         session.StateChanged += (_, state) => _logger.Information("Startup state {State}", state);
+
+        // TransitionTo suppresses a transition to the state already in effect, and the session starts
+        // in Bootstrapping, so the initial state logs directly rather than duplicating in the event.
         _logger.Information("Startup state {State}", StartupState.Bootstrapping);
 
         new SplashSequence(

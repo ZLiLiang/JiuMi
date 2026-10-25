@@ -6,7 +6,7 @@ namespace JiuMi.Infrastructure.Logging;
 /// <summary>
 /// Tracks whether the file sink is currently usable and tells the about section when it changes.
 /// </summary>
-public sealed class LoggingStatus : ILoggingStatus
+internal sealed class LoggingStatus : ILoggingStatus
 {
     private readonly Lock _gate = new();
     private bool _isFileLoggingAvailable;

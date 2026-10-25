@@ -12,6 +12,8 @@ namespace JiuMi.Views;
 /// </summary>
 public partial class MainWindow : FAAppWindow
 {
+    private readonly Serilog.ILogger? _logger;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
     /// </summary>
@@ -46,16 +48,30 @@ public partial class MainWindow : FAAppWindow
         DataContext = viewModel;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MainWindow"/> class with its view model and logger.
+    /// </summary>
+    /// <param name="viewModel">The shell view model.</param>
+    /// <param name="logger">Receives the window show and close events.</param>
+    public MainWindow(MainWindowViewModel viewModel, Serilog.ILogger logger)
+        : this(viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     /// <inheritdoc />
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
         UpdateBackdrop();
+        _logger?.Information("Shell main window shown");
     }
 
     /// <inheritdoc />
     protected override void OnClosed(EventArgs e)
     {
+        _logger?.Information("Shell main window closed");
         ActualThemeVariantChanged -= OnActualThemeVariantChanged;
         base.OnClosed(e);
     }

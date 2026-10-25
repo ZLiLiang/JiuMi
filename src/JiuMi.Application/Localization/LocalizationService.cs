@@ -29,12 +29,13 @@ public sealed class LocalizationService : ILocalizationService
     public LocalizationService(
         LocalizationCatalog catalog,
         string? requestedLanguageCode,
-        Serilog.ILogger? logger = null)
+        Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _catalog = catalog;
-        _logger = logger ?? Serilog.Core.Logger.None;
+        _logger = logger;
         _currentLanguage = LanguageResolver.Resolve(requestedLanguageCode, catalog.Manifest);
         _culture = CultureInfo.GetCultureInfo(_currentLanguage);
         ApplyCulture(_culture);

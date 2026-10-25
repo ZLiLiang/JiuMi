@@ -114,6 +114,20 @@ public sealed class StartupSessionTests
         Assert.Equal(SplashHandoffDecision.Handoff, session.Evaluate(TimeSpan.FromMilliseconds(1000)));
     }
 
+    [Fact]
+    public void TransitionTo_GivenFaulted_IgnoresLaterStages()
+    {
+        StartupSession session = CreateSession();
+        int raised = 0;
+        session.StateChanged += (_, _) => raised++;
+
+        session.MarkFaulted();
+        session.TransitionTo(StartupState.Running);
+
+        Assert.Equal(StartupState.Faulted, session.State);
+        Assert.Equal(1, raised);
+    }
+
     private static StartupSession CreateSession() =>
         new(SplashHandoffGate.ForGif(TimeSpan.FromMilliseconds(640)));
 }

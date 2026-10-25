@@ -240,7 +240,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         _savedOnExit = true;
-        _logger.Information("Shell main window closing");
         SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
         {
             NavExpanded = IsNavigationExpanded,

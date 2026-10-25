@@ -85,7 +85,8 @@ public sealed class StartupSession
     /// <param name="state">The stage that was just entered.</param>
     public void TransitionTo(StartupState state)
     {
-        if (_state == state)
+        // Faulted is terminal: later stages must not pretend startup recovered.
+        if (_state == state || _state == StartupState.Faulted)
         {
             return;
         }

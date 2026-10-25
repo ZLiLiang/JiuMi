@@ -22,13 +22,14 @@ public sealed class ThemeService : IThemeService
     public ThemeService(
         ISettingsStore settingsStore,
         IThemeApplier applier,
-        Serilog.ILogger? logger = null)
+        Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(applier);
+        ArgumentNullException.ThrowIfNull(logger);
         _settingsStore = settingsStore;
         _applier = applier;
-        _logger = logger ?? Serilog.Core.Logger.None;
+        _logger = logger;
     }
 
     /// <inheritdoc />

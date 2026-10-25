@@ -138,11 +138,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public bool IsFileLoggingAvailable => _loggingStatus.IsFileLoggingAvailable;
 
     /// <summary>
-    /// Gets a value indicating whether the about section shows the unavailable warning.
-    /// </summary>
-    public bool IsLoggingUnavailable => !IsFileLoggingAvailable;
-
-    /// <summary>
     /// Gets a value indicating whether a diagnostics export is running.
     /// </summary>
     public bool IsExporting => _exportController.IsExporting;
@@ -387,11 +382,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
 
         // Writes can fail on any thread; the about section is only safe to update on the UI thread.
-        _uiThreadDispatcher.Post(() =>
-        {
-            OnPropertyChanged(nameof(IsFileLoggingAvailable));
-            OnPropertyChanged(nameof(IsLoggingUnavailable));
-        });
+        _uiThreadDispatcher.Post(() => OnPropertyChanged(nameof(IsFileLoggingAvailable)));
     }
 
     private void OnExportingChanged(object? sender, EventArgs e) =>

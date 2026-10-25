@@ -142,7 +142,7 @@
                              Text="{Binding ConfigPath}" />
                   <TextBlock Margin="0,4,0,0"
                              FontSize="11.5"
-                             IsVisible="{Binding IsLoggingUnavailable}"
+                             IsVisible="{Binding !IsFileLoggingAvailable}"
                              Foreground="{DynamicResource SystemFillColorCautionBrush}"
                              Text="{loc:Localize Settings.About.LoggingUnavailable}" />
                 </StackPanel>

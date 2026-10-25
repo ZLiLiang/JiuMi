@@ -25,9 +25,11 @@ public sealed class LoggingPipeline : IDisposable
     private readonly LoggingStatus _status;
 
     private Timer? _healthTimer;
+    private SettingsLocation? _pendingLocation;
     private string? _fileLogDirectory;
     private bool _hasFileSink;
-    private volatile bool _isDisposed;
+    private bool _attachFailureReported;
+    private int _isDisposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LoggingPipeline"/> class.
@@ -108,7 +110,7 @@ public sealed class LoggingPipeline : IDisposable
     {
         ArgumentNullException.ThrowIfNull(location);
 
-        if (_isDisposed || _hasFileSink)
+        if (Volatile.Read(ref _isDisposed) != 0 || _hasFileSink)
         {
             return;
         }
@@ -116,6 +118,7 @@ public sealed class LoggingPipeline : IDisposable
         string? directory = LogPaths.For(location);
         if (directory is null)
         {
+            _pendingLocation = null;
             _status.SetFileLoggingAvailable(false);
             _forwarder.Discard();
             _logger.Warning("File logging is unavailable because no settings directory is writable");
@@ -131,6 +134,8 @@ public sealed class LoggingPipeline : IDisposable
             _forwarder.Attach(new ConfigPathLogSink(fileLogger, location.FilePath));
 #pragma warning restore CA2000
             _hasFileSink = true;
+            _pendingLocation = null;
+            _attachFailureReported = false;
             _fileLogDirectory = directory;
             StartHealthCheck(directory);
             _logger.Debug("File logging started in {LogDirectory}", directory);
@@ -139,21 +144,31 @@ public sealed class LoggingPipeline : IDisposable
         {
             _status.SetFileLoggingAvailable(false);
             _forwarder.Discard();
-            _logger.Warning(exception, "File logging could not start in {LogDirectory}", directory);
+            _pendingLocation = location;
+            _fileLogDirectory = directory;
+            StartHealthCheck(directory);
+
+            // The health check retries when the directory becomes writable; keep its repeated failures
+            // out of the log once the first diagnosis is recorded.
+            if (!_attachFailureReported)
+            {
+                _attachFailureReported = true;
+                _logger.Warning(exception, "File logging could not start in {LogDirectory}", directory);
+            }
         }
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        if (_isDisposed)
+        if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
         {
             return;
         }
 
-        _isDisposed = true;
         _healthTimer?.Dispose();
         _healthTimer = null;
+        Serilog.Debugging.SelfLog.Disable();
 
         // Closes the file so the directory can be released; the static Log.CloseAndFlush() at exit
         // disposes the outer logger and reaches the same (now idempotent) sink.
@@ -162,10 +177,10 @@ public sealed class LoggingPipeline : IDisposable
 
     private void StartHealthCheck(string directory)
     {
-        // A write can fail after a successful start (disk removed, permissions changed). The file
-        // logger swallows the failure, so the only observable signal is the status: while it is down,
-        // probe the directory so the about section can clear once writing is possible again.
-        _healthTimer = new Timer(
+        // A write can fail after a successful start (disk removed, permissions changed), or the initial
+        // attach can fail and later become possible. The file logger swallows write failures, so the
+        // status is the only signal: while it is down, probe the directory and retry the attach.
+        _healthTimer ??= new Timer(
             _ => CheckFileLoggingHealth(),
             state: null,
             _healthCheckInterval,
@@ -174,15 +189,25 @@ public sealed class LoggingPipeline : IDisposable
 
     private void CheckFileLoggingHealth()
     {
-        if (_isDisposed || _status.IsFileLoggingAvailable || _fileLogDirectory is not { } directory)
+        if (Volatile.Read(ref _isDisposed) != 0 ||
+            _status.IsFileLoggingAvailable ||
+            _fileLogDirectory is not { } directory)
         {
             return;
         }
 
-        if (CanWriteToLogDirectory(directory))
+        if (!CanWriteToLogDirectory(directory))
         {
-            _status.SetFileLoggingAvailable(true);
+            return;
         }
+
+        if (!_hasFileSink && _pendingLocation is { } pendingLocation)
+        {
+            AttachFileLogging(pendingLocation);
+            return;
+        }
+
+        _status.SetFileLoggingAvailable(true);
     }
 
     [SuppressMessage(

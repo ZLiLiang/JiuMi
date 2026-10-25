@@ -92,12 +92,19 @@ public sealed class DiagnosticsExportController : IDisposable
     /// Runs the last export again, for the info bar's retry action.
     /// </summary>
     /// <returns>The outcome, with failures already reported.</returns>
-    public Task<DiagnosticsExportResult> RetryLastAsync() =>
-        _lastDestinationPath is { } destinationPath
-            ? ExportAsync(destinationPath)
-            : Task.FromResult(DiagnosticsExportResult.Failed(
-                string.Empty,
-                new InvalidOperationException("No diagnostics export has run yet.")));
+    public Task<DiagnosticsExportResult> RetryLastAsync()
+    {
+        if (_lastDestinationPath is { } destinationPath)
+        {
+            return ExportAsync(destinationPath);
+        }
+
+        // A failure before the save dialog chose a path has nothing to rerun; report it again so the
+        // notice count reflects the retry instead of silently doing nothing.
+        var exception = new InvalidOperationException("No diagnostics export has a destination yet.");
+        ReportFailure(exception);
+        return Task.FromResult(DiagnosticsExportResult.Failed(string.Empty, exception));
+    }
 
     /// <summary>
     /// Reports a failure that happened before the exporter ran, such as a save-dialog error.

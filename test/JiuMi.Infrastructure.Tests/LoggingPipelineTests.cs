@@ -37,6 +37,7 @@ public sealed class LoggingPipelineTests : IDisposable
 
         string logsDirectory = Path.Combine(executableDirectory, "logs");
         string logFile = Assert.Single(Directory.GetFiles(logsDirectory, "jiuMi-*.jsonl"));
+        Assert.Matches(@"^jiuMi-\d{8}\.jsonl$", Path.GetFileName(logFile));
         JsonElement entry = Assert.Single(ReadEntries(logFile));
 
         Assert.Equal("Probe {Kind}", entry.GetProperty("@mt").GetString());

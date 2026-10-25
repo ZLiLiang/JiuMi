@@ -85,6 +85,22 @@ public sealed class CrashReportWriterTests : IDisposable
         Assert.Empty(Directory.GetFiles(_root, "crash-*.txt", SearchOption.AllDirectories));
     }
 
+    [Fact]
+    public void Write_GivenTheLogDirectoryCannotBeCreated_DoesNotThrow()
+    {
+        Directory.CreateDirectory(_root);
+        string blockedParent = Path.Combine(_root, "app");
+        File.WriteAllText(blockedParent, "not a directory");
+        SettingsLocation location = SettingsLocation.ForDirectory(
+            SettingsLocationKind.ExecutableDirectory,
+            Path.Combine(blockedParent, "config"));
+        CrashReportWriter writer = CreateWriter(location);
+
+        writer.Write("Startup.Initialize", CreateException());
+
+        Assert.Empty(Directory.GetFiles(_root, "crash-*.txt", SearchOption.AllDirectories));
+    }
+
     private static CrashReportWriter CreateWriter(SettingsLocation location) =>
         new(
             new StubSettingsStore(location),
