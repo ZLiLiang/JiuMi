@@ -81,8 +81,9 @@ public sealed class FluentThemePaletteTests
         HeadlessTest.Run(() =>
         {
             // The synthetic dictionaries above cannot detect a probe that rejects the real Fluent layout.
-            var theme = Assert.Single(
-                global::Avalonia.Application.Current!.Styles.OfType<FluentAvaloniaTheme>());
+            var application = Assert.IsType<global::Avalonia.Application>(
+                global::Avalonia.Application.Current);
+            var theme = Assert.Single(application.Styles.OfType<FluentAvaloniaTheme>());
 
             Assert.True(FluentThemePalette.HasPaletteFor(theme.Resources, AppTheme.Light));
             Assert.True(FluentThemePalette.HasPaletteFor(theme.Resources, AppTheme.Dark));

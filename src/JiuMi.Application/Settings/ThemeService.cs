@@ -40,7 +40,7 @@ public sealed class ThemeService : IThemeService
         // normalizes values that are not part of the preference model. Architecture maps this path to
         // a Debug log entry; the log pipeline belongs to ADR-0004, so the host failure is converted
         // into the fallback instead of reaching the user.
-        FallBackToDefault();
+        FallBackToLight();
     }
 
     /// <inheritdoc />
@@ -61,17 +61,20 @@ public sealed class ThemeService : IThemeService
         if (!_applier.TryApply(_current, out Exception? restoreFailure))
         {
             failure ??= restoreFailure;
-            FallBackToDefault();
+            FallBackToLight();
         }
 
         return false;
     }
 
-    private void FallBackToDefault()
+    private void FallBackToLight()
     {
         // Fluent's fallback palette is the light one; "Default" resolves against the operating system,
-        // which may hand back the very palette that just failed.
-        _current = AppTheme.Light;
-        _ = _applier.TryApply(_current, out _);
+        // which may hand back the very palette that just failed. A failed fallback leaves the last
+        // applied preference in place, matching the applier's "nothing changed" contract.
+        if (_applier.TryApply(AppTheme.Light, out _))
+        {
+            _current = AppTheme.Light;
+        }
     }
 }

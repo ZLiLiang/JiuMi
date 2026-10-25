@@ -19,7 +19,7 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
-    public void ApplyStoredTheme_GivenStoredThemeFails_FallsBackToTheDefaultTheme()
+    public void ApplyStoredTheme_GivenStoredThemeFails_FallsBackToTheLightPalette()
     {
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
@@ -105,7 +105,24 @@ public sealed class ThemeServiceTests
     }
 
     [Fact]
-    public void TrySetTheme_GivenSwitchAndRestoreFail_FallsBackToTheDefaultTheme()
+    public void TrySetTheme_GivenSwitchAndRestoreFail_FallsBackToTheLightPalette()
+    {
+        var applier = CreateApplier();
+        var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier);
+        service.ApplyStoredTheme();
+        applier.Available.Remove(AppTheme.System);
+        applier.Available.Remove(AppTheme.Dark);
+
+        bool applied = service.TrySetTheme(AppTheme.Dark, out _);
+
+        Assert.False(applied);
+        // The fallback must not re-enter the OS theme, which could be the missing dark palette.
+        Assert.Equal(AppTheme.Light, service.Current);
+        Assert.Equal(AppTheme.Light, applier.Applied[^1]);
+    }
+
+    [Fact]
+    public void TrySetTheme_GivenEveryApplyFails_KeepsTheLastAppliedTheme()
     {
         var applier = CreateApplier();
         var service = new ThemeService(new StubSettingsStore(AppTheme.Dark), applier);
@@ -116,8 +133,8 @@ public sealed class ThemeServiceTests
         bool applied = service.TrySetTheme(AppTheme.Light, out _);
 
         Assert.False(applied);
-        // The fallback must not re-enter the OS theme, which could be the missing dark palette.
-        Assert.Equal(AppTheme.Light, service.Current);
+        // Nothing changed, so the preference reported as current must stay the one that is on screen.
+        Assert.Equal(AppTheme.Dark, service.Current);
     }
 
     [Fact]

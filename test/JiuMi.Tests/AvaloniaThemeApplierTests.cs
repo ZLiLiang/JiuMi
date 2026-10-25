@@ -23,26 +23,21 @@ public sealed class AvaloniaThemeApplierTests
     {
         HeadlessTest.Run(() =>
         {
-            var applier = new AvaloniaThemeApplier(
-                static () => global::Avalonia.Application.Current);
+            var application = Assert.IsType<global::Avalonia.Application>(
+                global::Avalonia.Application.Current);
+            var applier = new AvaloniaThemeApplier(static () => global::Avalonia.Application.Current);
 
             Assert.True(applier.TryApply(AppTheme.Dark, out Exception? failure));
             Assert.Null(failure);
-            Assert.Equal(
-                ThemeVariant.Dark,
-                global::Avalonia.Application.Current!.RequestedThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, application.RequestedThemeVariant);
 
             Assert.True(applier.TryApply(AppTheme.Light, out failure));
             Assert.Null(failure);
-            Assert.Equal(
-                ThemeVariant.Light,
-                global::Avalonia.Application.Current.RequestedThemeVariant);
+            Assert.Equal(ThemeVariant.Light, application.RequestedThemeVariant);
 
             Assert.True(applier.TryApply(AppTheme.System, out failure));
             Assert.Null(failure);
-            Assert.Equal(
-                ThemeVariant.Default,
-                global::Avalonia.Application.Current.RequestedThemeVariant);
+            Assert.Equal(ThemeVariant.Default, application.RequestedThemeVariant);
         });
     }
 }

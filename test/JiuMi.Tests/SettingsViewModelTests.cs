@@ -98,8 +98,6 @@ public sealed class SettingsViewModelTests
     {
         public StubThemeService(AppTheme current) => Current = current;
 
-        public bool SwitchSucceeds { get; set; } = true;
-
         public Exception? Failure
         {
             get; set;
@@ -120,11 +118,6 @@ public sealed class SettingsViewModelTests
             if (Failure is not null)
             {
                 failure = Failure;
-                return false;
-            }
-
-            if (!SwitchSucceeds)
-            {
                 return false;
             }
 
