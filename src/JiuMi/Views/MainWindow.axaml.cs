@@ -93,7 +93,8 @@ public partial class MainWindow : FAAppWindow
         }
 
         // A themed lookup must name the variant, otherwise it returns the default (light) brush.
-        if (this.TryFindResource(
+        if (ResourceNodeExtensions.TryFindResource(
+                this,
                 ThemeResourceKeys.SolidBackgroundBrush,
                 ActualThemeVariant,
                 out object? solidBrush) &&
