@@ -42,6 +42,14 @@ public sealed class ErrorNoticeBoard
             _deferredPersistent = persistent;
             Current = null;
         }
+        else if (Current is { Level: ErrorLevel.Warning, IsPersistent: false } warning &&
+            notice.Level == ErrorLevel.Error)
+        {
+            // An error outranks a warning that is already on screen. The warning goes back to the
+            // front of the queue so it still surfaces once the error closes.
+            _pending.Insert(0, warning);
+            Current = null;
+        }
 
         Insert(notice);
         return true;

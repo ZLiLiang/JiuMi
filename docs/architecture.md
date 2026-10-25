@@ -16,7 +16,7 @@ JiuMi 应用外壳的设计基线。本文件记录跨模块的结构性规则�
 | `Waiting` | 动画已停、初始化未就绪；停画（`Source = null`）并显示不确定进度环 | 就绪，或 10 秒兜底到点 |
 | `Handoff` | 已过 `max(1000ms, GIF 时长)` **且**（就绪 **或** 已过 10000ms） | 200ms 交叉淡入淡出完成 |
 | `Running` | splash 关闭、主窗口不透明度 1 并激活 | —— |
-| `Faulted` | 初始化抛未捕获异常、拿不到可用状态 | 终态：不进主窗口，呈现见错误呈现章节 |
+| `Faulted` | 初始化在交接前抛未捕获异常，拿不到可用主窗口 | 终态：不进主窗口，显示阻断错误窗口 |
 
 `Handoff` 的判定是一个表达式，不是三个定时器各自触发：`elapsed >= max(1000ms, gifDuration) && (ready || elapsed >= 10000ms)`。
 
@@ -216,13 +216,14 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
-| 初始化抛未捕获异常（`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
+| 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
+| 交接后启动步骤才失败 | 非阻断 | `Startup.Faulted` | 错误窗口 | 继续运行 / 退出 / 复制详情 |
 | 主窗口构造或显示失败 | 阻断 | `Shell.MainWindowFailed` | 错误窗口 | 复制详情 + 退出 |
 | UI 线程未捕获异常（主窗口可用） | 非阻断 | `Unexpected.UiThreadException` | 错误窗口 | 继续运行 / 退出 / 复制详情 |
 
 横切规则：
 
-- 同一 `code` 在一次会话内合并为一条并显示次数；Error 排在 Warning 之前。
+- 同一 `code` 在一次会话内合并为一条并显示次数；Error 排在 Warning 之前。新的 Error 顶替正在显示的 Warning，Warning 在 Error 关闭后重新出现。
 - 未登记的 `code` 默认仅日志，不弹任何载体。
 - 「重试」= 用当前内存状态重跑一次该操作；再失败只把次数 +1，不新增提示。
 - 映射表是「每个 `Error.*` 文案键都能被某个 `code` 映射到」这条单测的依据（见本地化章节单测第 5 项）。

@@ -44,7 +44,7 @@
   "Error.Config.FallbackToAppData": "The program folder is not writable. Settings are saved in your user data folder.",
   "Error.Config.MemoryOnly": "Neither settings folder is writable. Changes last only until JiuMi closes.",
   "Error.Startup.Timeout": "Startup was not fully ready; the main window was opened early.",
-  "Error.Startup.Faulted": "Startup did not finish, so the main window could not open.",
+  "Error.Startup.Faulted": "Startup encountered an error.",
   "Error.Shell.MainWindowFailed": "The main window could not be opened. The application cannot continue.",
   "Error.Unexpected.UiThreadException": "Something unexpected stopped the interface. The application may not behave correctly."
 }

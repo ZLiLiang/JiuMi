@@ -33,6 +33,7 @@ internal sealed class SplashSequence
     private MainWindow? _shell;
     private SplashStage _stage = SplashStage.Bootstrapping;
     private DispatcherTimer? _noWindowTimer;
+    private DispatcherTimer? _crossFadeTimer;
     private bool _mediaDisposed;
     private bool _timeoutReported;
     private bool _lateCompletionReported;
@@ -181,11 +182,7 @@ internal sealed class SplashSequence
                 return;
 
             case SplashHandoffDecision.ForcedHandoff:
-                ReportTimeout();
-
-                // The fallback still needs a window. Building it late may pull in services whose steps
-                // are still running; the steps then complete into the already-visible shell.
-                if (TryEnsureShell(out MainWindow? fallbackShell))
+                if (ForceShellForHandoff() is { } fallbackShell)
                 {
                     TryBeginHandoff(splash, fallbackShell);
                 }
@@ -338,34 +335,81 @@ internal sealed class SplashSequence
         // change, otherwise it would spend part of the 200ms before either window began to fade.
         shell.RequestAnimationFrame(_ =>
         {
+            if (_session.HasFaulted)
+            {
+                return;
+            }
+
             shell.Opacity = 1d;
             splash.Opacity = 0d;
 
-            var crossFade = new DispatcherTimer { Interval = _crossFadeDuration };
-            crossFade.Tick += (_, _) =>
-            {
-                crossFade.Stop();
-                FinishHandoff(splash, shell);
-            };
-            crossFade.Start();
+            _crossFadeTimer = new DispatcherTimer { Interval = _crossFadeDuration };
+            _crossFadeTimer.Tick += OnCrossFadeTick;
+            _crossFadeTimer.Start();
         });
+    }
+
+    private void OnCrossFadeTick(object? sender, EventArgs e)
+    {
+        StopCrossFade();
+        if (_session.HasFaulted || _shell is not { } shell || _splash is not { } splash)
+        {
+            return;
+        }
+
+        FinishHandoff(splash, shell);
+    }
+
+    private void StopCrossFade()
+    {
+        if (_crossFadeTimer is null)
+        {
+            return;
+        }
+
+        _crossFadeTimer.Stop();
+        _crossFadeTimer.Tick -= OnCrossFadeTick;
+        _crossFadeTimer = null;
     }
 
     private void FinishHandoff(SplashWindow splash, MainWindow shell)
     {
-        _ = TryShellOperation("Shell.MainWindow.Activate", () =>
+        if (_session.HasFaulted)
+        {
+            return;
+        }
+
+        bool activated = TryShellOperation("Shell.MainWindow.Activate", () =>
         {
             shell.Opacity = 1d;
-
-            // The main window is assigned by now, so this close leaves the process alone.
-            splash.Opened -= OnSplashOpened;
-            _splash = null;
-            splash.Close();
-            DisposeMedia();
-
             shell.Activate();
             _stage = SplashStage.Running;
         });
+
+        if (!activated)
+        {
+            // Fault already closed the splash and disposed the media.
+            return;
+        }
+
+        // The main window is assigned by now, so this close leaves the process alone. The splash is
+        // decorative here: a failed close must not be reported as a main-window failure.
+        splash.Opened -= OnSplashOpened;
+        _splash = null;
+        CloseSplashWindow(splash);
+        DisposeMedia();
+    }
+
+    private static void CloseSplashWindow(SplashWindow splash)
+    {
+        try
+        {
+            splash.Close();
+        }
+        catch (InvalidOperationException)
+        {
+            // The window is already gone; the error window is the user's surface.
+        }
     }
 
     [SuppressMessage(
@@ -407,11 +451,19 @@ internal sealed class SplashSequence
             return;
         }
 
-        ReportTimeout();
-        if (TryEnsureShell(out MainWindow? shell))
+        if (ForceShellForHandoff() is { } shell)
         {
             ShowShellDirectly(shell);
         }
+    }
+
+    private MainWindow? ForceShellForHandoff()
+    {
+        ReportTimeout();
+
+        // The fallback still needs a window. Building it late may pull in services whose steps are
+        // still running; the steps then complete into the already-visible shell.
+        return TryEnsureShell(out MainWindow? shell) ? shell : null;
     }
 
     private void StopNoWindowWatch()
@@ -450,17 +502,29 @@ internal sealed class SplashSequence
 
     private void Fault(string code, string operation, Exception exception)
     {
-        if (_stage == SplashStage.Faulted)
+        if (_session.HasFaulted)
         {
             return;
         }
 
-        _stage = SplashStage.Faulted;
         _session.MarkFaulted();
         _clock.Stop();
+        StopCrossFade();
         StopNoWindowWatch();
         _splash?.StopAnimation();
         DisposeMedia();
+
+        if (_shell is { IsLoaded: true } shell)
+        {
+            // The shell took over already: finish the visual handoff and let the presenter offer
+            // continuing instead of treating this as a terminal startup state.
+            shell.Opacity = 1d;
+            _stage = SplashStage.Running;
+        }
+        else
+        {
+            _stage = SplashStage.Faulted;
+        }
 
         // The presenter records the failure and decides the blocking variant from the main window.
         _errorWindows.PresentFailure(code, operation, exception);
@@ -476,16 +540,7 @@ internal sealed class SplashSequence
 
         _splash = null;
         splash.Opened -= OnSplashOpened;
-
-#pragma warning disable CA1031 // The error window is already the user's surface; closing the splash must not replace it with a crash.
-        try
-        {
-            splash.Close();
-        }
-        catch (Exception)
-        {
-        }
-#pragma warning restore CA1031
+        CloseSplashWindow(splash);
     }
 
     private void DisposeMedia()

@@ -54,7 +54,8 @@ public sealed class StartupSession
     }
 
     /// <summary>
-    /// Marks the startup work complete; the session then reports whether it had already timed out.
+    /// Marks the startup work complete. Read <see cref="HasTimedOut"/> before calling to learn whether
+    /// the splash had already left.
     /// </summary>
     public void MarkReady()
     {

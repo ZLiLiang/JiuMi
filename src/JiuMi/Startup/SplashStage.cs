@@ -23,6 +23,6 @@ internal enum SplashStage
     /// <summary>The shell is up and the splash is gone.</summary>
     Running,
 
-    /// <summary>Startup failed; the error window is the only way forward.</summary>
+    /// <summary>Startup failed; the error window decides whether the process can continue.</summary>
     Faulted,
 }
