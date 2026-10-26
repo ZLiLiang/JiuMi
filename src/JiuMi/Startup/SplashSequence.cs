@@ -519,8 +519,9 @@ internal sealed class SplashSequence
 
         if (_shell is { IsLoaded: true } shell)
         {
-            // The shell took over already: finish the visual handoff and let the presenter offer
-            // continuing instead of treating this as a terminal startup state.
+            // The shell took over already: finish the visual handoff before the presenter records the
+            // fault. Faulted stays the session's terminal state; the window the user can keep using is
+            // a separate fact the presenter reads from the main window, not from the state machine.
             shell.Opacity = 1d;
         }
 

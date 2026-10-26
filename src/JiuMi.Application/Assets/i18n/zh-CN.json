@@ -23,6 +23,7 @@
   "Settings.About.Version": "版本 {0}",
   "Settings.About.Repository": "GitHub 仓库",
   "Settings.About.ExportDiagnostics": "导出诊断包",
+  "Settings.About.DiagnosticsFileType": "诊断包 (*.zip)",
   "Settings.About.LoggingUnavailable": "日志不可用",
   "Tool.WeChatDownload.Name": "微信视频下载",
   "Tool.WeChatDownload.Description": "把微信里的视频保存到本地。",

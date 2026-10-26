@@ -101,6 +101,31 @@ public sealed class CrashReportWriterTests : IDisposable
         Assert.Empty(Directory.GetFiles(_root, "crash-*.txt", SearchOption.AllDirectories));
     }
 
+    [Fact]
+    public void Write_GivenAProfilePathInTheException_RedactsIt()
+    {
+        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (userProfile.Length == 0)
+        {
+            return;
+        }
+
+        string executableDirectory = Path.Combine(_root, "app");
+        Directory.CreateDirectory(executableDirectory);
+        SettingsLocation location = SettingsLocation.ForDirectory(
+            SettingsLocationKind.ExecutableDirectory,
+            Path.Combine(executableDirectory, "config"));
+        var exception = new InvalidOperationException(Path.Combine(userProfile, "secret.txt"));
+
+        CreateWriter(location).Write("Startup.Initialize", exception);
+
+        string crashFile = Assert.Single(
+            Directory.GetFiles(Path.Combine(executableDirectory, "logs"), "crash-*.txt"));
+        string content = File.ReadAllText(crashFile);
+        Assert.Contains("%USERPROFILE%", content, StringComparison.Ordinal);
+        Assert.DoesNotContain(userProfile, content, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static CrashReportWriter CreateWriter(SettingsLocation location) =>
         new(
             new StubSettingsStore(location),

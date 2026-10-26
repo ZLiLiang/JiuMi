@@ -38,7 +38,13 @@ public sealed class LoggingPipelineTests : IDisposable
         string logsDirectory = Path.Combine(executableDirectory, "logs");
         string logFile = Assert.Single(Directory.GetFiles(logsDirectory, "jiuMi-*.jsonl"));
         Assert.Matches(@"^jiuMi-\d{8}\.jsonl$", Path.GetFileName(logFile));
-        JsonElement entry = Assert.Single(ReadEntries(logFile));
+        JsonElement entry = Assert.Single(
+            ReadEntries(logFile),
+            candidate => candidate.GetProperty("@mt").GetString() == "Probe {Kind}");
+        Assert.EndsWith(
+            "Z",
+            entry.GetProperty("@t").GetString() ?? string.Empty,
+            StringComparison.Ordinal);
 
         Assert.Equal("Probe {Kind}", entry.GetProperty("@mt").GetString());
         Assert.Equal("executable", entry.GetProperty("Kind").GetString());
@@ -99,6 +105,7 @@ public sealed class LoggingPipelineTests : IDisposable
             Directory.GetFiles(Path.Combine(executableDirectory, "logs"), "jiuMi-*.jsonl"));
         string[] messages = ReadEntries(logFile)
             .Select(entry => entry.GetProperty("@mt").GetString() ?? string.Empty)
+            .Where(message => !message.StartsWith("File logging started", StringComparison.Ordinal))
             .ToArray();
 
         Assert.Equal(["Before the probe", "After the probe"], messages);

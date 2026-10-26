@@ -23,6 +23,7 @@
   "Settings.About.Version": "Version {0}",
   "Settings.About.Repository": "GitHub repository",
   "Settings.About.ExportDiagnostics": "Export diagnostics",
+  "Settings.About.DiagnosticsFileType": "Diagnostics bundle (*.zip)",
   "Settings.About.LoggingUnavailable": "Logging unavailable",
   "Tool.WeChatDownload.Name": "WeChat video download",
   "Tool.WeChatDownload.Description": "Save videos from WeChat to your disk.",

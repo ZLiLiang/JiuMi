@@ -65,6 +65,9 @@ public sealed class CrashReportWriter : ICrashReportWriter
                 directory,
                 $"crash-{timestamp.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.txt");
 
+            // Make room first so the cap holds even if the new write fails halfway.
+            Prune(directory, RetainedFileCount - 1);
+
             try
             {
                 File.WriteAllText(path, Format(operation, exception, timestamp), new UTF8Encoding(false));
@@ -74,8 +77,6 @@ public sealed class CrashReportWriter : ICrashReportWriter
                 TryDelete(path);
                 throw;
             }
-
-            Prune(directory);
         }
         catch (Exception)
         {
@@ -113,20 +114,20 @@ public sealed class CrashReportWriter : ICrashReportWriter
             .AppendLine(ErrorRedactor.Redact(value ?? string.Empty));
     }
 
-    private static void Prune(string directory)
+    private static void Prune(string directory, int filesToKeep)
     {
         string[] files = Directory.GetFiles(directory, FilePattern);
-        if (files.Length <= RetainedFileCount)
+        if (files.Length <= filesToKeep)
         {
             return;
         }
 
         Array.Sort(files, StringComparer.Ordinal);
-        foreach (string file in files.AsSpan(0, files.Length - RetainedFileCount).ToArray())
+        for (int index = 0; index < files.Length - filesToKeep; index++)
         {
             try
             {
-                File.Delete(file);
+                File.Delete(files[index]);
             }
             catch (IOException)
             {

@@ -40,7 +40,7 @@ public partial class SettingsView : UserControl
                 DefaultExtension = "zip",
                 FileTypeChoices =
                 [
-                    new FilePickerFileType("Zip")
+                    new FilePickerFileType(viewModel.DiagnosticsFileTypeName)
                     {
                         Patterns = ["*.zip"],
                     },

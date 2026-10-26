@@ -138,18 +138,17 @@ public sealed class LoggingPipeline : IDisposable
             _attachFailureReported = false;
             _fileLogDirectory = directory;
             StartHealthCheck(directory);
-            _logger.Debug("File logging started in {LogDirectory}", directory);
+            _logger.Information("File logging started in {LogDirectory}", directory);
         }
         catch (Exception exception)
         {
             _status.SetFileLoggingAvailable(false);
-            _forwarder.Discard();
             _pendingLocation = location;
             _fileLogDirectory = directory;
             StartHealthCheck(directory);
 
-            // The health check retries when the directory becomes writable; keep its repeated failures
-            // out of the log once the first diagnosis is recorded.
+            // The health check retries when the directory becomes writable. Keep the buffered startup
+            // events (including this warning) so a later attach still writes the whole startup story.
             if (!_attachFailureReported)
             {
                 _attachFailureReported = true;
@@ -169,6 +168,10 @@ public sealed class LoggingPipeline : IDisposable
         _healthTimer?.Dispose();
         _healthTimer = null;
         Serilog.Debugging.SelfLog.Disable();
+
+        // The pipeline created the logger, so it disposes it; Program's Log.CloseAndFlush() may have
+        // reached it first, and the forwarding sink tolerates a second, empty dispose.
+        _logger.Dispose();
 
         // Closes the file so the directory can be released; the static Log.CloseAndFlush() at exit
         // disposes the outer logger and reaches the same (now idempotent) sink.
@@ -208,6 +211,9 @@ public sealed class LoggingPipeline : IDisposable
         }
 
         _status.SetFileLoggingAvailable(true);
+
+        // The next write proves the sink is healthy again; SelfLog flips the status back if it fails.
+        _logger.Information("File logging recovered in {LogDirectory}", directory);
     }
 
     [SuppressMessage(

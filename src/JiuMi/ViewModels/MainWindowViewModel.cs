@@ -286,8 +286,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void NavigateTo(ShellPage? page)
     {
-        _logger.Debug("Navigated to {Page}", page);
         CurrentPage = page == ShellPage.Settings ? SettingsPage : HomePage;
+        _logger.Debug("Navigated to {Page}", page);
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

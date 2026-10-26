@@ -158,6 +158,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public string? DiagnosticsDirectory => _diagnosticsExporter.LogDirectory;
 
     /// <summary>
+    /// Gets the label the save dialog shows for the zip file type.
+    /// </summary>
+    public string DiagnosticsFileTypeName => _localization["Settings.About.DiagnosticsFileType"];
+
+    /// <summary>
     /// Exports the diagnostics bundle to the chosen path.
     /// </summary>
     /// <param name="destinationPath">The zip file the user chose.</param>
@@ -385,10 +390,10 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _uiThreadDispatcher.Post(() => OnPropertyChanged(nameof(IsFileLoggingAvailable)));
     }
 
-    private void OnExportingChanged(object? sender, EventArgs e) =>
-        _uiThreadDispatcher.Post(() =>
-        {
-            OnPropertyChanged(nameof(IsExporting));
-            OnPropertyChanged(nameof(CanExportDiagnostics));
-        });
+    // The controller documents ExportingChanged as an interface-thread event, so no marshalling here.
+    private void OnExportingChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(IsExporting));
+        OnPropertyChanged(nameof(CanExportDiagnostics));
+    }
 }

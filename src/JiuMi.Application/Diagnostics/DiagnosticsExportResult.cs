@@ -27,4 +27,10 @@ public sealed record DiagnosticsExportResult(
     /// <returns>The failed outcome.</returns>
     public static DiagnosticsExportResult Failed(string destinationPath, Exception error) =>
         new(false, destinationPath, error);
+
+    /// <summary>
+    /// Creates the result of a retry that had no destination to write to yet.
+    /// </summary>
+    /// <returns>The failed outcome without an exception, because nothing was attempted.</returns>
+    public static DiagnosticsExportResult NotAttempted() => new(false, string.Empty, null);
 }

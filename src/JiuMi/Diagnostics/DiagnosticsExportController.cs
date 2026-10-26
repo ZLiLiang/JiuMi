@@ -101,19 +101,16 @@ public sealed class DiagnosticsExportController : IDisposable
 
         // A failure before the save dialog chose a path has nothing to rerun; report it again so the
         // notice count reflects the retry instead of silently doing nothing.
-        var exception = new InvalidOperationException("No diagnostics export has a destination yet.");
-        ReportFailure(exception);
-        return Task.FromResult(DiagnosticsExportResult.Failed(string.Empty, exception));
+        ReportFailure(exception: null);
+        return Task.FromResult(DiagnosticsExportResult.NotAttempted());
     }
 
     /// <summary>
-    /// Reports a failure that happened before the exporter ran, such as a save-dialog error.
+    /// Reports an export failure, including one that happened before the exporter ran.
     /// </summary>
-    /// <param name="exception">The failure.</param>
-    public void ReportFailure(Exception exception)
+    /// <param name="exception">The failure, or <see langword="null"/> when nothing was attempted.</param>
+    public void ReportFailure(Exception? exception)
     {
-        ArgumentNullException.ThrowIfNull(exception);
-
         _errorReporter.Report(_recordFactory.Create(
             ErrorCodes.DiagnosticsExportFailed,
             "Diagnostics.Export",
