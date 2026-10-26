@@ -22,6 +22,9 @@
   "Settings.About.Section": "关于",
   "Settings.About.Version": "版本 {0}",
   "Settings.About.Repository": "GitHub 仓库",
+  "Settings.About.ExportDiagnostics": "导出诊断包",
+  "Settings.About.DiagnosticsFileType": "诊断包 (*.zip)",
+  "Settings.About.LoggingUnavailable": "日志不可用",
   "Tool.WeChatDownload.Name": "微信视频下载",
   "Tool.WeChatDownload.Description": "把微信里的视频保存到本地。",
   "Tool.BatchRename.Name": "批量重命名",
@@ -46,5 +49,6 @@
   "Error.Startup.Timeout": "启动未完全就绪，已提前进入主窗口。",
   "Error.Startup.Faulted": "启动过程中发生了错误。",
   "Error.Shell.MainWindowFailed": "主窗口没有成功打开，应用无法继续。",
-  "Error.Unexpected.UiThreadException": "界面线程上出现了未处理的错误，应用可能无法正常工作。"
+  "Error.Unexpected.UiThreadException": "界面线程上出现了未处理的错误，应用可能无法正常工作。",
+  "Error.Diagnostics.ExportFailed": "诊断包没有导出成功。"
 }

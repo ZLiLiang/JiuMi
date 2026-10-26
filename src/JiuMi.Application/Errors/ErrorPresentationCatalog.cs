@@ -28,6 +28,10 @@ public static class ErrorPresentationCatalog
         [ErrorCodes.StartupFaulted] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
         [ErrorCodes.ShellMainWindowFailed] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
         [ErrorCodes.UnexpectedUiThreadException] = new(ErrorLevel.Error, ErrorCarrier.ErrorWindow),
+        [ErrorCodes.DiagnosticsExportFailed] = new(
+            ErrorLevel.Error,
+            ErrorCarrier.InfoBar,
+            ErrorNoticeAction.Retry),
     };
 
     /// <summary>

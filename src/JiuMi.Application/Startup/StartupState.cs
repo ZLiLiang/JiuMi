@@ -1,9 +1,9 @@
-﻿namespace JiuMi.Startup;
+﻿namespace JiuMi.Application.Startup;
 
 /// <summary>
-/// The startup stages the splash drives.
+/// The stages the startup sequence moves through.
 /// </summary>
-internal enum SplashStage
+public enum StartupState
 {
     /// <summary>Nothing has been put on screen yet.</summary>
     Bootstrapping,

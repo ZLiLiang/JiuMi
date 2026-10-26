@@ -41,6 +41,55 @@ public sealed class StartupSessionTests
 
         Assert.True(session.HasFaulted);
         Assert.False(session.IsReady);
+        Assert.Equal(StartupState.Faulted, session.State);
+    }
+
+    [Fact]
+    public void Constructor_GivenANewSession_StartsInBootstrapping()
+    {
+        StartupSession session = CreateSession();
+
+        Assert.Equal(StartupState.Bootstrapping, session.State);
+    }
+
+    [Fact]
+    public void TransitionTo_GivenEveryRenderedState_RaisesOneEventPerChange()
+    {
+        StartupSession session = CreateSession();
+        var raised = new List<StartupState>();
+        session.StateChanged += (_, state) => raised.Add(state);
+
+        StartupState[] transitions =
+        [
+            StartupState.SplashShown,
+            StartupState.Animating,
+            StartupState.Waiting,
+            StartupState.Handoff,
+            StartupState.Running,
+            StartupState.Faulted,
+        ];
+
+        foreach (StartupState state in transitions)
+        {
+            session.TransitionTo(state);
+        }
+
+        Assert.Equal(transitions, raised);
+        Assert.Equal(StartupState.Faulted, session.State);
+    }
+
+    [Fact]
+    public void TransitionTo_GivenTheCurrentState_DoesNotRaiseAgain()
+    {
+        StartupSession session = CreateSession();
+        int raised = 0;
+        session.StateChanged += (_, _) => raised++;
+
+        session.TransitionTo(StartupState.Bootstrapping);
+        session.TransitionTo(StartupState.SplashShown);
+        session.TransitionTo(StartupState.SplashShown);
+
+        Assert.Equal(1, raised);
     }
 
     [Fact]
@@ -63,6 +112,20 @@ public sealed class StartupSessionTests
 
         Assert.Equal(SplashHandoffDecision.Wait, session.Evaluate(TimeSpan.FromMilliseconds(999)));
         Assert.Equal(SplashHandoffDecision.Handoff, session.Evaluate(TimeSpan.FromMilliseconds(1000)));
+    }
+
+    [Fact]
+    public void TransitionTo_GivenFaulted_IgnoresLaterStages()
+    {
+        StartupSession session = CreateSession();
+        int raised = 0;
+        session.StateChanged += (_, _) => raised++;
+
+        session.MarkFaulted();
+        session.TransitionTo(StartupState.Running);
+
+        Assert.Equal(StartupState.Faulted, session.State);
+        Assert.Equal(1, raised);
     }
 
     private static StartupSession CreateSession() =>

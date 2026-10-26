@@ -4,13 +4,15 @@ namespace JiuMi.Application.Tests;
 
 public sealed class ThemeServiceTests
 {
+    private static readonly Serilog.ILogger _logger = Serilog.Core.Logger.None;
+
     [Fact]
     public void ApplyStoredTheme_GivenStoredThemeCanBeApplied_AppliesIt()
     {
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
         applier.Available.UnionWith([AppTheme.System, AppTheme.Dark]);
-        var service = new ThemeService(store, applier);
+        var service = new ThemeService(store, applier, _logger);
 
         service.ApplyStoredTheme();
 
@@ -24,7 +26,7 @@ public sealed class ThemeServiceTests
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
         applier.Available.Add(AppTheme.Light);
-        var service = new ThemeService(store, applier);
+        var service = new ThemeService(store, applier, _logger);
 
         service.ApplyStoredTheme();
 
@@ -39,7 +41,7 @@ public sealed class ThemeServiceTests
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
         applier.Available.Add(AppTheme.Light);
-        var service = new ThemeService(store, applier);
+        var service = new ThemeService(store, applier, _logger);
 
         service.ApplyStoredTheme();
 
@@ -52,7 +54,7 @@ public sealed class ThemeServiceTests
     {
         var store = new StubSettingsStore(AppTheme.System);
         var applier = CreateApplier();
-        var service = new ThemeService(store, applier);
+        var service = new ThemeService(store, applier, _logger);
 
         service.ApplyStoredTheme();
 
@@ -63,7 +65,10 @@ public sealed class ThemeServiceTests
     [Fact]
     public void TrySetTheme_GivenThemeCanBeApplied_AppliesIt()
     {
-        var service = new ThemeService(new StubSettingsStore(AppTheme.System), CreateApplier());
+        var service = new ThemeService(
+            new StubSettingsStore(AppTheme.System),
+            CreateApplier(),
+            _logger);
 
         bool applied = service.TrySetTheme(AppTheme.Light, out _);
 
@@ -77,7 +82,7 @@ public sealed class ThemeServiceTests
         var store = new StubSettingsStore(AppTheme.Dark);
         var applier = new StubThemeApplier();
         applier.Available.Add(AppTheme.Dark);
-        var service = new ThemeService(store, applier);
+        var service = new ThemeService(store, applier, _logger);
         string? changedProperty = null;
         service.PropertyChanged += (_, e) => changedProperty = e.PropertyName;
 
@@ -91,7 +96,7 @@ public sealed class ThemeServiceTests
     public void TrySetTheme_GivenSwitchFails_RestoresThePreviousTheme()
     {
         var applier = CreateApplier();
-        var service = new ThemeService(new StubSettingsStore(AppTheme.Light), applier);
+        var service = new ThemeService(new StubSettingsStore(AppTheme.Light), applier, _logger);
         service.ApplyStoredTheme();
         applier.Available.Remove(AppTheme.Dark);
 
@@ -108,7 +113,7 @@ public sealed class ThemeServiceTests
     public void TrySetTheme_GivenThemeHostThrows_ReturnsTheFailureAndRestores()
     {
         var applier = CreateApplier();
-        var service = new ThemeService(new StubSettingsStore(AppTheme.Light), applier);
+        var service = new ThemeService(new StubSettingsStore(AppTheme.Light), applier, _logger);
         service.ApplyStoredTheme();
         var expectedFailure = new InvalidOperationException("Theme host unavailable.");
         applier.Failure = expectedFailure;
@@ -124,7 +129,7 @@ public sealed class ThemeServiceTests
     public void TrySetTheme_GivenSwitchAndRestoreFail_KeepsTheLastAppliedTheme()
     {
         var applier = CreateApplier();
-        var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier);
+        var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier, _logger);
         service.ApplyStoredTheme();
         applier.Available.Remove(AppTheme.System);
         applier.Available.Remove(AppTheme.Dark);
@@ -141,7 +146,7 @@ public sealed class ThemeServiceTests
     public void TrySetTheme_GivenEveryApplyFails_KeepsTheLastAppliedTheme()
     {
         var applier = CreateApplier();
-        var service = new ThemeService(new StubSettingsStore(AppTheme.Dark), applier);
+        var service = new ThemeService(new StubSettingsStore(AppTheme.Dark), applier, _logger);
         service.ApplyStoredTheme();
         applier.Available.Remove(AppTheme.Light);
         applier.Available.Remove(AppTheme.Dark);
@@ -157,7 +162,7 @@ public sealed class ThemeServiceTests
     public void TrySetTheme_GivenCurrentTheme_DoesNotApplyItAgain()
     {
         var applier = CreateApplier();
-        var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier);
+        var service = new ThemeService(new StubSettingsStore(AppTheme.System), applier, _logger);
 
         bool applied = service.TrySetTheme(AppTheme.System, out _);
 

@@ -140,6 +140,11 @@
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              ToolTip.Tip="{Binding ConfigPath}"
                              Text="{Binding ConfigPath}" />
+                  <TextBlock Margin="0,4,0,0"
+                             FontSize="11.5"
+                             IsVisible="{Binding !IsFileLoggingAvailable}"
+                             Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                             Text="{loc:Localize Settings.About.LoggingUnavailable}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
@@ -148,6 +153,9 @@
                   <Button IsEnabled="{Binding CanOpenConfigFolder}"
                           Command="{Binding OpenConfigFolderCommand}"
                           Content="{loc:Localize Common.OpenFolder}" />
+                  <Button IsEnabled="{Binding CanExportDiagnostics}"
+                          Click="OnExportDiagnosticsClick"
+                          Content="{loc:Localize Settings.About.ExportDiagnostics}" />
                   <HyperlinkButton FontSize="12.5"
                                    Foreground="{DynamicResource AccentFillColorDefaultBrush}"
                                    Command="{Binding OpenRepositoryCommand}"

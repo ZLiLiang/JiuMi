@@ -2,9 +2,11 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
+using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Diagnostics;
 
 namespace JiuMi.ViewModels;
 
@@ -18,6 +20,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
 
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
+    private readonly DiagnosticsExportController _exportController;
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
     private readonly ISystemLauncher _systemLauncher;
@@ -42,24 +45,28 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     /// <param name="localization">Supplies the localized notice text.</param>
     /// <param name="settingsStore">Supplies the current settings for the retry action.</param>
     /// <param name="systemLauncher">Opens the settings folder for the open-folder action.</param>
+    /// <param name="exportController">Retries a failed diagnostics export for the retry action.</param>
     public InfoBarViewModel(
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
         ILocalizationService localization,
         ISettingsStore settingsStore,
-        ISystemLauncher systemLauncher)
+        ISystemLauncher systemLauncher,
+        DiagnosticsExportController exportController)
     {
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(systemLauncher);
+        ArgumentNullException.ThrowIfNull(exportController);
 
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
         _localization = localization;
         _settingsStore = settingsStore;
         _systemLauncher = systemLauncher;
+        _exportController = exportController;
 
         _dismissTimer = new DispatcherTimer
         {
@@ -72,7 +79,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         };
         _copiedTimer.Tick += OnCopiedTick;
 
-        ActionCommand = new RelayCommand(ExecuteAction);
+        ActionCommand = new AsyncRelayCommand(ExecuteActionAsync);
         CloseCommand = new RelayCommand(Dismiss);
 
         _localization.PropertyChanged += OnLocalizationChanged;
@@ -166,7 +173,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets the command that runs the current notice's primary action.
     /// </summary>
-    public IRelayCommand ActionCommand
+    public IAsyncRelayCommand ActionCommand
     {
         get;
     }
@@ -306,7 +313,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         Refresh();
     }
 
-    private void ExecuteAction()
+    private async Task ExecuteActionAsync()
     {
         ErrorNotice? notice = _notices.Current;
         if (notice is null)
@@ -316,6 +323,15 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
 
         switch (notice.Action)
         {
+            case ErrorNoticeAction.Retry
+                when string.Equals(notice.Code, ErrorCodes.DiagnosticsExportFailed, StringComparison.Ordinal):
+                DiagnosticsExportResult result = await _exportController.RetryLastAsync();
+                if (result.Succeeded)
+                {
+                    Dismiss();
+                }
+
+                break;
             case ErrorNoticeAction.Retry:
                 RetrySettingsSave();
                 break;

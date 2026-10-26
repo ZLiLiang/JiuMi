@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
+    private readonly Serilog.ILogger _logger;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
@@ -32,23 +33,27 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
+    /// <param name="logger">Receives navigation and window-lifecycle events.</param>
     public MainWindowViewModel(
         IApplicationInfo applicationInfo,
         ILocalizationService localization,
         SettingsViewModel settingsPage,
         InfoBarViewModel infoBar,
-        ISettingsStore settingsStore)
+        ISettingsStore settingsStore,
+        Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsPage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(logger);
 
         AppName = applicationInfo.Name;
         AppVersion = applicationInfo.Version;
         _localization = localization;
         _settingsStore = settingsStore;
+        _logger = logger;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
@@ -235,10 +240,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         _savedOnExit = true;
-        _ = _settingsStore.Save(_settingsStore.Current with
+        SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
         {
             NavExpanded = IsNavigationExpanded,
         });
+
+        if (result.Error is { } error)
+        {
+            _logger
+                .ForContext("operation", "Settings.SaveOnExit")
+                .Warning(error, "Settings save on exit failed");
+        }
     }
 
     /// <inheritdoc />
@@ -266,10 +278,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             isComingSoon: !isEnabled,
             _localization);
 
-    private void ToggleNavigation() => IsNavigationExpanded = !IsNavigationExpanded;
+    private void ToggleNavigation()
+    {
+        IsNavigationExpanded = !IsNavigationExpanded;
+        _logger.Debug("Navigation expanded state changed to {IsExpanded}", IsNavigationExpanded);
+    }
 
-    private void NavigateTo(ShellPage? page) =>
+    private void NavigateTo(ShellPage? page)
+    {
         CurrentPage = page == ShellPage.Settings ? SettingsPage : HomePage;
+        _logger.Debug("Navigated to {Page}", page);
+    }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -5,6 +5,8 @@ namespace JiuMi.Application.Tests;
 
 public sealed class LocalizationServiceTests
 {
+    private static readonly Serilog.ILogger _logger = Serilog.Core.Logger.None;
+
     private static readonly LanguageManifest _manifest = new(
         "zh-CN",
         [
@@ -20,7 +22,7 @@ public sealed class LocalizationServiceTests
     {
         using var culture = new CultureScope();
 
-        var service = new LocalizationService(CreateCatalog(), requested);
+        var service = new LocalizationService(CreateCatalog(), requested, _logger);
 
         Assert.Equal(expected, service.CurrentLanguage);
         Assert.Equal(expected, service.Culture.Name);
@@ -32,7 +34,7 @@ public sealed class LocalizationServiceTests
     public void Indexer_GivenKeyMissingInCurrentLanguage_FallsBackToSourceLanguage()
     {
         using var culture = new CultureScope();
-        var service = new LocalizationService(CreateCatalog(), "en-US");
+        var service = new LocalizationService(CreateCatalog(), "en-US", _logger);
 
         Assert.Equal("仅中文", service["Test.SourceOnly"]);
     }
@@ -41,7 +43,7 @@ public sealed class LocalizationServiceTests
     public void Indexer_GivenKeyMissingInEveryLanguage_ReturnsKeyName()
     {
         using var culture = new CultureScope();
-        var service = new LocalizationService(CreateCatalog(), "en-US");
+        var service = new LocalizationService(CreateCatalog(), "en-US", _logger);
 
         Assert.Equal("Test.Missing", service["Test.Missing"]);
     }
@@ -50,7 +52,7 @@ public sealed class LocalizationServiceTests
     public void Format_GivenPlaceholders_SubstitutesArgumentsInOrder()
     {
         using var culture = new CultureScope();
-        var service = new LocalizationService(CreateCatalog(), "en-US");
+        var service = new LocalizationService(CreateCatalog(), "en-US", _logger);
 
         Assert.Equal("Hello, Ada! (2)", service.Format("Test.Placeholder", "Ada", 2));
     }
@@ -59,7 +61,7 @@ public sealed class LocalizationServiceTests
     public void TrySetLanguage_GivenLoadedLanguage_UpdatesTextCultureAndNotifies()
     {
         using var culture = new CultureScope();
-        var service = new LocalizationService(CreateCatalog(), "zh-CN");
+        var service = new LocalizationService(CreateCatalog(), "zh-CN", _logger);
         var changedProperties = new List<string?>();
         service.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
 
@@ -94,7 +96,10 @@ public sealed class LocalizationServiceTests
                 ["Test.Hello"] = "你好",
             },
         };
-        var service = new LocalizationService(new LocalizationCatalog(manifest, strings), "zh-CN");
+        var service = new LocalizationService(
+            new LocalizationCatalog(manifest, strings),
+            "zh-CN",
+            _logger);
 
         bool switched = service.TrySetLanguage("fr-FR");
 
@@ -107,7 +112,7 @@ public sealed class LocalizationServiceTests
     public void Culture_GivenEnglishLanguage_FormatsDatesInEnglish()
     {
         using var culture = new CultureScope();
-        var service = new LocalizationService(CreateCatalog(), "en-US");
+        var service = new LocalizationService(CreateCatalog(), "en-US", _logger);
         var date = new DateTime(2026, 10, 18);
 
         Assert.Equal("10/18/2026", date.ToString("d", service.Culture));

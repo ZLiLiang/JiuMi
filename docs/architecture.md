@@ -296,7 +296,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | 目录 | `<exe 目录>\logs\`；exe 侧不可写时为 `%AppData%\JiuMi\logs\` |
 | 与配置的关系 | 跟随配置启动探针的结论，与 `config\` **同级**；绝不进 `data\` |
-| 创建时机 | 首次写日志之前建目录 |
+| 创建时机 | 首次写日志之前建目录；启动期事件先进入有界内存缓冲，配置探针落定后挂文件 sink 并回放 |
 | 多进程 | `shared: false`；#7 的单实例保证同一 exe、同一用户会话只有一个进程，第二实例在打开日志前退出 |
 | 收尾 | 正常退出与致命退出都调用 `Log.CloseAndFlush()` |
 
@@ -335,6 +335,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 同步、unbuffered；**不加 Async sink**——桌面量级用不上异步队列的吞吐，还会多一个组件与一处崩溃刷盘风险。
 - `Fatal` 由 sink 立即刷盘。
 - 文件写入失败：`SelfLog.Enable` 输出到调试器；**不弹 InfoBar**，只在设置页「关于」区显示「日志不可用」状态（`Settings.About.LoggingUnavailable`）。
+- 恢复：状态为不可用期间，日志管道每 30 秒探测一次日志目录；目录重新可写时重试挂载文件 sink（首次挂载失败的情况）并写一条恢复事件，「日志不可用」随之消失。恢复事件本身写失败会立刻把状态翻回不可用。
 - 日志失败绝不影响功能路径。
 
 ### 崩溃文件
@@ -492,7 +493,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
-| `Settings.About.ExportDiagnostics` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮与「日志不可用」状态 |
+| `Settings.About.ExportDiagnostics` / `Settings.About.DiagnosticsFileType` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮、保存对话框的文件类型标签与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
 | `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` / `Common.Close` | 错误呈现的操作、复制反馈与关闭按钮可访问名 |
 | `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
