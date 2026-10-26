@@ -3,8 +3,8 @@
         xmlns:fac="using:FluentAvalonia.UI.Controls"
         xmlns:labs="using:Avalonia.Labs.Gif"
         x:Class="JiuMi.Views.SplashWindow"
-        Width="320"
-        Height="320"
+        Width="180"
+        Height="180"
         CanResize="False"
         WindowDecorations="None"
         ShowInTaskbar="False"
@@ -12,7 +12,8 @@
         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
   <Panel>
     <labs:GifImage x:Name="MediaGif"
-                   IsVisible="False" />
+                   IsVisible="False"
+                   Stretch="UniformToFill" />
     <Image x:Name="MediaPoster"
            IsVisible="False"
            Stretch="UniformToFill" />
