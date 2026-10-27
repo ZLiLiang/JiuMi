@@ -5,10 +5,12 @@ using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Application.Shell;
 using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
 using JiuMi.Infrastructure.Logging;
+using JiuMi.Shell;
 using JiuMi.Startup;
 using JiuMi.Theming;
 using JiuMi.Threading;
@@ -28,12 +30,26 @@ internal static class Program
         Log.Logger = services.GetRequiredService<LoggingPipeline>().Logger;
         SubscribeProcessHandlers(services);
 
+        // The lifecycle subscribes to the activation channel before the listener starts, so a launch
+        // that arrives during startup is queued instead of being lost.
+        ShellLifecycle lifecycle = services.GetRequiredService<ShellLifecycle>();
+
+        // The instance lock and its pipe exist before the interface starts.
+        ISingleInstanceCoordinator singleInstance =
+            services.GetRequiredService<ISingleInstanceCoordinator>();
+        if (!singleInstance.TryAcquire())
+        {
+            Log.CloseAndFlush();
+            return ExitCodes.Success;
+        }
+
         IErrorWindowPresenter errorWindows = services.GetRequiredService<IErrorWindowPresenter>();
         IShellStartup startup = new SplashStartup(
             CreateInitialization(services),
             services.GetRequiredService<IErrorReporter>(),
             services.GetRequiredService<ErrorRecordFactory>(),
             errorWindows,
+            lifecycle,
             services.GetRequiredService<Serilog.ILogger>());
 
         int exitCode = AppBuilder.Configure(() => new App(startup, errorWindows))
@@ -146,6 +162,7 @@ internal static class Program
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();
+        services.AddSingleton<ShellLifecycle>();
         services.AddSingleton<IErrorWindowPresenter>(provider => new ErrorWindowPresenter(
             provider.GetRequiredService<IErrorReporter>(),
             provider.GetRequiredService<ErrorRecordFactory>(),

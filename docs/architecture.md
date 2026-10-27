@@ -152,13 +152,13 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 项 | 规则 |
 | --- | --- |
 | 创建时机 | 主窗口第一次显示后（进入 `Running`）创建；进程退出时销毁 |
-| 图标 | `Assets/app-icon.png`（母版 `Assets/app-icon.svg`），与主窗口任务栏图标同一份 |
+| 图标 | exe 内嵌的 `app.ico`（与 `Assets/app-icon.png` 同一母版），与主窗口任务栏图标同一份 |
 | 左键单击 | 显示并激活主窗口（同激活规则） |
 | 右键菜单 | 显示主窗口 / 设置 / 退出，文案键 `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` |
 | 「设置」项 | 恢复并激活窗口后，走导航栏「设置」同一条导航命令 |
 | 平台 | 只在 Windows 实现；其他平台为 no-op，其最小化行为随跨平台分发另行决定 |
 
-- 首次最小化提示的文案取 `Shell.Tray.MinimizedHint`，经错误呈现章节的 `IUserNotification` 端口投递，不用托盘气泡 API。
+- 首次最小化提示的文案取 `Shell.Tray.MinimizedHint`，经错误呈现章节的 `IUserNotification` 端口投递，界面代码不直接调用托盘 API。
 - 四个 `Shell.Tray.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
 - 托盘与单实例的实现放 Infrastructure；`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
 
@@ -265,10 +265,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 系统通知
 
-- 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现（`AppNotification` toast，有托盘时可用 `NotifyIcon` 气泡）在 `JiuMi.Infrastructure`，其他平台 no-op。
+- 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现复用托盘图标的气泡通道（`Shell_NotifyIcon` 的 `NIF_INFO`），其他平台 no-op。
 - **触发**：仅当应用没有可见窗口（关闭或最小化到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
 - **内容**：标题为应用名，正文只用本地化短句、不带技术细节；点击激活主窗口并呈现对应 InfoBar。
-- 托盘图标本身归单实例与窗口生命周期章节；toast 不依赖托盘。本期没有后台任务，实际触发点为零，但端口与实现先建好。
+- 托盘图标本身归单实例与窗口生命周期章节；端口不要求托盘存在，但本期唯一的触发点（最小化提示、隐藏期错误）都发生在托盘已显示之后。本期没有后台任务，触发点只有这两处。
 - 平台专属 API 允许使用，但必须隔离在 Infrastructure（经 Application 抽象暴露）；`#if WINDOWS` 只允许出现在 Infrastructure 与 Desktop 组合根，UI / Application 只认抽象。
 
 ## 日志与诊断

@@ -19,6 +19,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
     private readonly Serilog.ILogger _logger;
+    private readonly ShellNavigationItem _settingsNavigationItem;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
@@ -69,10 +70,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             CreateItem("icon-convert", "Tool.IconConvert.Name", "Image", "ImageFilled", page: null, isEnabled: false),
             CreateItem("world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", page: null, isEnabled: false),
         ];
-        SettingsNavigationItems =
-        [
-            CreateItem("settings", "Shell.Nav.Settings", "Settings", "SettingsFilled", ShellPage.Settings, isEnabled: true),
-        ];
+        _settingsNavigationItem = CreateItem(
+            "settings", "Shell.Nav.Settings", "Settings", "SettingsFilled", ShellPage.Settings, isEnabled: true);
+        SettingsNavigationItems = [_settingsNavigationItem];
 
         _selectedPrimaryItem = PrimaryNavigationItems[0];
         ToggleNavigationCommand = new RelayCommand(ToggleNavigation);
@@ -251,6 +251,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 .ForContext("operation", "Settings.SaveOnExit")
                 .Warning(error, "Settings save on exit failed");
         }
+    }
+
+    /// <summary>
+    /// Opens the settings page through the same navigation the rail uses; an already open page stays put.
+    /// </summary>
+    public void ShowSettings()
+    {
+        if (ReferenceEquals(CurrentPage, SettingsPage))
+        {
+            return;
+        }
+
+        SelectedSettingsItem = _settingsNavigationItem;
     }
 
     /// <inheritdoc />

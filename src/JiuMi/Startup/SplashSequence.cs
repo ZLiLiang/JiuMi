@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Startup;
 using JiuMi.Errors;
+using JiuMi.Shell;
 using JiuMi.Views;
 
 namespace JiuMi.Startup;
@@ -27,6 +28,7 @@ internal sealed class SplashSequence
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly IErrorWindowPresenter _errorWindows;
+    private readonly ShellLifecycle _lifecycle;
     private readonly Stopwatch _clock = new();
 
     private SplashWindow? _splash;
@@ -48,6 +50,7 @@ internal sealed class SplashSequence
     /// <param name="errorReporter">Records the startup warnings and late completion.</param>
     /// <param name="recordFactory">Creates those records with the shared environment fields.</param>
     /// <param name="errorWindows">Presents a startup failure that blocks the shell.</param>
+    /// <param name="lifecycle">Owns the window lifecycle once the shell takes over.</param>
     public SplashSequence(
         IClassicDesktopStyleApplicationLifetime desktop,
         ShellInitialization initialization,
@@ -56,7 +59,8 @@ internal sealed class SplashSequence
         Func<SplashWindow> createSplashWindow,
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
-        IErrorWindowPresenter errorWindows)
+        IErrorWindowPresenter errorWindows,
+        ShellLifecycle lifecycle)
     {
         ArgumentNullException.ThrowIfNull(desktop);
         ArgumentNullException.ThrowIfNull(initialization);
@@ -66,6 +70,7 @@ internal sealed class SplashSequence
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(errorWindows);
+        ArgumentNullException.ThrowIfNull(lifecycle);
 
         _desktop = desktop;
         _initialization = initialization;
@@ -75,6 +80,7 @@ internal sealed class SplashSequence
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
         _errorWindows = errorWindows;
+        _lifecycle = lifecycle;
     }
 
     /// <summary>
@@ -109,6 +115,7 @@ internal sealed class SplashSequence
             // stage that says the splash is up.
             _session.TransitionTo(StartupState.SplashShown);
             splash.Show();
+            _lifecycle.AttachSplash(splash);
             return true;
         }
 #pragma warning disable CA1031 // A splash window that cannot be built is the bottom rung: startup carries on without it.
@@ -315,6 +322,7 @@ internal sealed class SplashSequence
         }
 
         _session.TransitionTo(StartupState.Running);
+        _lifecycle.AttachShell(shell);
     }
 
     private void TryBeginHandoff(SplashWindow splash, MainWindow shell) =>
@@ -399,8 +407,13 @@ internal sealed class SplashSequence
         // decorative here: a failed close must not be reported as a main-window failure.
         splash.Opened -= OnSplashOpened;
         _splash = null;
+        _lifecycle.DetachSplash(splash);
         CloseSplashWindow(splash);
         DisposeMedia();
+
+        // The tray appears once the splash has left: a request that was waiting now activates the shell
+        // instead of the splash that was still fading out.
+        _lifecycle.AttachShell(shell);
     }
 
     private static void CloseSplashWindow(SplashWindow splash)
@@ -528,6 +541,7 @@ internal sealed class SplashSequence
         // The presenter records the failure and decides the blocking variant from the main window.
         _errorWindows.PresentFailure(code, operation, exception);
         CloseSplash();
+        _lifecycle.NotifyStartupFaulted();
     }
 
     private void CloseSplash()
@@ -539,6 +553,7 @@ internal sealed class SplashSequence
 
         _splash = null;
         splash.Opened -= OnSplashOpened;
+        _lifecycle.DetachSplash(splash);
         CloseSplashWindow(splash);
     }
 

@@ -1,15 +1,20 @@
 ﻿using System.Reflection;
+using System.Runtime.Versioning;
 using JiuMi.Application;
 using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Logging;
+using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
+using JiuMi.Application.Shell;
 using JiuMi.Infrastructure.Diagnostics;
 using JiuMi.Infrastructure.Errors;
 using JiuMi.Infrastructure.Localization;
 using JiuMi.Infrastructure.Logging;
+using JiuMi.Infrastructure.Notifications;
 using JiuMi.Infrastructure.Settings;
+using JiuMi.Infrastructure.Shell;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JiuMi.Infrastructure;
@@ -39,6 +44,17 @@ public static class InfrastructureServiceCollectionExtensions
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JiuMi")));
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
+        services.AddSingleton<ISingleInstanceCoordinator, SingleInstanceCoordinator>();
+
+        if (OperatingSystem.IsWindows())
+        {
+            AddWindowsTray(services);
+        }
+        else
+        {
+            services.AddSingleton<ITrayIcon, NullTrayIcon>();
+            services.AddSingleton<IUserNotification, NullUserNotification>();
+        }
 
         services.AddSingleton(provider => new LoggingPipeline(
             provider.GetRequiredService<IApplicationInfo>(),
@@ -62,5 +78,16 @@ public static class InfrastructureServiceCollectionExtensions
             provider.GetRequiredService<ISettingsStore>(),
             provider.GetRequiredService<TimeProvider>()));
         return services;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void AddWindowsTray(IServiceCollection services)
+    {
+        // One window carries both the notification area entry and its balloon notifications.
+        services.AddSingleton(provider => new WindowsTrayIcon(
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton<ITrayIcon>(provider => provider.GetRequiredService<WindowsTrayIcon>());
+        services.AddSingleton<IUserNotification>(
+            provider => provider.GetRequiredService<WindowsTrayIcon>());
     }
 }
