@@ -9,6 +9,7 @@ using JiuMi.Infrastructure.Logging;
 
 namespace JiuMi.Infrastructure.Tests;
 
+[Collection("Logging")]
 public sealed class DiagnosticsExporterTests : IDisposable
 {
     private static readonly DateTimeOffset _now =
