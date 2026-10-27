@@ -48,13 +48,20 @@
 
   <Grid RowDefinitions="40,*">
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
-      <Border Width="18" Height="18" CornerRadius="4" VerticalAlignment="Center">
+      <Border x:Name="TitleBarMark"
+              Width="18"
+              Height="18"
+              CornerRadius="4"
+              VerticalAlignment="Center">
         <Border.Background>
           <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="{DynamicResource SystemAccentColorLight1}" />
             <GradientStop Offset="1" Color="{DynamicResource SystemAccentColorDark1}" />
           </LinearGradientBrush>
         </Border.Background>
+        <Image x:Name="TitleBarIcon"
+               Stretch="UniformToFill"
+               RenderOptions.BitmapInterpolationMode="HighQuality" />
       </Border>
       <TextBlock Grid.Column="1"
                  Margin="8,0,0,0"

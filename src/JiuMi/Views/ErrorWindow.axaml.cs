@@ -24,6 +24,7 @@ public partial class ErrorWindow : Window
     public ErrorWindow()
     {
         InitializeComponent();
+        Icon = AppIcon.CreateWindowIcon();
         Closed += OnClosed;
     }
 

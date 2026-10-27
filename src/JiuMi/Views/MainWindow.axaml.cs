@@ -21,10 +21,27 @@ public partial class MainWindow : FAAppWindow
     public MainWindow()
     {
         InitializeComponent();
+        ApplyBrandMark();
         TitleBar.Height = 40;
         TitleBar.ExtendsContentIntoTitleBar = true;
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
         Activated += OnFirstActivated;
+    }
+
+    private void ApplyBrandMark()
+    {
+        // FAAppWindow wraps any value assigned to Icon in a WindowIcon, so a missing asset must leave
+        // the property untouched instead of clearing it.
+        if (AppIcon.Mark is not { } mark)
+        {
+            return;
+        }
+
+        Icon = mark;
+        TitleBarIcon.Source = mark;
+
+        // The mark carries its own rounded corners; a gradient behind it would show through them.
+        TitleBarMark.Background = null;
     }
 
     private void OnFirstActivated(object? sender, EventArgs e)
