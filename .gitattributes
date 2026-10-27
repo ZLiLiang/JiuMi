@@ -1,3 +1,5 @@
 # Store text as LF in Git and check out CRLF, matching .editorconfig.
 * text=auto eol=crlf
 *.sh text eol=lf
+*.png binary
+*.ico binary
