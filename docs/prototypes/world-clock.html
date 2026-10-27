@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<!--
+  世界工作时间 · 视觉与交互定稿原型（设计参考，不参与构建）
+
+  参数：
+    ?view=board|plan     打开哪个视图（默认 board，对应「首次打开落在看板」）
+    ?theme=light|dark    主题（默认 light）
+    ?at=<0-1439>         规划视图的游标位置，单位分钟（默认落在当前时刻，按 15 分钟取整）
+
+  定稿依据见 issue「世界工作时间：看板 + 24 小时重叠网格」：
+  图上没有节假日态——假日数据来自运行时拉取，原型不模拟。
+-->
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<title>世界工作时间 · 定稿原型</title>
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  :root {
+    --bg: #eef0f4;
+    --mica-a: #e9eef7;
+    --mica-b: #f6eef4;
+    --island: rgba(255, 255, 255, 0.68);
+    --island-border: rgba(0, 0, 0, 0.07);
+    --island-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+    --card: rgba(255, 255, 255, 0.72);
+    --card-border: rgba(0, 0, 0, 0.06);
+    --text: #1b1b1b;
+    --text-2: rgba(0, 0, 0, 0.55);
+    --text-3: rgba(0, 0, 0, 0.38);
+    --accent: #0f6cbd;
+    --accent-soft: rgba(15, 108, 189, 0.26);
+    --off: rgba(0, 0, 0, 0.035);
+    --night: rgba(20, 30, 50, 0.09);
+    --chip: rgba(0, 0, 0, 0.045);
+    --sel: rgba(0, 0, 0, 0.05);
+    --divider: rgba(0, 0, 0, 0.08);
+    --daybreak: rgba(0, 0, 0, 0.28);
+    --hatch: rgba(0, 0, 0, 0.07);
+  }
+  [data-theme="dark"] {
+    --bg: #16171b;
+    --mica-a: #1e2027;
+    --mica-b: #221f28;
+    --island: rgba(58, 60, 70, 0.66);
+    --island-border: rgba(255, 255, 255, 0.09);
+    --island-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --card: rgba(72, 74, 84, 0.5);
+    --card-border: rgba(255, 255, 255, 0.07);
+    --text: #f2f2f2;
+    --text-2: rgba(255, 255, 255, 0.62);
+    --text-3: rgba(255, 255, 255, 0.4);
+    --accent: #60cdff;
+    --accent-soft: rgba(96, 205, 255, 0.24);
+    --off: rgba(255, 255, 255, 0.045);
+    --night: rgba(0, 0, 0, 0.2);
+    --chip: rgba(255, 255, 255, 0.08);
+    --sel: rgba(255, 255, 255, 0.08);
+    --divider: rgba(255, 255, 255, 0.09);
+    --daybreak: rgba(255, 255, 255, 0.34);
+    --hatch: rgba(255, 255, 255, 0.09);
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    color: var(--text);
+  }
+  .app {
+    width: 1200px;
+    height: 760px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(900px 520px at 8% 0%, var(--mica-a), transparent 70%),
+      radial-gradient(760px 480px at 96% 100%, var(--mica-b), transparent 72%),
+      var(--bg);
+    overflow: hidden;
+  }
+  .titlebar {
+    height: 40px;
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+  }
+  .logo {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: linear-gradient(135deg, #6ea8fe, #0f6cbd);
+  }
+  .appname { font-size: 12px; color: var(--text-2); }
+
+  .shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 14px;
+    padding: 0 14px 14px;
+  }
+  .island {
+    background: var(--island);
+    border: 1px solid var(--island-border);
+    border-radius: 12px;
+    box-shadow: var(--island-shadow);
+    backdrop-filter: blur(30px);
+  }
+
+  .nav {
+    flex: 0 0 280px;
+    padding: 8px 8px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .nav-toggle {
+    width: 36px; height: 32px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 4px;
+    background: transparent;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .nav-items { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    position: relative;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .nav-item svg { flex: 0 0 16px; }
+  .nav-item.disabled { color: var(--text-3); }
+  .nav-item.disabled .badge { margin-left: auto; }
+  .badge {
+    font-size: 10px; line-height: 16px; padding: 0 6px;
+    border-radius: 4px; background: var(--chip); color: var(--text-3);
+  }
+  .nav-item.selected { background: var(--sel); }
+  .nav-item.selected svg { color: var(--accent); }
+  .nav-item.selected::before {
+    content: "";
+    position: absolute; left: 0; top: 10px;
+    width: 3px; height: 16px; border-radius: 2px;
+    background: var(--accent);
+  }
+  .nav-spacer { flex: 1; }
+  .divider { height: 1px; background: var(--divider); margin: 6px 12px; }
+
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .scroll { flex: 1; min-height: 0; overflow: auto; padding: 32px 44px 36px; }
+
+  .page-head { display: flex; align-items: flex-start; gap: 16px; }
+  h1 { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.25; }
+  .subtitle { margin: 6px 0 0; font-size: 13px; color: var(--text-2); }
+  .page-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  .segments {
+    display: flex; gap: 2px; padding: 2px;
+    border-radius: 4px; background: var(--chip);
+  }
+  .segment {
+    height: 28px; padding: 0 12px;
+    border: 0; border-radius: 3px;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit; font-size: 13px;
+    white-space: nowrap;
+  }
+  .segment.active { background: var(--card); color: var(--text); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 12px;
+    border: 1px solid var(--island-border);
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--text);
+    font: inherit; font-size: 13px;
+    white-space: nowrap;
+  }
+  .btn svg { color: var(--text-2); }
+
+  .card {
+    margin-top: 22px;
+    padding: 18px 20px 20px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card);
+  }
+  .card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .summary { font-size: 14px; color: var(--text-2); line-height: 1.5; }
+  .summary strong { color: var(--text); font-weight: 600; }
+  .summary .note { color: var(--text-3); }
+  .legend { margin-left: auto; display: flex; gap: 12px; font-size: 11px; color: var(--text-3); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--card-border); }
+  .swatch.work { background: var(--accent-soft); border-color: var(--accent); }
+  .swatch.off { background: var(--off); }
+  .swatch.weekend { background: repeating-linear-gradient(45deg, var(--hatch) 0 2px, transparent 2px 4px); }
+
+  .timeline { position: relative; --label: 150px; --gap: 2px; }
+  .axis { display: flex; gap: var(--gap); height: 18px; }
+  .axis .spacer { flex: 0 0 var(--label); }
+  .ticks { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: var(--gap); }
+  .tick { font-size: 10px; color: var(--text-3); line-height: 18px; }
+
+  .band-row { display: flex; gap: var(--gap); height: 18px; margin-top: 4px; }
+  .band-row .spacer { flex: 0 0 var(--label); font-size: 10px; color: var(--text-3); line-height: 18px; }
+  .band { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: var(--gap); }
+  .band i { border-radius: 2px; background: var(--accent); }
+  .band i.zero { background: var(--off); }
+
+  .rows { margin-top: 6px; display: flex; flex-direction: column; gap: var(--gap); }
+  .row { display: flex; gap: var(--gap); height: 38px; }
+  .row .meta {
+    flex: 0 0 var(--label);
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 1px; padding-right: 8px; overflow: hidden;
+  }
+  .row .city { font-size: 13px; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  .row .now { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .row .now.is-work { color: var(--accent); }
+  .row .cells { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: var(--gap); }
+  .row .cells i { border-radius: 2px; }
+  .cell-off { background: var(--off); }
+  .cell-night { background: var(--night); }
+  .cell-work { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .cell-weekend { background: repeating-linear-gradient(45deg, var(--hatch) 0 2px, transparent 2px 4px); }
+  .daybreak { border-left: 1px dashed var(--daybreak); }
+
+  .cursorband {
+    position: absolute;
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  .nowline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); border-radius: 1px; }
+  .nowline .tag {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 10px; color: var(--accent); white-space: nowrap;
+    background: var(--card); padding: 0 4px; border-radius: 3px;
+  }
+  .nowline .tag.flip { left: auto; right: 4px; }
+
+  .scrub { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .scrub input { flex: 1; accent-color: var(--accent); }
+  .scrub .readout { font-size: 12px; color: var(--text-2); min-width: 132px; font-variant-numeric: tabular-nums; }
+
+  .footnote { margin-top: 14px; font-size: 11px; color: var(--text-3); line-height: 1.6; }
+
+  .list { display: flex; flex-direction: column; }
+  .list-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+  .list-row:last-child { border-bottom: 0; }
+  .list-row .city { font-size: 14px; width: 120px; }
+  .list-row .clock { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .list-row .day { font-size: 12px; color: var(--text-2); }
+  .list-row .spacer { flex: 1; }
+
+  .chip {
+    display: inline-flex; align-items: center;
+    font-size: 11px; line-height: 18px;
+    padding: 0 7px; border-radius: 4px;
+    background: var(--chip); color: var(--text-2);
+  }
+  .chip.work { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="titlebar">
+    <div class="logo"></div>
+    <span class="appname">JiuMi</span>
+  </header>
+
+  <div class="shell">
+    <nav class="island nav">
+      <button class="nav-toggle" aria-label="收起导航">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="2" y="3" width="12" height="10" rx="2" /><path d="M6.5 3v10" />
+        </svg>
+      </button>
+      <div class="nav-items">
+        <a class="nav-item">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 7.5 8 3l5.5 4.5V13a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z" /></svg>
+          <span>主页</span>
+        </a>
+        <a class="nav-item disabled">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="4" width="8" height="8" rx="1.5" /><path d="m10 7 4-2v6l-4-2z" /></svg>
+          <span>微信视频下载</span><span class="badge">即将推出</span>
+        </a>
+        <a class="nav-item disabled">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5h7M3 8h9M3 11.5h5" /><path d="M12 3.5v5" /></svg>
+          <span>批量重命名</span><span class="badge">即将推出</span>
+        </a>
+        <a class="nav-item disabled">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11" rx="2" /><circle cx="6" cy="6" r="1.2" /><path d="m3 11 3-3 2.5 2.5L11 8l2 2" /></svg>
+          <span>图标转换</span><span class="badge">即将推出</span>
+        </a>
+        <a class="nav-item selected">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5" /><path d="M8 4.8V8l2.2 1.4" /></svg>
+          <span>世界工作时间</span>
+        </a>
+      </div>
+      <div class="nav-spacer"></div>
+      <div class="divider"></div>
+      <a class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2" /><path d="M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" /></svg>
+          <span>设置</span>
+        </a>
+    </nav>
+
+    <main class="island content">
+      <div class="scroll">
+        <div class="page-head">
+          <div>
+            <h1>世界工作时间</h1>
+            <p class="subtitle">看看哪些城市正好在上班，什么时候能凑到一起。</p>
+          </div>
+          <div class="page-actions">
+            <div class="segments" role="tablist">
+              <button class="segment" data-view="board" role="tab">看板</button>
+              <button class="segment" data-view="plan" role="tab">规划</button>
+            </div>
+            <button class="btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3v10M3 8h10" /></svg>
+              管理城市
+            </button>
+          </div>
+        </div>
+
+        <section class="card" id="card-board">
+          <div class="card-head">
+            <div class="summary" id="board-summary"></div>
+          </div>
+          <div class="list" id="board-list"></div>
+        </section>
+
+        <section class="card" id="card-plan">
+          <div class="card-head">
+            <div class="summary" id="plan-summary"></div>
+            <div class="legend">
+              <span><i class="swatch work"></i>上班</span>
+              <span><i class="swatch off"></i>下班</span>
+              <span><i class="swatch weekend"></i>周末</span>
+            </div>
+          </div>
+
+          <div class="timeline" id="timeline">
+            <div class="axis">
+              <span class="spacer"></span>
+              <div class="ticks" id="ticks"></div>
+            </div>
+            <div class="band-row">
+              <span class="spacer">重叠</span>
+              <div class="band" id="band"></div>
+            </div>
+            <div class="rows" id="rows"></div>
+            <div class="cursorband" id="cursorband" hidden></div>
+            <div class="nowline" id="nowline"><span class="tag" id="nowtag"></span></div>
+          </div>
+
+          <div class="scrub">
+            <input type="range" id="scrub-range" min="0" max="1425" step="15" />
+            <span class="readout" id="scrub-readout"></span>
+            <button class="btn" id="scrub-reset">回到现在</button>
+          </div>
+
+          <div class="footnote">
+            横轴为本机时区的今天 00:00–24:00 · 工作窗口与工作周按各城市本地日历判定 · 虚线 = 该城市本地 00:00<br />
+            时间与偏移均逐瞬间取自系统时区库，夏令时切换日同样成立
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+const CITIES = [
+  { name: "上海", tz: "Asia/Shanghai" },
+  { name: "伦敦", tz: "Europe/London" },
+  { name: "纽约", tz: "America/New_York" },
+  { name: "旧金山", tz: "America/Los_Angeles" },
+];
+const REF_TZ = "Asia/Shanghai";
+const WORK_START = 9;
+const WORK_END = 18;
+
+const params = new URLSearchParams(location.search);
+const state = {
+  view: params.get("view") === "plan" ? "plan" : "board",
+  theme: params.get("theme") === "dark" ? "dark" : "light",
+  cursor: params.has("at") ? Math.min(1425, Math.max(0, Number(params.get("at")) || 0)) : null,
+};
+
+const pad = (n) => String(n).padStart(2, "0");
+
+function parts(date, tz) {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz, hour12: false, weekday: "short", hour: "2-digit", minute: "2-digit",
+  });
+  const out = {};
+  for (const p of fmt.formatToParts(date)) out[p.type] = p.value;
+  return { hour: Number(out.hour) % 24, minute: Number(out.minute), weekday: out.weekday };
+}
+
+const WEEKDAY_CN = { Mon: "周一", Tue: "周二", Wed: "周三", Thu: "周四", Fri: "周五", Sat: "周六", Sun: "周日" };
+const weekdayCn = (short) => WEEKDAY_CN[short];
+
+function referenceMidnight() {
+  const now = new Date();
+  const p = parts(now, REF_TZ);
+  const elapsed = (p.hour * 3600 + p.minute * 60 + now.getSeconds()) * 1000 + now.getMilliseconds();
+  return new Date(now.getTime() - elapsed);
+}
+
+function buildModel(now) {
+  const midnight = referenceMidnight();
+  const columns = [];
+  for (let i = 0; i < 24; i++) {
+    const instant = new Date(midnight.getTime() + i * 3600000);
+    const cells = CITIES.map((city) => {
+      const p = parts(instant, city.tz);
+      const weekend = p.weekday === "Sat" || p.weekday === "Sun";
+      return {
+        working: !weekend && p.hour >= WORK_START && p.hour < WORK_END,
+        weekend,
+        night: p.hour < 6 || p.hour >= 22,
+        daybreak: p.hour === 0,
+      };
+    });
+    columns.push({ instant, cells, count: cells.filter((c) => c.working).length });
+  }
+  return { midnight, columns, now };
+}
+
+function ranges(values, predicate) {
+  const out = [];
+  let start = null;
+  for (let i = 0; i < values.length; i++) {
+    const hit = predicate(values[i]);
+    if (hit && start === null) start = i;
+    if (!hit && start !== null) { out.push([start, i]); start = null; }
+  }
+  if (start !== null) out.push([start, values.length]);
+  return out;
+}
+
+function renderPlanSummary(model) {
+  const counts = model.columns.map((c) => c.count);
+  const max = Math.max(...counts);
+  const best = ranges(counts, (v) => v === max && max >= 2);
+  const el = document.getElementById("plan-summary");
+  if (max < 2) {
+    el.innerHTML = "<strong>今天没有两个城市同时上班的时段</strong>";
+    return;
+  }
+  const span = best.map(([a, b]) => `${pad(a)}:00–${pad(b === 24 ? 24 : b)}:00`).join("、");
+  const headline = max === CITIES.length
+    ? `<strong>全员共同工作时间：本机时间 ${span}</strong>`
+    : `<strong>最多 ${max} 个城市重叠：本机时间 ${span}</strong>`;
+  const note = max === CITIES.length ? "" : ' <span class="note">· 没有全员重叠</span>';
+  el.innerHTML = headline + note;
+}
+
+function renderTicks() {
+  const ticks = document.getElementById("ticks");
+  if (ticks.childElementCount) return;
+  for (let i = 0; i < 24; i++) {
+    const cell = document.createElement("div");
+    cell.className = "tick";
+    cell.textContent = i % 2 === 0 ? pad(i) : "";
+    ticks.appendChild(cell);
+  }
+}
+
+function statusOf(p) {
+  const weekend = p.weekday === "Sat" || p.weekday === "Sun";
+  if (weekend) return { text: "周末", working: false };
+  if (p.hour >= WORK_START && p.hour < WORK_END) return { text: "工作中", working: true };
+  return { text: "已下班", working: false };
+}
+
+function renderPlan() {
+  const now = new Date();
+  const model = buildModel(now);
+  const rounding = 15 * 60000;
+  const cursor = new Date(Math.round((state.cursor === null
+    ? now.getTime()
+    : model.midnight.getTime() + state.cursor * 60000) / rounding) * rounding);
+
+  renderPlanSummary(model);
+  renderTicks();
+
+  const band = document.getElementById("band");
+  band.innerHTML = "";
+  model.columns.forEach((column) => {
+    const cell = document.createElement("i");
+    if (column.count === 0) {
+      cell.className = "zero";
+    } else {
+      cell.style.opacity = String(0.14 + (column.count / CITIES.length) * 0.6);
+    }
+    band.appendChild(cell);
+  });
+
+  const rows = document.getElementById("rows");
+  rows.innerHTML = "";
+  const cursorHour = Math.floor((cursor.getTime() - model.midnight.getTime()) / 3600000);
+
+  CITIES.forEach((city, index) => {
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const p = parts(cursor, city.tz);
+    const status = statusOf(p);
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = `<span class="city">${city.name}</span>
+      <span class="now${status.working ? " is-work" : ""}">${pad(p.hour)}:${pad(p.minute)} ${weekdayCn(p.weekday)}</span>`;
+
+    const cells = document.createElement("div");
+    cells.className = "cells";
+    model.columns.forEach((column) => {
+      const cell = column.cells[index];
+      const el = document.createElement("i");
+      el.className = cell.weekend
+        ? "cell-weekend"
+        : cell.working
+          ? "cell-work"
+          : cell.night
+            ? "cell-night"
+            : "cell-off";
+      if (cell.daybreak) el.className += " daybreak";
+      cells.appendChild(el);
+    });
+
+    row.appendChild(meta);
+    row.appendChild(cells);
+    rows.appendChild(row);
+  });
+
+  const midnight = model.midnight.getTime();
+  const nowFraction = (now.getTime() - midnight) / 86400000;
+  const line = document.getElementById("nowline");
+  line.style.left = `calc(var(--label) + (100% - var(--label)) * ${nowFraction})`;
+  const nowTag = document.getElementById("nowtag");
+  nowTag.textContent = `现在 ${pad(parts(now, REF_TZ).hour)}:${pad(parts(now, REF_TZ).minute)}`;
+  nowTag.classList.toggle("flip", nowFraction > 0.82);
+
+  const bandEl = document.getElementById("cursorband");
+  const firstRow = rows.firstElementChild;
+  const lastRow = rows.lastElementChild;
+  if (firstRow) {
+    const box = firstRow.querySelectorAll(".cells i")[cursorHour].getBoundingClientRect();
+    const origin = document.getElementById("timeline").getBoundingClientRect();
+    const first = firstRow.getBoundingClientRect();
+    bandEl.hidden = false;
+    bandEl.style.left = `${box.left - origin.left}px`;
+    bandEl.style.width = `${box.width}px`;
+    bandEl.style.top = `${first.top - origin.top}px`;
+    bandEl.style.height = `${lastRow.getBoundingClientRect().bottom - first.top}px`;
+  }
+
+  document.getElementById("scrub-range").value = String(Math.round((cursor.getTime() - midnight) / 60000));
+  document.getElementById("scrub-readout").textContent =
+    `${pad(parts(cursor, REF_TZ).hour)}:${pad(parts(cursor, REF_TZ).minute)}（本机）`;
+}
+
+function renderBoard() {
+  const now = new Date();
+  const list = document.getElementById("board-list");
+  list.innerHTML = "";
+  let working = 0;
+  CITIES.forEach((city) => {
+    const p = parts(now, city.tz);
+    const status = statusOf(p);
+    if (status.working) working += 1;
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `<span class="city">${city.name}</span>
+      <span class="clock">${pad(p.hour)}:${pad(p.minute)}</span>
+      <span class="day">${weekdayCn(p.weekday)}</span>
+      <span class="spacer"></span>
+      <span class="chip${status.working ? " work" : ""}">${status.text}</span>`;
+    list.appendChild(row);
+  });
+  document.getElementById("board-summary").innerHTML =
+    `<strong>现在有 ${working} 个城市在工作时间</strong> <span class="note">· 按各城市当地时间</span>`;
+}
+
+function render() {
+  document.documentElement.dataset.theme = state.theme;
+  document.querySelectorAll(".segment").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === state.view);
+  });
+  document.getElementById("card-board").hidden = state.view !== "board";
+  document.getElementById("card-plan").hidden = state.view !== "plan";
+  if (state.view === "board") renderBoard();
+  else renderPlan();
+}
+
+document.querySelector(".segments").addEventListener("click", (event) => {
+  const button = event.target.closest(".segment");
+  if (!button) return;
+  state.view = button.dataset.view;
+  render();
+});
+
+document.getElementById("scrub-range").addEventListener("input", (event) => {
+  state.cursor = Number(event.target.value);
+  render();
+});
+
+document.getElementById("scrub-reset").addEventListener("click", () => {
+  state.cursor = null;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
