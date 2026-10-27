@@ -7,6 +7,7 @@ using Serilog.Events;
 
 namespace JiuMi.Infrastructure.Tests;
 
+[Collection("Logging")]
 public sealed class LoggingPipelineTests : IDisposable
 {
     private readonly string _root =
