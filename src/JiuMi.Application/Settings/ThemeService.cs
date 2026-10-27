@@ -10,6 +10,7 @@ public sealed class ThemeService : IThemeService
 {
     private readonly IThemeApplier _applier;
     private readonly ISettingsStore _settingsStore;
+    private readonly Serilog.ILogger _logger;
     private AppTheme _current = AppTheme.System;
 
     /// <summary>
@@ -17,12 +18,18 @@ public sealed class ThemeService : IThemeService
     /// </summary>
     /// <param name="settingsStore">Supplies the stored preference at startup.</param>
     /// <param name="applier">Applies preferences to the running interface.</param>
-    public ThemeService(ISettingsStore settingsStore, IThemeApplier applier)
+    /// <param name="logger">Receives theme application events.</param>
+    public ThemeService(
+        ISettingsStore settingsStore,
+        IThemeApplier applier,
+        Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(applier);
+        ArgumentNullException.ThrowIfNull(logger);
         _settingsStore = settingsStore;
         _applier = applier;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -38,8 +45,11 @@ public sealed class ThemeService : IThemeService
         if (_applier.TryApply(stored, out _))
         {
             SetCurrent(stored);
+            _logger.Information("Theme {Theme} applied from settings", stored);
             return;
         }
+
+        _logger.Debug("Stored theme {Theme} could not be applied; using the light palette", stored);
 
         // The file keeps the user's choice: the failure may be temporary, and the parser already
         // normalizes values that are not part of the preference model. Architecture maps this path to
@@ -60,8 +70,11 @@ public sealed class ThemeService : IThemeService
         if (_applier.TryApply(theme, out failure))
         {
             SetCurrent(theme);
+            _logger.Information("Theme switched to {Theme}", theme);
             return true;
         }
+
+        _logger.Debug(failure, "Theme {Theme} could not be applied", theme);
 
         if (!_applier.TryApply(_current, out Exception? restoreFailure))
         {

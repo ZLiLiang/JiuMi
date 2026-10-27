@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="JiuMi cat mark">
+  <g transform="translate(0 22)">
+    <path d="M48 104 L56 22 Q58 12 68 18 L125 56 Z" fill="#E08A43"/>
+    <path d="M208 104 L200 22 Q198 12 188 18 L131 56 Z" fill="#E08A43"/>
+    <path d="M68 84 L73 39 Q74 33 81 38 L114 60 Z" fill="#F3AAA2"/>
+    <path d="M188 84 L183 39 Q182 33 175 38 L142 60 Z" fill="#F3AAA2"/>
+    <path d="M46 112 C46 72 82 50 128 50 C174 50 210 72 210 112 C210 156 176 192 128 192 C80 192 46 156 46 112 Z" fill="#E08A43"/>
+    <ellipse cx="128" cy="148" rx="40" ry="27" fill="#FFF4E6"/>
+    <ellipse cx="98" cy="116" rx="10" ry="12" fill="#3E2A20"/>
+    <ellipse cx="158" cy="116" rx="10" ry="12" fill="#3E2A20"/>
+    <circle cx="101" cy="112" r="3.4" fill="#FFF4E6"/>
+    <circle cx="161" cy="112" r="3.4" fill="#FFF4E6"/>
+    <path d="M119 138 Q128 131 137 138 Q137 145 128 148 Q119 145 119 138 Z" fill="#E8898A"/>
+    <path d="M128 148 L128 154 M128 154 Q119 163 110 156 M128 154 Q137 163 146 156" fill="none" stroke="#3E2A20" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

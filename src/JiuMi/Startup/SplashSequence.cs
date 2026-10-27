@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Startup;
 using JiuMi.Errors;
+using JiuMi.Shell;
 using JiuMi.Views;
 
 namespace JiuMi.Startup;
@@ -27,11 +28,11 @@ internal sealed class SplashSequence
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly IErrorWindowPresenter _errorWindows;
+    private readonly ShellLifecycle _lifecycle;
     private readonly Stopwatch _clock = new();
 
     private SplashWindow? _splash;
     private MainWindow? _shell;
-    private SplashStage _stage = SplashStage.Bootstrapping;
     private DispatcherTimer? _noWindowTimer;
     private DispatcherTimer? _crossFadeTimer;
     private bool _mediaDisposed;
@@ -44,35 +45,42 @@ internal sealed class SplashSequence
     /// <param name="desktop">The lifetime that owns the main window and the shutdown rule.</param>
     /// <param name="initialization">The startup work the splash covers.</param>
     /// <param name="media">The resolved splash media.</param>
+    /// <param name="session">The session that owns the handoff gate and the published stage.</param>
     /// <param name="createSplashWindow">Builds the splash window.</param>
     /// <param name="errorReporter">Records the startup warnings and late completion.</param>
     /// <param name="recordFactory">Creates those records with the shared environment fields.</param>
     /// <param name="errorWindows">Presents a startup failure that blocks the shell.</param>
+    /// <param name="lifecycle">Owns the window lifecycle once the shell takes over.</param>
     public SplashSequence(
         IClassicDesktopStyleApplicationLifetime desktop,
         ShellInitialization initialization,
         SplashMedia media,
+        StartupSession session,
         Func<SplashWindow> createSplashWindow,
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
-        IErrorWindowPresenter errorWindows)
+        IErrorWindowPresenter errorWindows,
+        ShellLifecycle lifecycle)
     {
         ArgumentNullException.ThrowIfNull(desktop);
         ArgumentNullException.ThrowIfNull(initialization);
         ArgumentNullException.ThrowIfNull(media);
+        ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(createSplashWindow);
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(errorWindows);
+        ArgumentNullException.ThrowIfNull(lifecycle);
 
         _desktop = desktop;
         _initialization = initialization;
         _media = media;
-        _session = new StartupSession(SplashHandoffGate.ForGif(media.Duration));
+        _session = session;
         _createSplashWindow = createSplashWindow;
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
         _errorWindows = errorWindows;
+        _lifecycle = lifecycle;
     }
 
     /// <summary>
@@ -89,7 +97,7 @@ internal sealed class SplashSequence
         // can be shown, and a timer keeps the readiness fallback alive without a frame loop.
         DisposeMedia();
         _clock.Restart();
-        _stage = SplashStage.Waiting;
+        _session.TransitionTo(StartupState.Waiting);
         StartInitialization();
         StartNoWindowWatch();
     }
@@ -105,8 +113,9 @@ internal sealed class SplashSequence
 
             // Set before Show: Opened can fire inside Show, and the frame loop only runs from the
             // stage that says the splash is up.
-            _stage = SplashStage.SplashShown;
+            _session.TransitionTo(StartupState.SplashShown);
             splash.Show();
+            _lifecycle.AttachSplash(splash);
             return true;
         }
 #pragma warning disable CA1031 // A splash window that cannot be built is the bottom rung: startup carries on without it.
@@ -149,12 +158,13 @@ internal sealed class SplashSequence
 
     private void OnAnimationFrame(SplashWindow splash)
     {
-        if (_stage == SplashStage.SplashShown)
+        if (_session.State == StartupState.SplashShown)
         {
             // Initialization now runs beside the animation instead of before the clock: the splash
             // keeps drawing while the work awaits, so the readiness timeout can be observed at all.
             _clock.Restart();
-            _stage = _media.Animation is null ? SplashStage.Waiting : SplashStage.Animating;
+            _session.TransitionTo(
+                _media.Animation is null ? StartupState.Waiting : StartupState.Animating);
             StartInitialization();
         }
 
@@ -162,11 +172,11 @@ internal sealed class SplashSequence
 
         // One pass is timed by the application: the GIF control has no way to stop after a single
         // play, so its source is dropped when the measured length is up.
-        if (_stage == SplashStage.Animating && elapsed >= _media.Duration)
+        if (_session.State == StartupState.Animating && elapsed >= _media.Duration)
         {
             // The picture and the ring swap inside this one frame, so nothing is drawn in between.
             splash.StopAnimation();
-            _stage = SplashStage.Waiting;
+            _session.TransitionTo(StartupState.Waiting);
         }
 
         if (_session.HasFaulted)
@@ -208,10 +218,10 @@ internal sealed class SplashSequence
     }
 
     private bool IsMeasuring =>
-        _stage is SplashStage.SplashShown or SplashStage.Animating or SplashStage.Waiting;
+        _session.State is StartupState.SplashShown or StartupState.Animating or StartupState.Waiting;
 
     private bool HasLeftSplash =>
-        _stage is SplashStage.Handoff or SplashStage.Running or SplashStage.Faulted;
+        _session.State is StartupState.Handoff or StartupState.Running or StartupState.Faulted;
 
     private void StartInitialization()
     {
@@ -299,7 +309,7 @@ internal sealed class SplashSequence
             return;
         }
 
-        _stage = SplashStage.Handoff;
+        _session.TransitionTo(StartupState.Handoff);
         StopNoWindowWatch();
 
         if (!TryShellOperation("Shell.MainWindow.Show", () =>
@@ -311,7 +321,8 @@ internal sealed class SplashSequence
             return;
         }
 
-        _stage = SplashStage.Running;
+        _session.TransitionTo(StartupState.Running);
+        _lifecycle.AttachShell(shell);
     }
 
     private void TryBeginHandoff(SplashWindow splash, MainWindow shell) =>
@@ -319,7 +330,7 @@ internal sealed class SplashSequence
 
     private void BeginHandoff(SplashWindow splash, MainWindow shell)
     {
-        _stage = SplashStage.Handoff;
+        _session.TransitionTo(StartupState.Handoff);
         _clock.Stop();
 
         shell.Opacity = 0d;
@@ -383,7 +394,7 @@ internal sealed class SplashSequence
         {
             shell.Opacity = 1d;
             shell.Activate();
-            _stage = SplashStage.Running;
+            _session.TransitionTo(StartupState.Running);
         });
 
         if (!activated)
@@ -396,8 +407,13 @@ internal sealed class SplashSequence
         // decorative here: a failed close must not be reported as a main-window failure.
         splash.Opened -= OnSplashOpened;
         _splash = null;
+        _lifecycle.DetachSplash(splash);
         CloseSplashWindow(splash);
         DisposeMedia();
+
+        // The tray appears once the splash has left: a request that was waiting now activates the shell
+        // instead of the splash that was still fading out.
+        _lifecycle.AttachShell(shell);
     }
 
     private static void CloseSplashWindow(SplashWindow splash)
@@ -516,19 +532,16 @@ internal sealed class SplashSequence
 
         if (_shell is { IsLoaded: true } shell)
         {
-            // The shell took over already: finish the visual handoff and let the presenter offer
-            // continuing instead of treating this as a terminal startup state.
+            // The shell took over already: finish the visual handoff before the presenter records the
+            // fault. Faulted stays the session's terminal state; the window the user can keep using is
+            // a separate fact the presenter reads from the main window, not from the state machine.
             shell.Opacity = 1d;
-            _stage = SplashStage.Running;
-        }
-        else
-        {
-            _stage = SplashStage.Faulted;
         }
 
         // The presenter records the failure and decides the blocking variant from the main window.
         _errorWindows.PresentFailure(code, operation, exception);
         CloseSplash();
+        _lifecycle.NotifyStartupFaulted();
     }
 
     private void CloseSplash()
@@ -540,6 +553,7 @@ internal sealed class SplashSequence
 
         _splash = null;
         splash.Opened -= OnSplashOpened;
+        _lifecycle.DetachSplash(splash);
         CloseSplashWindow(splash);
     }
 

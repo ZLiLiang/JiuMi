@@ -5,6 +5,8 @@
 /// </summary>
 public static class ErrorRedactor
 {
+    private const string Placeholder = "%USERPROFILE%";
+
     private static readonly string _userProfile =
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
@@ -19,6 +21,27 @@ public static class ErrorRedactor
 
         return _userProfile.Length == 0
             ? value
-            : value.Replace(_userProfile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+            : value.Replace(_userProfile, Placeholder, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Redacts a JSON document, where backslashes in the profile path are escaped.
+    /// </summary>
+    /// <param name="json">The serialized text to redact.</param>
+    /// <returns>The JSON with both the plain and the escaped profile prefix replaced.</returns>
+    public static string RedactJson(string json)
+    {
+        ArgumentNullException.ThrowIfNull(json);
+
+        string redacted = Redact(json);
+        if (_userProfile.Length == 0)
+        {
+            return redacted;
+        }
+
+        string escapedProfile = System.Text.Json.JsonEncodedText.Encode(_userProfile).ToString();
+        return string.Equals(escapedProfile, _userProfile, StringComparison.Ordinal)
+            ? redacted
+            : redacted.Replace(escapedProfile, Placeholder, StringComparison.OrdinalIgnoreCase);
     }
 }

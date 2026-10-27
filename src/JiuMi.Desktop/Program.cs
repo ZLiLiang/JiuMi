@@ -1,17 +1,23 @@
 ﻿using System.Globalization;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Application.Shell;
+using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
+using JiuMi.Infrastructure.Logging;
+using JiuMi.Shell;
 using JiuMi.Startup;
 using JiuMi.Theming;
 using JiuMi.Threading;
 using JiuMi.ViewModels;
 using JiuMi.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace JiuMi.Desktop;
 
@@ -21,18 +27,37 @@ internal static class Program
     public static int Main(string[] args)
     {
         using ServiceProvider services = CreateServices();
+        Log.Logger = services.GetRequiredService<LoggingPipeline>().Logger;
         SubscribeProcessHandlers(services);
+
+        // The lifecycle subscribes to the activation channel before the listener starts, so a launch
+        // that arrives during startup is queued instead of being lost.
+        ShellLifecycle lifecycle = services.GetRequiredService<ShellLifecycle>();
+
+        // The instance lock and its pipe exist before the interface starts.
+        ISingleInstanceCoordinator singleInstance =
+            services.GetRequiredService<ISingleInstanceCoordinator>();
+        if (!singleInstance.TryAcquire())
+        {
+            Log.CloseAndFlush();
+            return ExitCodes.Success;
+        }
 
         IErrorWindowPresenter errorWindows = services.GetRequiredService<IErrorWindowPresenter>();
         IShellStartup startup = new SplashStartup(
             CreateInitialization(services),
             services.GetRequiredService<IErrorReporter>(),
             services.GetRequiredService<ErrorRecordFactory>(),
-            errorWindows);
+            errorWindows,
+            lifecycle,
+            services.GetRequiredService<Serilog.ILogger>());
 
-        return AppBuilder.Configure(() => new App(startup, errorWindows))
+        int exitCode = AppBuilder.Configure(() => new App(startup, errorWindows))
             .UsePlatformDetect()
             .StartWithClassicDesktopLifetime(args);
+
+        Log.CloseAndFlush();
+        return exitCode;
     }
 
     /// <summary>
@@ -42,7 +67,6 @@ internal static class Program
     /// <returns>The ordered steps, with the shell window construction after them.</returns>
     private static ShellInitialization CreateInitialization(ServiceProvider services)
     {
-        ISettingsStore settingsStore = services.GetRequiredService<ISettingsStore>();
         IThemeService themeService = services.GetRequiredService<IThemeService>();
 
         // The probe has to precede the first settings read, the text catalogue has to exist before the
@@ -52,7 +76,7 @@ internal static class Program
         // contracts grow async APIs.
         return new ShellInitialization(
             [
-                () => Task.Run(() => RunConfigProbe(settingsStore)),
+                () => Task.Run(() => RunConfigProbe(services)),
                 () => Task.Run(() => ReportStartupIssues(services)),
                 () => RunLocalizationAsync(services),
                 () =>
@@ -64,10 +88,17 @@ internal static class Program
             () => services.GetRequiredService<MainWindow>());
     }
 
-    private static void RunConfigProbe(ISettingsStore settingsStore)
+    private static void RunConfigProbe(ServiceProvider services)
     {
-        // Settling the location is the probe: this session reads and writes wherever it lands.
-        _ = settingsStore.Location;
+        // Settling the location is the probe: this session reads and writes wherever it lands. The
+        // log file follows it, so the file sink can only be attached after this point.
+        ISettingsStore settingsStore = services.GetRequiredService<ISettingsStore>();
+        SettingsLocation location = settingsStore.Location;
+        services.GetRequiredService<LoggingPipeline>().AttachFileLogging(location);
+        services.GetRequiredService<Serilog.ILogger>().Information(
+            "Settings location {Kind} at {ConfigPath}",
+            location.Kind,
+            location.FilePath ?? "memory only");
     }
 
     private static async Task RunLocalizationAsync(ServiceProvider services)
@@ -122,13 +153,16 @@ internal static class Program
             LocalizationCatalog catalog = provider.GetRequiredService<LocalizationCatalog>();
             return new LocalizationService(
                 catalog,
-                settingsStore.Current.Language ?? CultureInfo.CurrentUICulture.Name);
+                settingsStore.Current.Language ?? CultureInfo.CurrentUICulture.Name,
+                provider.GetRequiredService<Serilog.ILogger>());
         });
+        services.AddSingleton<DiagnosticsExportController>();
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();
+        services.AddSingleton<ShellLifecycle>();
         services.AddSingleton<IErrorWindowPresenter>(provider => new ErrorWindowPresenter(
             provider.GetRequiredService<IErrorReporter>(),
             provider.GetRequiredService<ErrorRecordFactory>(),
@@ -145,6 +179,11 @@ internal static class Program
         SettingsLoadResult result = services.GetRequiredService<ISettingsStore>().Load();
         IErrorReporter reporter = services.GetRequiredService<IErrorReporter>();
         ErrorRecordFactory recordFactory = services.GetRequiredService<ErrorRecordFactory>();
+
+        services.GetRequiredService<Serilog.ILogger>().Information(
+            "Settings loaded from {Kind} with issues {Issues}",
+            result.Location.Kind,
+            result.Issues);
 
         if (result.Issues.HasFlag(SettingsLoadIssue.Corrupted))
         {
@@ -173,19 +212,24 @@ internal static class Program
     {
         IErrorReporter reporter = services.GetRequiredService<IErrorReporter>();
         ErrorRecordFactory recordFactory = services.GetRequiredService<ErrorRecordFactory>();
+        ICrashReportWriter crashWriter = services.GetRequiredService<ICrashReportWriter>();
+        Serilog.ILogger logger = services.GetRequiredService<Serilog.ILogger>();
 
         // These subscriptions live as long as the process, so they are deliberately never removed.
-        // The UI is not safe to touch here: record what is known, then leave with the failure code.
+        // The UI is not safe to touch here: record what is known, flush, then leave with the failure code.
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
-            if (e.ExceptionObject is Exception error)
+            if (e.ExceptionObject is Exception exception)
             {
-                reporter.Report(recordFactory.Create(
-                    ErrorCodes.UnexpectedAppDomainException,
-                    "AppDomain.UnhandledException",
-                    error));
+                crashWriter.Write("AppDomain.UnhandledException", exception);
+                logger.Fatal(exception, "The process cannot continue");
+            }
+            else
+            {
+                logger.Fatal("The process cannot continue without an exception object");
             }
 
+            Log.CloseAndFlush();
             Environment.Exit(ExitCodes.Failure);
         };
 

@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Product>JiuMi</Product>
+    <ApplicationIcon>..\JiuMi\Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

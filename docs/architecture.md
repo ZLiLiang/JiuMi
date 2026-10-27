@@ -152,13 +152,13 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 项 | 规则 |
 | --- | --- |
 | 创建时机 | 主窗口第一次显示后（进入 `Running`）创建；进程退出时销毁 |
-| 图标 | 暂用占位资源，与任务栏图标同一份；正式品牌资源未定 |
+| 图标 | exe 内嵌的 `app.ico`（与 `Assets/app-icon.png` 同一母版），与主窗口任务栏图标同一份 |
 | 左键单击 | 显示并激活主窗口（同激活规则） |
 | 右键菜单 | 显示主窗口 / 设置 / 退出，文案键 `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` |
 | 「设置」项 | 恢复并激活窗口后，走导航栏「设置」同一条导航命令 |
 | 平台 | 只在 Windows 实现；其他平台为 no-op，其最小化行为随跨平台分发另行决定 |
 
-- 首次最小化提示的文案取 `Shell.Tray.MinimizedHint`，经错误呈现章节的 `IUserNotification` 端口投递，不用托盘气泡 API。
+- 首次最小化提示的文案取 `Shell.Tray.MinimizedHint`，经错误呈现章节的 `IUserNotification` 端口投递，界面代码不直接调用托盘 API。
 - 四个 `Shell.Tray.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
 - 托盘与单实例的实现放 Infrastructure；`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
 
@@ -265,10 +265,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 系统通知
 
-- 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现（`AppNotification` toast，有托盘时可用 `NotifyIcon` 气泡）在 `JiuMi.Infrastructure`，其他平台 no-op。
+- 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现复用托盘图标的气泡通道（`Shell_NotifyIcon` 的 `NIF_INFO`），其他平台 no-op。
 - **触发**：仅当应用没有可见窗口（关闭或最小化到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
 - **内容**：标题为应用名，正文只用本地化短句、不带技术细节；点击激活主窗口并呈现对应 InfoBar。
-- 托盘图标本身归单实例与窗口生命周期章节；toast 不依赖托盘。本期没有后台任务，实际触发点为零，但端口与实现先建好。
+- 托盘图标本身归单实例与窗口生命周期章节；端口不要求托盘存在，但本期唯一的触发点（最小化提示、隐藏期错误）都发生在托盘已显示之后。本期没有后台任务，触发点只有这两处。
 - 平台专属 API 允许使用，但必须隔离在 Infrastructure（经 Application 抽象暴露）；`#if WINDOWS` 只允许出现在 Infrastructure 与 Desktop 组合根，UI / Application 只认抽象。
 
 ## 日志与诊断
@@ -296,7 +296,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | 目录 | `<exe 目录>\logs\`；exe 侧不可写时为 `%AppData%\JiuMi\logs\` |
 | 与配置的关系 | 跟随配置启动探针的结论，与 `config\` **同级**；绝不进 `data\` |
-| 创建时机 | 首次写日志之前建目录 |
+| 创建时机 | 首次写日志之前建目录；启动期事件先进入有界内存缓冲，配置探针落定后挂文件 sink 并回放 |
 | 多进程 | `shared: false`；#7 的单实例保证同一 exe、同一用户会话只有一个进程，第二实例在打开日志前退出 |
 | 收尾 | 正常退出与致命退出都调用 `Log.CloseAndFlush()` |
 
@@ -335,6 +335,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 同步、unbuffered；**不加 Async sink**——桌面量级用不上异步队列的吞吐，还会多一个组件与一处崩溃刷盘风险。
 - `Fatal` 由 sink 立即刷盘。
 - 文件写入失败：`SelfLog.Enable` 输出到调试器；**不弹 InfoBar**，只在设置页「关于」区显示「日志不可用」状态（`Settings.About.LoggingUnavailable`）。
+- 恢复：状态为不可用期间，日志管道每 30 秒探测一次日志目录；目录重新可写时重试挂载文件 sink（首次挂载失败的情况）并写一条恢复事件，「日志不可用」随之消失。恢复事件本身写失败会立刻把状态翻回不可用。
 - 日志失败绝不影响功能路径。
 
 ### 崩溃文件
@@ -492,7 +493,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
-| `Settings.About.ExportDiagnostics` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮与「日志不可用」状态 |
+| `Settings.About.ExportDiagnostics` / `Settings.About.DiagnosticsFileType` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮、保存对话框的文件类型标签与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
 | `Common.Retry` / `Common.OpenFolder` / `Common.CopyDetails` / `Common.Copied` / `Common.Close` | 错误呈现的操作、复制反馈与关闭按钮可访问名 |
 | `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
