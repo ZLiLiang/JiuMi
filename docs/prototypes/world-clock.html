@@ -8,6 +8,7 @@
     ?at=<0-1439>                     规划视图的游标位置，单位分钟（默认落在当前时刻，按 15 分钟取整）
     ?holiday=YYYY-MM-DD              把该本地日期当作法定假日
     ?holidayCities=<IANA id,...>     限定哪些城市放这一天（默认全部）
+    ?capture=1                       出图模式：隐藏页面滚动条与窗口外底色，只留 1200×760 的窗口本身
 
   假日数据在实现中来自运行时拉取，原型用上面两个参数演示：
   假日覆盖周末与工作窗口，且不计入重叠计数——结论会跟着变，可据此复核优先级。
@@ -68,6 +69,11 @@
     --holiday-hatch: rgba(255, 255, 255, 0.22);
   }
   html, body { height: 100%; }
+  html.capture body {
+    display: block;
+    overflow: hidden;
+    background: transparent;
+  }
   body {
     margin: 0;
     display: flex;
@@ -649,6 +655,7 @@ function renderBoard() {
 
 function render() {
   document.documentElement.dataset.theme = state.theme;
+  document.documentElement.classList.toggle("capture", params.get("capture") === "1");
   document.querySelectorAll(".segment").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.view);
   });
