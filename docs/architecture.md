@@ -192,7 +192,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 | 载体 | 职责 | 约束 |
 | --- | --- | --- |
-| 全局 InfoBar | 默认载体：启动期入队的告警、会话中途的失败 | 内容区顶部、导航栏右侧，推挤内容不覆盖；跨页常驻 |
+| 全局 InfoBar | 默认载体：启动期入队的告警、会话中途的失败 | 内容岛内部顶部，推挤内容不覆盖；跨页常驻 |
 | 容器内占位 | 局部资源加载失败（GIF / hero / 图标） | 只降级该容器，不弹提示 |
 | 独立错误窗口 | 阻断级失败；以及主窗口可用时的 UI 线程未捕获异常 | 不依赖主窗口、本地化资源与主题资源 |
 | 系统通知（端口） | 无可见窗口时投递非阻断 Error | 其余平台为 no-op |
@@ -556,6 +556,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0003 错误呈现：两级模型、四类载体、详情即日志记录](./adr/0003-error-presentation.md)
 - [ADR-0004 日志：Serilog 写 JSON Lines、崩溃文件独立、不外发](./adr/0004-logging.md)
 - [ADR-0005 窗口状态：只记导航栏展开，不记窗口几何](./adr/0005-window-state-memory.md)
+- [ADR-0006 外壳岛屿化：导航与内容各成一块浮岛](./adr/0006-island-shell.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)

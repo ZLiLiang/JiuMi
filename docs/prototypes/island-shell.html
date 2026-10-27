@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JiuMi · 岛屿式外壳原型</title>
+<style>
+  :root{
+    --font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{display:flex;font-family:var(--font);background:#0c0e13;color:#d8dbe2;overflow:hidden;}
+
+  /* ================= 原型控制面板 ================= */
+  .panel{width:320px;flex:0 0 320px;padding:20px;overflow-y:auto;background:#12151b;border-right:1px solid #23272f;}
+  .panel h1{font-size:14px;margin:0 0 6px;font-weight:600;}
+  .panel .tiny{font-size:11.5px;line-height:1.6;color:#8b93a1;margin:0 0 16px;}
+  .group-title{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:#6d7480;margin:18px 0 8px;}
+
+  .vlist{display:flex;flex-direction:column;gap:6px;}
+  .vlist label{display:block;position:relative;}
+  .vlist input{position:absolute;opacity:0;pointer-events:none;}
+  .vcard{display:block;padding:9px 10px;border-radius:8px;border:1px solid #2a2f3a;background:#171b22;cursor:pointer;}
+  .vcard:hover{border-color:#3a4150;}
+  .vname{font-size:12.5px;font-weight:600;color:#dfe4ec;}
+  .vdesc{font-size:11px;color:#848c99;margin-top:3px;line-height:1.45;}
+  .vlist input:checked + .vcard{border-color:#3a6ea8;background:#18222f;box-shadow:inset 0 0 0 1px #2b4c74;}
+  .vlist input:checked + .vcard .vname{color:#a9cdf5;}
+
+  .seg{display:flex;gap:6px;}
+  .seg label{flex:1 1 0;position:relative;}
+  .seg input{position:absolute;opacity:0;pointer-events:none;}
+  .seg span{display:block;text-align:center;padding:7px 6px;border-radius:6px;background:#171b22;border:1px solid #2a2f3a;font-size:12px;color:#b3bac6;cursor:pointer;}
+  .seg input:checked + span{background:#1c2838;border-color:#3a6ea8;color:#cfe3ff;}
+
+  .check{display:flex;align-items:center;gap:8px;font-size:12px;color:#b3bac6;margin-top:10px;cursor:pointer;}
+  .check input{accent-color:#4b8ed6;}
+
+  .hint{margin-top:20px;padding:10px 11px;border-radius:8px;background:#161a21;border:1px solid #23272f;font-size:11.5px;line-height:1.6;color:#8b93a1;}
+  .hint b{color:#b9c2cf;font-weight:600;}
+
+  /* ================= 舞台 ================= */
+  .stagewrap{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px;}
+  #stage{transform-origin:top left;}
+  .caption{font-size:12px;color:#7b8390;max-width:1200px;text-align:center;line-height:1.5;}
+
+  .win{
+    position:relative;display:flex;flex-direction:column;overflow:hidden;border-radius:8px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.10), 0 22px 70px rgba(0,0,0,.55);
+  }
+
+  /* ---------- 主题变量 ---------- */
+  .win.light{
+    --mica: radial-gradient(1500px 820px at 10% -12%, #f3f8ff 0%, rgba(243,248,255,0) 60%),
+            linear-gradient(148deg,#e4ecf7 0%,#d8e2f0 38%,#e7e1f1 72%,#f2e9e3 100%);
+    --text-primary:#1b1b1b;
+    --text-secondary:#5c5c5c;
+    --text-disabled:#a6a6a6;
+    --island-bg:#f7f7f8;
+    --island-border:rgba(0,0,0,.07);
+    --card-bg:#ffffff;
+    --card-border:rgba(0,0,0,.07);
+    --subtle-fill:rgba(0,0,0,.045);
+    --divider:rgba(0,0,0,.08);
+    --accent:#0a6fc2;
+    --accent-soft:rgba(10,111,194,.10);
+    --accent-l1:#5a9bf0;
+    --accent-d1:#1b4fa8;
+    --soft-bg:rgba(255,255,255,.62);
+    --soft-border:rgba(255,255,255,.70);
+    --soft-shadow:0 6px 22px rgba(20,30,50,.14);
+    --pill-bg:rgba(0,0,0,.045);
+    --pill-border:rgba(0,0,0,.16);
+    --pill-fg:#5c5c5c;
+    --infobar-bg:rgba(10,111,194,.07);
+    --infobar-border:rgba(10,111,194,.26);
+    --scroll-thumb:rgba(0,0,0,.24);
+    --btn-bg:rgba(0,0,0,.05);
+    --btn-border:rgba(0,0,0,.09);
+  }
+  .win.dark{
+    --mica: radial-gradient(1500px 820px at 10% -12%, #223044 0%, rgba(34,48,68,0) 60%),
+            linear-gradient(148deg,#141b25 0%,#0d131a 40%,#181420 74%,#1f1916 100%);
+    --text-primary:#ffffff;
+    --text-secondary:rgba(255,255,255,.62);
+    --text-disabled:rgba(255,255,255,.36);
+    --island-bg:#26262a;
+    --island-border:rgba(255,255,255,.07);
+    --card-bg:#2f2f34;
+    --card-border:rgba(255,255,255,.07);
+    --subtle-fill:rgba(255,255,255,.07);
+    --divider:rgba(255,255,255,.09);
+    --accent:#6cc4ff;
+    --accent-soft:rgba(108,196,255,.13);
+    --accent-l1:#8ed0ff;
+    --accent-d1:#1f6fb2;
+    --soft-bg:rgba(46,48,56,.55);
+    --soft-border:rgba(255,255,255,.10);
+    --soft-shadow:0 8px 26px rgba(0,0,0,.45);
+    --pill-bg:rgba(108,196,255,.13);
+    --pill-border:rgba(108,196,255,.40);
+    --pill-fg:#8ed0ff;
+    --infobar-bg:rgba(108,196,255,.10);
+    --infobar-border:rgba(108,196,255,.32);
+    --scroll-thumb:rgba(255,255,255,.24);
+    --btn-bg:rgba(255,255,255,.06);
+    --btn-border:rgba(255,255,255,.09);
+  }
+  .win{background:var(--mica);color:var(--text-primary);}
+
+  /* ---------- 标题栏 ---------- */
+  .titlebar{height:40px;flex:0 0 40px;display:flex;align-items:center;padding-left:16px;}
+  .brandmark{width:18px;height:18px;border-radius:4px;background:linear-gradient(135deg,var(--accent-l1),var(--accent-d1));}
+  .brandname{margin-left:8px;font-size:12px;color:var(--text-secondary);}
+  .captions{margin-left:auto;display:flex;height:40px;}
+  .captions span{width:46px;display:grid;place-items:center;font-size:10px;color:var(--text-secondary);}
+
+  /* ---------- 通用图标 ---------- */
+  svg.icon{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---------- 导航 ---------- */
+  .nav-island{width:280px;flex:0 0 280px;padding:8px 8px 12px;display:flex;flex-direction:column;
+              background:var(--island-bg);border:1px solid var(--island-border);border-radius:8px;}
+  .navtoggle{width:36px;height:32px;margin:0 0 8px;border:0;border-radius:4px;background:transparent;color:var(--text-primary);
+             display:grid;place-items:center;cursor:pointer;}
+  .navtoggle:hover{background:var(--subtle-fill);}
+  .navtoggle svg{width:16px;height:16px;}
+  .navlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+  .navgrow{flex:1;}
+  .navdivider{height:1px;margin:12px 6px;background:var(--divider);}
+  .navitem{position:relative;display:flex;align-items:center;gap:14px;height:36px;padding:0 12px;border-radius:4px;
+           font-size:14px;color:var(--text-primary);}
+  .navitem svg{width:16px;height:16px;flex:0 0 16px;}
+  .navitem.selected{background:var(--subtle-fill);}
+  .navitem.selected::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+                            width:3px;height:16px;border-radius:2px;background:var(--accent);}
+  .navitem.selected svg{color:var(--accent);}
+  .navitem.disabled{color:var(--text-disabled);}
+  .navitem.disabled svg{color:var(--text-disabled);}
+  .navitem .pill{margin-left:auto;}
+
+  /* ---------- 内容岛 ---------- */
+  .content-island{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;container-type:inline-size;
+                  background:var(--island-bg);border:1px solid var(--island-border);border-radius:8px;}
+  .infobar{display:flex;align-items:center;gap:10px;margin:12px 12px 0;padding:9px 10px;border-radius:4px;
+           background:var(--infobar-bg);border:1px solid var(--infobar-border);font-size:13px;}
+  .infobar .ib-icon{width:16px;height:16px;flex:0 0 16px;color:var(--accent);}
+  .infobar .ib-text{flex:1;}
+  .infobar .ib-close{width:20px;height:20px;display:grid;place-items:center;opacity:.6;}
+  .infobar .ib-close svg{width:12px;height:12px;}
+  .scroller{flex:1;overflow-y:auto;overflow-x:hidden;}
+  .scroller::-webkit-scrollbar{width:12px;}
+  .scroller::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:6px;border:3px solid transparent;background-clip:content-box;}
+  .page{padding:32px 44px 36px;}
+
+  /* ---------- 页面骨架 ---------- */
+  .page-title{margin:0;font-size:28px;font-weight:600;letter-spacing:.1px;}
+  .page-sub{margin:6px 0 0;font-size:13px;color:var(--text-secondary);}
+  .section-title{margin:26px 0 10px;font-size:14px;font-weight:600;}
+
+  /* ---------- 主页 ---------- */
+  .hero{display:flex;gap:26px;align-items:center;margin-top:22px;padding:20px 24px;border-radius:12px;
+        background:var(--card-bg);border:1px solid var(--card-border);}
+  .hero-media{width:340px;height:200px;flex:0 0 340px;border-radius:10px;display:grid;place-items:center;
+              background:linear-gradient(135deg,#2E7D32,#1565C0 55%,#6A3EC8);color:rgba(255,255,255,.85);font-size:12px;}
+  .hero-body h2{margin:0;font-size:24px;font-weight:600;}
+  .hero-body p{margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--text-secondary);max-width:430px;}
+  .tools{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .tool{display:flex;gap:14px;align-items:flex-start;padding:18px;border-radius:8px;
+        background:var(--card-bg);border:1px solid var(--card-border);}
+  .badge{width:40px;height:40px;flex:0 0 40px;border-radius:8px;display:grid;place-items:center;color:#fff;}
+  .badge svg{width:20px;height:20px;stroke-width:1.7;}
+  .tool-title-row{display:flex;align-items:center;gap:8px;}
+  .tool-title{font-size:14px;font-weight:600;}
+  .tool-desc{margin-top:5px;font-size:12px;line-height:1.5;color:var(--text-secondary);}
+  .pill{font-size:10px;line-height:1.2;border-radius:9px;padding:2px 6px;border:1px solid var(--pill-border);
+        background:var(--pill-bg);color:var(--pill-fg);white-space:nowrap;}
+
+  /* ---------- 设置 ---------- */
+  .narrow{max-width:800px;}
+  .card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;overflow:hidden;}
+  .row{display:flex;align-items:center;gap:16px;padding:14px 18px;}
+  .row + .row{border-top:1px solid var(--divider);}
+  .row-text{flex:1;min-width:0;}
+  .row-title{font-size:13px;font-weight:600;}
+  .row-hint{margin-top:2px;font-size:11.5px;color:var(--text-secondary);}
+  .combo{min-width:220px;height:32px;border-radius:4px;font-size:13px;padding:0 10px;
+         background:var(--card-bg);color:var(--text-primary);border:1px solid var(--btn-border);font-family:inherit;}
+  .radios{display:flex;gap:14px;font-size:13px;}
+  .radios label{display:flex;align-items:center;gap:6px;}
+  .radios input{accent-color:var(--accent);}
+  .actions{display:flex;align-items:center;gap:8px;}
+  .btn{height:32px;padding:0 12px;border-radius:4px;font-size:13px;font-family:inherit;cursor:pointer;
+       background:var(--btn-bg);color:var(--text-primary);border:1px solid var(--btn-border);}
+  .link{font-size:12.5px;color:var(--accent);text-decoration:none;}
+
+  /* ---------- 布局变体 ---------- */
+  .body{flex:1;min-height:0;display:flex;padding:12px;gap:12px;}
+  .body.top{flex-direction:column;}
+  .topmenu{flex:0 0 52px;height:52px;display:flex;align-items:center;gap:2px;padding:0 8px;
+           background:var(--island-bg);border:1px solid var(--island-border);border-radius:8px;}
+  .topmenu .navitem{height:36px;}
+  .topmenu .push{margin-left:auto;}
+  .body.single{padding:12px;}
+  .single-island{flex:1;min-width:0;display:flex;overflow:hidden;border-radius:8px;
+                 background:var(--island-bg);border:1px solid var(--island-border);}
+  .single-island .nav-island{border:0;border-radius:0;background:transparent;flex:0 0 280px;width:280px;}
+  .single-island .content-island{border:0;border-radius:0;background:transparent;}
+  .vdivider{width:1px;background:var(--divider);}
+
+  /* ---------- 截图模式：?capture=1 隐藏面板，窗口贴满视口 ---------- */
+  body.capture .panel{display:none;}
+  body.capture .caption{display:none;}
+  body.capture{background:#000;}
+  body.capture .stagewrap{padding:0;gap:0;align-items:flex-start;justify-content:flex-start;}
+  body.capture .win{box-shadow:none;border-radius:0;}
+
+  /* ---------- 收起态 ---------- */
+  .body{position:relative;}
+  .body.split.collapsed .nav-island{align-items:center;}
+  .body.split.collapse-48 .nav-island{width:48px;flex:0 0 48px;padding:8px;}
+  .body.split.collapse-56 .nav-island{width:56px;flex:0 0 56px;padding:8px;}
+  .body.split.collapsed .navlabel,
+  .body.split.collapsed .pill{display:none;}
+  .body.split.collapsed .navitem{justify-content:center;padding:0;gap:0;}
+  .body.split.collapsed .navdivider{margin:12px 0;}
+  .body.split.collapsed .navtoggle{width:32px;margin:0 0 8px;}
+  .body.split.hide-nav .nav-island{display:none;}
+  .body.split.hide-nav .page{padding-top:60px;}
+  .float-toggle{position:absolute;z-index:6;left:24px;top:24px;width:36px;height:32px;border-radius:8px;
+                display:grid;place-items:center;cursor:pointer;color:var(--text-primary);
+                border:1px solid var(--soft-border);background:var(--soft-bg);
+                -webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);}
+  .float-toggle svg{width:16px;height:16px;}
+
+  /* ---------- 亚克力变体 ---------- */
+  .win.vB .nav-island,
+  .win.vB .content-island{
+    background:var(--soft-bg);border-color:var(--soft-border);border-radius:12px;
+    -webkit-backdrop-filter:blur(30px) saturate(150%);backdrop-filter:blur(30px) saturate(150%);
+    box-shadow:var(--soft-shadow);
+  }
+  .win.vB .card{background:rgba(255,255,255,.42);}
+  .win.vB.dark .card{background:rgba(255,255,255,.055);}
+  .win.vB .body{padding:14px;gap:14px;}
+
+  /* ---------- 窄内容自适应（对应规格：内容宽 < 760 时单列） ---------- */
+  @container (max-width: 760px){
+    .hero{flex-direction:column;align-items:flex-start;}
+    .hero-media{width:100%;flex:0 0 auto;max-width:340px;align-self:center;}
+    .tools{grid-template-columns:1fr;}
+    .page{padding:24px 20px 28px;}
+    .row{flex-wrap:wrap;}
+  }
+</style>
+</head>
+<body>
+  <aside class="panel">
+    <h1>JiuMi · 岛屿式外壳原型</h1>
+    <p class="tiny">岛屿式外壳的设计定稿原型（变体 B）。保留在 <code>docs/prototypes/</code> 作为规格的复现依据，不参与构建；<code>docs/images/shell-*.png</code> 四张基准图由本文件的 <code>?capture=1</code> 模式出图。</p>
+
+    <div class="group-title">变体</div>
+    <div class="vlist" id="variants">
+      <label><input type="radio" name="variant" value="A" checked>
+        <span class="vcard"><span class="vname">A｜双岛（左栏岛 + 内容岛）</span>
+        <span class="vdesc">外距 12 · 缝 12 · 圆角 8 · 不透明卡片填充 + 1px 描边 · 无投影</span></span></label>
+      <label><input type="radio" name="variant" value="B">
+        <span class="vcard"><span class="vname">B｜双岛（亚克力 + 投影）</span>
+        <span class="vdesc">同几何 · 岛半透明模糊 · 圆角 12 · 轻投影 · 内层卡片半透明</span></span></label>
+      <label><input type="radio" name="variant" value="C">
+        <span class="vcard"><span class="vname">C｜顶部菜单岛 + 内容岛</span>
+        <span class="vdesc">菜单改成横向岛，内容仍独立成岛</span></span></label>
+      <label><input type="radio" name="variant" value="D">
+        <span class="vcard"><span class="vname">D｜单岛对照（非岛屿式）</span>
+        <span class="vdesc">导航与内容同处一块岛，中间只用 1px 竖线分隔——用来对比</span></span></label>
+    </div>
+
+    <div class="group-title">主题</div>
+    <div class="seg" id="themes">
+      <label><input type="radio" name="theme" value="light" checked><span>浅色</span></label>
+      <label><input type="radio" name="theme" value="dark"><span>深色</span></label>
+    </div>
+
+    <div class="group-title">页面</div>
+    <div class="seg" id="pages">
+      <label><input type="radio" name="page" value="home" checked><span>主页</span></label>
+      <label><input type="radio" name="page" value="settings"><span>设置</span></label>
+    </div>
+
+    <div class="group-title">窗口尺寸</div>
+    <div class="seg" id="sizes">
+      <label><input type="radio" name="size" value="1200" checked><span>1200 × 760</span></label>
+      <label><input type="radio" name="size" value="900"><span>900 × 600（最小）</span></label>
+    </div>
+
+    <div class="group-title">导航</div>
+    <div class="seg" id="navStates">
+      <label><input type="radio" name="navstate" value="expanded" checked><span>展开</span></label>
+      <label><input type="radio" name="navstate" value="collapsed"><span>收起</span></label>
+    </div>
+    <div class="seg" id="collapseStyles" style="margin-top:6px">
+      <label><input type="radio" name="collapsestyle" value="48" checked><span>窄岛 48</span></label>
+      <label><input type="radio" name="collapsestyle" value="56"><span>窄岛 56</span></label>
+      <label><input type="radio" name="collapsestyle" value="hide"><span>隐藏岛</span></label>
+    </div>
+    <p class="tiny" style="margin:8px 0 0">收起样式只在"收起"时生效；也可以直接点窗口左上角的按钮切换。</p>
+
+    <label class="check"><input type="checkbox" id="infobar" checked> 显示全局 InfoBar</label>
+
+    <div class="hint">
+      <b>看什么</b><br>
+      · 缝隙 12 够不够"浮起来"，还是想要更宽（16/20）<br>
+      · 岛与内层卡片的层次：会不会"卡片套卡片"<br>
+      · 圆角 8 vs 12、要不要投影<br>
+      · 切换 900 × 600 看最小尺寸下是否还成立
+    </div>
+  </aside>
+
+  <main class="stagewrap">
+    <div id="stage"><div class="win light vA" id="win"></div></div>
+    <div class="caption" id="caption"></div>
+  </main>
+
+<script>
+  const ICONS = {
+    home:'<path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M9.5 20v-5.5h5V20"/>',
+    video:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M10.2 9.6 15 12l-4.8 2.4z"/>',
+    rename:'<path d="M4.5 19.5h4L19 9l-4-4L4.5 15.5z"/><path d="M14 5l4 4"/>',
+    image:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.6" cy="10.2" r="1.5"/><path d="M4.4 17.4 9 12.8l3.4 3.4 2.6-2.4 4.4 4"/>',
+    globe:'<circle cx="12" cy="12" r="7.6"/><path d="M4.4 12h15.2"/><path d="M12 4.4c2.4 2.3 2.4 12.9 0 15.2-2.4-2.3-2.4-12.9 0-15.2z"/>',
+    settings:'<circle cx="12" cy="12" r="3"/><path d="M12 3.4v2.3M12 18.3v2.3M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3.4 12h2.3M18.3 12h2.3M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>',
+    menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+    close:'<path d="M6 6l12 12M18 6L6 18"/>',
+    info:'<circle cx="12" cy="12" r="8"/><path d="M12 11v5.4"/><circle cx="12" cy="8.1" r=".9" fill="currentColor" stroke="none"/>'
+  };
+  const icon = (n, cls) => '<svg class="' + (cls || 'icon') + '" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[n] + '</svg>';
+
+  const NAV = [
+    { icon:'home',     label:'主页',       selected:true },
+    { icon:'video',    label:'微信视频下载', disabled:true },
+    { icon:'rename',   label:'批量重命名',   disabled:true },
+    { icon:'image',    label:'图标转换',     disabled:true },
+    { icon:'globe',    label:'世界工作时间', disabled:true }
+  ];
+
+  const navItem = (it, tag) => '<' + (tag || 'li') + ' class="navitem'
+    + (it.selected ? ' selected' : '') + (it.disabled ? ' disabled' : '')
+    + '"' + (state.navCollapsed ? ' title="' + it.label + '"' : '') + '>'
+    + icon(it.icon) + '<span class="navlabel">' + it.label + '</span>'
+    + (it.disabled ? '<span class="pill">即将推出</span>' : '') + '</' + (tag || 'li') + '>';
+
+  const navMarkup = () =>
+      '<button class="navtoggle" data-action="toggle-nav" title="'
+    + (state.navCollapsed ? '展开导航' : '收起导航') + '">' + icon('menu') + '</button>'
+    + '<ul class="navlist">' + NAV.map(n => navItem(n)).join('') + '</ul>'
+    + '<div class="navgrow"></div><div class="navdivider"></div>'
+    + '<ul class="navlist">' + navItem({ icon:'settings', label:'设置' }) + '</ul>';
+
+  const topMenuMarkup = () =>
+      '<nav class="topmenu">'
+    + NAV.map(n => navItem(n, 'span')).join('')
+    + navItem({ icon:'settings', label:'设置' }, 'span').replace('class="navitem"', 'class="navitem push"')
+    + '</nav>';
+
+  const TOOLS = [
+    { name:'微信视频下载', color:'#2E7D32', icon:'video',  desc:'把视频号里的视频存到本地，省掉录屏这一步。' },
+    { name:'批量重命名',   color:'#1565C0', icon:'rename', desc:'按规则成批改名，支持序号、日期与原文件名替换。' },
+    { name:'图标转换',     color:'#6A3EC8', icon:'image',  desc:'PNG、ICO、SVG 互相转换，一次导出多种尺寸。' },
+    { name:'世界工作时间', color:'#C26A00', icon:'globe',  desc:'对照不同时区的工作时段，挑都在线的时间。' }
+  ];
+
+  const homeMarkup = () =>
+      '<h1 class="page-title">JiuMi</h1>'
+    + '<p class="page-sub">常用的小工具，集中在一个干净的壳里。</p>'
+    + '<div class="hero">'
+    +   '<div class="hero-media"><span>splash.gif</span></div>'
+    +   '<div class="hero-body"><h2>零碎的小需求，收进一个壳里</h2>'
+    +   '<p>JiuMi 把日常用得上的小工具收在同一个小窗口里：不用开浏览器，也不用装一堆扩展。</p></div>'
+    + '</div>'
+    + '<div class="section-title">工具</div>'
+    + '<div class="tools">'
+    + TOOLS.map(t =>
+        '<article class="tool">'
+      +   '<div class="badge" style="background:' + t.color + '">' + icon(t.icon) + '</div>'
+      +   '<div class="tool-body"><div class="tool-title-row"><span class="tool-title">' + t.name
+      +   '</span><span class="pill">即将推出</span></div>'
+      +   '<div class="tool-desc">' + t.desc + '</div></div>'
+      + '</article>').join('')
+    + '</div>';
+
+  const settingsMarkup = () =>
+      '<h1 class="page-title">设置</h1>'
+    + '<p class="page-sub">改动即时生效并自动保存，没有「保存」按钮。</p>'
+    + '<div class="narrow">'
+    +   '<div class="section-title">语言和区域</div>'
+    +   '<div class="card"><div class="row">'
+    +     '<div class="row-text"><div class="row-title">显示语言</div>'
+    +     '<div class="row-hint">界面文字使用的语言，下次启动生效。</div></div>'
+    +     '<select class="combo"><option>简体中文</option><option>English</option></select>'
+    +   '</div></div>'
+    +   '<div class="section-title">外观</div>'
+    +   '<div class="card"><div class="row">'
+    +     '<div class="row-text"><div class="row-title">主题</div>'
+    +     '<div class="row-hint">跟随系统时，切换系统主题立即生效。</div></div>'
+    +     '<div class="radios"><label><input type="radio" name="t" checked>跟随系统</label>'
+    +     '<label><input type="radio" name="t">浅色</label><label><input type="radio" name="t">深色</label></div>'
+    +   '</div></div>'
+    +   '<div class="section-title">关于</div>'
+    +   '<div class="card"><div class="row">'
+    +     '<div class="row-text"><div class="row-title">JiuMi</div>'
+    +     '<div class="row-hint">版本 1.0.0 · 配置：%APPDATA%\\JiuMi\\settings.json</div></div>'
+    +     '<div class="actions"><button class="btn">打开文件夹</button>'
+    +     '<button class="btn">导出诊断包</button><a class="link">GitHub 仓库</a></div>'
+    +   '</div></div>'
+    + '</div>';
+
+  const state = { variant:'A', theme:'light', page:'home', info:true, size:1200,
+                  navCollapsed:false, collapseStyle:'48' };
+
+  const QS = new URLSearchParams(location.search);
+  const isCapture = QS.get('capture') === '1';
+
+  const contentIsland = () =>
+      '<section class="content-island">'
+    +   (state.info
+        ? '<div class="infobar">' + icon('info', 'icon ib-icon')
+          + '<span class="ib-text">导出诊断包失败：日志目录不可写。</span>'
+          + '<span class="ib-close">' + icon('close') + '</span></div>'
+        : '')
+    +   '<div class="scroller"><div class="page">'
+    +   (state.page === 'home' ? homeMarkup() : settingsMarkup())
+    +   '</div></div></section>';
+
+  const bodyMarkup = () => {
+    if (state.variant === 'C') {
+      return '<div class="body top">' + topMenuMarkup() + contentIsland() + '</div>';
+    }
+    if (state.variant === 'D') {
+      return '<div class="body single"><div class="single-island">'
+        + '<nav class="nav-island">' + navMarkup() + '</nav><div class="vdivider"></div>'
+        + contentIsland() + '</div></div>';
+    }
+    const hidden = state.navCollapsed && state.collapseStyle === 'hide';
+    const cls = 'body split'
+      + (state.navCollapsed ? ' collapsed' : '')
+      + (state.navCollapsed ? ' collapse-' + state.collapseStyle : '')
+      + (hidden ? ' hide-nav' : '');
+    const floatToggle = hidden
+      ? '<button class="float-toggle" data-action="toggle-nav" title="展开导航">' + icon('menu') + '</button>'
+      : '';
+    const nav = hidden ? '' : '<nav class="nav-island">' + navMarkup() + '</nav>';
+    return '<div class="' + cls + '">' + floatToggle + nav + contentIsland() + '</div>';
+  };
+
+  const CAPTIONS = {
+    A: 'A｜双岛：外距 12 · 缝 12 · 圆角 8 · 不透明卡片填充 + 1px 描边 · 无投影',
+    B: 'B｜双岛（亚克力）：外距 14 · 缝 14 · 圆角 12 · 岛半透明模糊 + 轻投影 · 内层卡片半透明',
+    C: 'C｜顶部菜单岛 + 内容岛：菜单横向成岛，内容独立成岛，外距/缝同 A',
+    D: 'D｜单岛对照：导航与内容同处一块岛，中间 1px 竖线分隔（不是岛屿式）'
+  };
+
+  function render() {
+    const win = document.getElementById('win');
+    win.className = 'win ' + state.theme + ' v' + state.variant;
+    win.style.width = state.size + 'px';
+    win.style.height = (state.size === 900 ? 600 : 760) + 'px';
+    win.innerHTML =
+        '<div class="titlebar"><div class="brandmark"></div><span class="brandname">JiuMi</span>'
+      + '<div class="captions"><span>&#8212;</span><span>&#9633;</span><span>&#10005;</span></div></div>'
+      + bodyMarkup();
+    document.getElementById('caption').textContent = CAPTIONS[state.variant];
+    fit();
+  }
+
+  function fit() {
+    const stage = document.getElementById('stage');
+    if (isCapture) {
+      const z = Number(QS.get('zoom') || 1);
+      stage.style.zoom = 1;
+      stage.style.transformOrigin = 'top left';
+      stage.style.transform = z === 1 ? 'none' : 'scale(' + z + ')';
+      return;
+    }
+    const wrap = document.querySelector('.stagewrap');
+    const w = state.size, h = state.size === 900 ? 600 : 760;
+    const k = Math.min(1, (wrap.clientWidth - 48) / w, (wrap.clientHeight - 70) / h);
+    stage.style.zoom = k;
+  }
+
+  document.getElementById('variants').addEventListener('change', e => { state.variant = e.target.value; render(); });
+  document.getElementById('themes').addEventListener('change', e => { state.theme = e.target.value; render(); });
+  document.getElementById('pages').addEventListener('change', e => { state.page = e.target.value; render(); });
+  document.getElementById('sizes').addEventListener('change', e => { state.size = Number(e.target.value); render(); });
+  document.getElementById('infobar').addEventListener('change', e => { state.info = e.target.checked; render(); });
+  document.getElementById('navStates').addEventListener('change', e => { state.navCollapsed = e.target.value === 'collapsed'; render(); });
+  document.getElementById('collapseStyles').addEventListener('change', e => { state.collapseStyle = e.target.value; render(); });
+  document.getElementById('win').addEventListener('click', e => {
+    if (e.target.closest('[data-action="toggle-nav"]')) {
+      state.navCollapsed = !state.navCollapsed;
+      document.querySelector('input[name="navstate"][value="' + (state.navCollapsed ? 'collapsed' : 'expanded') + '"]').checked = true;
+      render();
+    }
+  });
+  window.addEventListener('resize', fit);
+
+  if (isCapture) {
+    document.body.classList.add('capture');
+    if (QS.get('variant')) state.variant = QS.get('variant').toUpperCase();
+    if (QS.get('theme')) state.theme = QS.get('theme');
+    if (QS.get('page')) state.page = QS.get('page');
+    if (QS.get('size')) state.size = Number(QS.get('size'));
+    if (QS.get('info') === '0') state.info = false;
+  }
+  render();
+</script>
+</body>
+</html>
