@@ -20,7 +20,7 @@ C# code follows `docs/coding-guidelines/csharp.md`. Mechanical rules live in `.e
 
 ### Build and verification
 
-Run `pwsh ./verify.ps1` before considering a code change done. It is the only supported gate: Release build with warnings as errors, tests when test projects exist, and `dotnet format --verify-no-changes`. CI, when present, must run the same script. See `docs/agents/build-and-verification.md`; do not introduce a second build command.
+Run `pwsh ./verify.ps1` before considering a code change done. It is the only supported gate: Release build with warnings as errors, tests when test projects exist, and `dotnet format --verify-no-changes`. CI, when present, must run the same script. See `docs/agents/build-and-verification.md`; do not introduce a second build command. The Windows publish flow is documented there too; publishing is not a gate.
 
 ## Git commits
 
