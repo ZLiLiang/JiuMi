@@ -113,18 +113,36 @@ public partial class MainWindow : FAAppWindow
         if (ActualTransparencyLevel == WindowTransparencyLevel.Mica)
         {
             Background = null;
+            BackdropHighlight.IsVisible = false;
             return;
         }
 
         // A themed lookup must name the variant, otherwise it returns the default (light) brush.
-        if (ResourceNodeExtensions.TryFindResource(
-                this,
-                ThemeResourceKeys.SolidBackgroundBrush,
-                ActualThemeVariant,
-                out object? solidBrush) &&
-            solidBrush is IBrush brush)
+        bool hasBackdrop = TryFindBrush(ThemeResourceKeys.WindowBackdropBrush, out IBrush? backdrop);
+        BackdropHighlight.IsVisible = hasBackdrop;
+
+        if (hasBackdrop)
         {
-            Background = brush;
+            Background = backdrop;
+            return;
         }
+
+        if (TryFindBrush(ThemeResourceKeys.SolidBackgroundBrush, out IBrush? solid))
+        {
+            Background = solid;
+        }
+    }
+
+    private bool TryFindBrush(string key, out IBrush? brush)
+    {
+        if (ResourceNodeExtensions.TryFindResource(this, key, ActualThemeVariant, out object? value) &&
+            value is IBrush found)
+        {
+            brush = found;
+            return true;
+        }
+
+        brush = null;
+        return false;
     }
 }

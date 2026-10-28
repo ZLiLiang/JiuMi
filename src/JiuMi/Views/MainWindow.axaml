@@ -28,6 +28,11 @@
                           VerticalAlignment="Center"
                           Symbol="{Binding SelectedIconName, Converter={x:Static loc:SymbolNameConverter.Instance}}" />
         <Grid Grid.Column="1" Classes="nav-text" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <Grid.Transitions>
+            <Transitions>
+              <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+            </Transitions>
+          </Grid.Transitions>
           <TextBlock Grid.Column="0"
                      Classes="nav-label"
                      VerticalAlignment="Center"
@@ -47,6 +52,12 @@
   </fa:FAAppWindow.Resources>
 
   <Grid RowDefinitions="40,*">
+    <Border x:Name="BackdropHighlight"
+            Grid.RowSpan="2"
+            Background="{DynamicResource JiuMiWindowHighlightBrush}"
+            IsHitTestVisible="False"
+            IsVisible="False" />
+
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
       <Border x:Name="TitleBarMark"
               Width="18"
@@ -71,10 +82,17 @@
                  Text="{Binding AppName}" />
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Background="Transparent">
+    <Grid Grid.Row="1" Margin="14" ColumnDefinitions="Auto,14,*">
       <Border Grid.Column="0"
+              Classes="island"
               Width="{Binding NavigationWidth}"
-              Padding="8,8,8,12">
+              Padding="8,8,8,12"
+              ClipToBounds="True">
+        <Border.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseOut" />
+          </Transitions>
+        </Border.Transitions>
         <Grid RowDefinitions="Auto,*,Auto,Auto">
           <Button Grid.Row="0"
                   Width="36"
@@ -136,13 +154,15 @@
         </Grid>
       </Border>
 
-      <DockPanel Grid.Column="1">
-        <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-          <ContentControl Content="{Binding CurrentPage}" />
-        </ScrollViewer>
-      </DockPanel>
+      <Border Grid.Column="2" Classes="island">
+        <DockPanel>
+          <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <ContentControl Content="{Binding CurrentPage}" />
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
     </Grid>
   </Grid>
 </fa:FAAppWindow>

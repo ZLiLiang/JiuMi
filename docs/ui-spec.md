@@ -4,7 +4,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ## 通用规则
 
-- 颜色一律引用 FluentAvalonia 的主题资源，不写死色值：浅色、深色与高对比度随主题自动成立。例外只有工具徽标的固定品牌色与「即将推出」徽标，见「主题」章节。
+- 颜色一律引用 FluentAvalonia 的主题资源，不写死色值：浅色、深色与高对比度随主题自动成立。例外只有工具徽标的固定品牌色、岛表面、窗口回退底与「即将推出」徽标，见「主题」章节。
 - 尺寸是 100% 文本缩放下的默认值；缩放到 200% 时以「不裁切、可滚动」为准。
 - 文案一律走本地化绑定，键名见 [`docs/architecture.md`](./architecture.md) 本地化章节的已登记键表；本文件新增的键已同步登记在那里。
 - 视图里不拼文案：标题、说明、按钮文字各取一个键，不把两段文本拼成一句。
@@ -34,10 +34,10 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 窗口 | `FAAppWindow`（FluentAvalonia 3；3.0 起由 `FluentWindow` 更名），标题栏由它提供，不自绘外框 |
 | 默认尺寸 | 1200 × 760 |
 | 最小尺寸 | 900 × 600，可放大、不设最大尺寸 |
-| 背景 | `MicaBackdrop`（系统支持时）；不支持时回退 `SolidBackgroundFillColorBaseBrush` |
+| 背景 | `MicaBackdrop`（系统支持时）；不支持时回退 `JiuMiWindowBackdropBrush` 渐变底（浅/深各一档），高对比度用 `SolidBackgroundFillColorBaseBrush` 实色 |
 | 标题栏 | 高 40；左侧应用图标 18 × 18（圆角 4，取 `Assets/app-icon.png`，母版 `Assets/app-icon.svg`；素材缺失时回退强调色渐变块）+ 应用名 12px `TextFillColorSecondaryBrush`；**不显示当前页面名** |
 | 主体 | 标题栏下方是岛区：外距 14，导航岛（展开 280 / 收起 56）+ 缝 14 + 内容岛 `*`，两岛等高 |
-| 岛屿 | 圆角 12；`JiuMiIslandBackgroundBrush` 填充 + 1px `ControlStrokeColorDefaultBrush` 描边 + `BoxShadow`（浅 `0 2 8 #14000000`、深 `0 4 16 #40000000`），见 [ADR-0006](./adr/0006-island-shell.md) |
+| 岛屿 | 圆角 12；`JiuMiIslandBackgroundBrush` 填充 + 1px `JiuMiIslandBorderBrush` 描边 + `BoxShadow`（浅 `0 6 22 #24141E32`、深 `0 8 26 #73000000`），见 [ADR-0006](./adr/0006-island-shell.md) |
 
 - 窗口默认位置由系统决定，不做自定义居中。
 - 尺寸、位置与最大化状态都**不记忆**：每次启动按上表的默认尺寸打开（见 [ADR-0005](./adr/0005-window-state-memory.md)）。
@@ -60,6 +60,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 四个工具项本期**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
 - **选中态**：整行填充；左侧 3 × 16、圆角 2 的 `AccentFillColorDefaultBrush` 指示条；图标改为强调色并使用填充变体，文字颜色不变。
 - **收起态**：导航岛宽 56，只剩图标、水平居中；项文案转为 `ToolTip`，可访问名仍取同一键。
+- **展开/收起过渡**：导航岛宽度 200ms `CubicEaseOut`，项文案同步 200ms 淡入淡出；内容岛随列宽连续重排。
 - 默认展开。展开/收起是**唯一被记忆的状态**（`settings.json` 的 `navExpanded`，见 [`docs/architecture.md`](./architecture.md) 配置章节）：启动时恢复上次关闭时的状态；点按钮立即改变界面但不立即写盘，退出时统一落盘。
 
 ### 内容岛骨架
@@ -143,12 +144,13 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 三态：跟随系统（默认）、浅色、深色；落盘规则见 [`docs/adr/0001-settings-persistence.md`](./adr/0001-settings-persistence.md) 与架构的配置章节。
 - 切换即时生效，不重启、不播放过渡动画。
 - 深色与浅色**共用同一结构**，只换颜色资源：不出现只在一套主题下才有的控件、间距或层级。
-- 表面层级：窗口用 Mica（或回退实色）作底 → 两块岛（`JiuMiIslandBackgroundBrush` + 1px 描边 + 投影）→ 页面里的卡片与 hero（`CardBackgroundFillColorDefaultBrush` + 1px 描边，不加投影）。层次以描边为主、投影为辅，投影只出现在岛这一级；卡片在岛的半透明面上仍靠 1px 细描边区分，不做第二层投影。
+- 表面层级：窗口用 Mica（或回退 `JiuMiWindowBackdropBrush` 渐变底）作底 → 两块岛（`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + 投影）→ 页面里的卡片与 hero（`CardBackgroundFillColorDefaultBrush` + 1px 描边，不加投影）。层次以描边为主、投影为辅，投影只出现在岛这一级；卡片在岛的半透明面上仍靠 1px 细描边区分，不做第二层投影。
 - 主题资源缺失时回退 Fluent 默认主题，只记 Debug（架构已定）。
 
-### 三处固定配色
+### 四处固定配色
 
-- **岛表面**：`JiuMiIslandBackgroundBrush`，浅色 `#9EFFFFFF`（62% 白）、深色 `#8C2E3038`（55% 深灰）；高对比度下改用实色底 + `ControlStrokeColorDefaultBrush` 描边，不沿用半透明。为什么不用 Fluent 的 `LayerFillColorDefaultBrush`：见 [ADR-0006](./adr/0006-island-shell.md)。
+- **窗口回退底**：`JiuMiWindowBackdropBrush`，Mica 不可用时铺满窗口，复现原型里 Mica 的彩色底：浅色为 148° 四段渐变 `#E4ECF7 → #D8E2F0 → #E7E1F1 → #F2E9E3`，深色为 `#141B25 → #0D131A → #181420 → #1F1916`；左上角再叠一层 `JiuMiWindowHighlightBrush` 径向高光（浅 `#F3F8FF`、深 `#223044`，向外淡出）。高对比度改用 `SolidBackgroundFillColorBaseBrush` 实色、不加高光。
+- **岛表面**：`JiuMiIslandBackgroundBrush`，浅色 `#9EFFFFFF`（62% 白）、深色 `#8C2E3038`（55% 深灰）；1px 描边用 `JiuMiIslandBorderBrush`，浅色 `#B3FFFFFF`（白 70%）、深色 `#1AFFFFFF`（白 10%）；投影浅 `0 6 22 #24141E32`、深 `0 8 26 #73000000`。高对比度下填充与描边改用 `SolidBackgroundFillColorBaseBrush` + `ControlStrokeColorDefaultBrush`，去掉投影。为什么不用 Fluent 的 `LayerFillColorDefaultBrush`：见 [ADR-0006](./adr/0006-island-shell.md)。
 - **工具徽标**：底色是各工具自己的品牌色，不随主题变，图标纯白。微信视频下载 `#2E7D32`、批量重命名 `#1565C0`、图标转换 `#6A3EC8`、世界工作时间 `#C26A00`。
 - **「即将推出」徽标**：10px，圆角 9，内边距 2 6。深色下用强调色系（浅蓝文字 + 强调色 42% 描边 + 14% 底色）保证对比度；浅色下只用次级文字色 + `ControlStrokeColorDefaultBrush` 描边 + `SubtleFillColorSecondaryBrush` 底色，不抢视觉权重。
 
@@ -244,8 +246,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 卡片与控件描边 | `CardStrokeColorDefaultBrush` / `ControlStrokeColorDefaultBrush` |
 | 分隔线 | `DividerStrokeColorDefaultBrush` |
 | 强调色（选中指示条、进度环、超链接、单选钮） | `AccentFillColorDefaultBrush` |
-| 窗口基底（Mica 不可用时） | `SolidBackgroundFillColorBaseBrush` |
-| 岛表面 | `JiuMiIslandBackgroundBrush`（半透明，浅/深各一档；高对比度用实色） |
+| 窗口基底（Mica 不可用时） | `JiuMiWindowBackdropBrush`（渐变）+ `JiuMiWindowHighlightBrush`（高光）；高对比度用 `SolidBackgroundFillColorBaseBrush` |
+| 岛表面 | `JiuMiIslandBackgroundBrush` + `JiuMiIslandBorderBrush` + `JiuMiIslandShadow`（半透明，浅/深各一档；高对比度用实色、无投影） |
 | 悬停底色 | `SubtleFillColorSecondaryBrush` |
 
 ## 错误呈现
@@ -336,7 +338,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 #### 布局与排版
 
-- 内容整体内缩 8，包在一层圆角 12 的岛里（`JiuMiIslandBackgroundBrush` + 1px 描边 + 投影，与主窗口同款）；系统标题栏与边框保留，窗口尺寸不变。
+- 内容整体内缩 8，包在一层圆角 12 的岛里（`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + 投影，与主窗口同款）；系统标题栏与边框保留，窗口尺寸不变。
 - 岛内边距 24。
 - 图标 32 × 32（Error 圆形叉），与标题同一行，间距 12。
 - 标题：20px / SemiBold / `TextFillColorPrimaryBrush`，行高 28，最多两行，超出省略。
