@@ -8,9 +8,9 @@ using JiuMi.Application.WorldClock;
 namespace JiuMi.Infrastructure.WorldClock;
 
 /// <summary>
-/// Reads the catalog files shipped with the application.
+/// Reads the catalog files shipped with the application; the last rung of the fallback chain.
 /// </summary>
-public sealed class BundledWorldClockCatalogProvider : IWorldClockCatalogProvider, IDisposable
+internal sealed class BundledWorldClockCatalogProvider : IWorldClockCatalogProvider, IDisposable
 {
     private readonly string _directory;
     private readonly Serilog.ILogger _logger;

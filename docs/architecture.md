@@ -412,8 +412,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `<exe>\data\` | 工具产物，按工具分子目录 | 预留，不创建 |
 | `<exe>\logs\` | 日志、崩溃文件与诊断包的来源 | 创建 |
 | `<exe>\config\cache\holidays\` | 节假日缓存，跟随设置位置 | 按需创建 |
+| `<exe>\config\cache\catalog\` | 世界时钟目录的已下载版本，跟随设置位置 | 按需创建 |
 
-三者语义分开：`config` 是应用状态，`data` 是工具产物，`logs` 是排障输出。exe 侧不可写时，`logs` 与 `config` 一起回落到 `%AppData%\JiuMi\`（见日志与诊断章节）。`cache\holidays\` 与设置同根，见[工具模块](#工具模块)的节假日小节。
+三者语义分开：`config` 是应用状态，`data` 是工具产物，`logs` 是排障输出。exe 侧不可写时，`logs` 与 `config` 一起回落到 `%AppData%\JiuMi\`（见日志与诊断章节）。两个 `cache\` 目录与设置同根，见[工具模块](#工具模块)的目录与节假日小节。缓存不是用户状态：可以随时删除，删掉后工具回到内置数据。
 
 ### 文件契约（半稳定）
 
@@ -442,7 +443,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 | 键 | 类型 | 缺省 | 含义 |
 | --- | --- | --- | --- |
-| `onlineDataEnabled` | boolean | `true` | 允许工具联网取数；当前唯一的请求是节假日 |
+| `onlineDataEnabled` | boolean | `true` | 允许工具联网取数；当前请求是节假日与目录更新 |
 | `worldClock.view` | `"board"` / `"plan"` | `"board"` | 上次打开的视图 |
 | `worldClock.places[]` | `{ kind, id, start, end, days }` | 上海、伦敦、纽约、旧金山四个城市 | 已选地点、各自工作窗口与工作周 |
 
@@ -517,6 +518,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
+| `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
 | `Settings.Subtitle` | 设置页副标题 |
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
@@ -588,7 +590,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 层 | 世界工作时间 | 约束 |
 | --- | --- | --- |
 | `JiuMi.Application` | `WorldClock/`：`Place`、目录、`WorkWindow`、网格计算、节假日契约 | 纯函数、无 Avalonia、无网络 |
-| `JiuMi.Infrastructure` | `BundledWorldClockCatalogProvider`、`NagerDateHolidayProvider` 与缓存 | 只做文件/网络 I/O，不含业务规则 |
+| `JiuMi.Infrastructure` | `WorldClockCatalogProvider` 与缓存、`WorldClockCatalogUpdater`、`NagerDateHolidayProvider` 与缓存 | 只做文件/网络 I/O，不含业务规则 |
 | `JiuMi`（UI） | `WorldClockViewModel`、`WorldClockView`、`WorldClockManageWindow` | 绑定与编组，文案走 i18n |
 
 ### 工具页骨架
@@ -604,8 +606,18 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - `Assets/world-clock/{countries,cities,office-hours}.json` 随程序发布；运行期零网络。
 - `countries.json`：`iso2`、双语名、`dialCode`、`representative: { zone, city? }`；`city` 只在多时区国家出现。`cities.json`：IANA id、国家、双语名，一城一区。`office-hours.json`：全球默认 + 国家/城市覆盖（含 `source` 与 `updatedAt`），回退链 城市 → 国家 → 全球。
 - `tools/generate-world-clock-data.ps1` 从 CLDR（名称）、IANA tzdb（代表时区）、libphonenumber（区号）生成；JSON 记录 CLDR/Unicode/tzdb 版本与 libphonenumber commit。脚本不进构建、不接 CI。
-- `IWorldClockCatalogProvider` 是唯一接缝；当前实现 `BundledWorldClockCatalogProvider` 只读包内文件。在线更新（Release 资产 + manifest/哈希 + 24h 后台检查 + 缓存回退）在 #56，实现替换不改页面。
+- `IWorldClockCatalogProvider` 是唯一接缝：`WorldClockCatalogProvider` 先读校验通过的 `cache\catalog\{version}\`，没有可用版本时读包内文件；页面每次进入都重新取一次，版本没变时只是列一次目录，不重读文件。
 - 目录缺失或解析失败不阻塞启动：provider 记 Warning 并返回空目录；未知时区的地点单行降级、不计入重叠。
+
+### 目录在线更新
+
+- **发布形态**：GitHub Release 固定 tag `world-clock-catalog`，资产为 `manifest.json` 与三份 JSON，资产名与 URL 稳定。manifest 形如 `{ schemaVersion: 1, version, updatedAt, files: [{ name, sha256, size }] }`；`version` 单调递增，默认取发布日 `yyyyMMdd`。`tools/generate-world-clock-data.ps1` 生成 manifest；`tools/publish-world-clock-catalog.ps1` 拒绝不高于已发布版本的 manifest，先传三份 JSON、最后传 manifest。发布窗口内旧 manifest 与新数据短暂不一致，哈希校验会拒绝，下一轮自动检查恢复。
+- **检查**：主窗口首次激活后由 `IWorldClockCatalogUpdater.CheckAsync(force: false)` 后台检查；`WorldClockCatalogUpdatePolicy` 保证 24 小时至多一次，设置页「立即检查」传 `force: true`。检查时间写在 `cache\catalog\state.json`，跨启动有效。
+- **请求**：`GET` manifest 与文件，走系统代理，10 秒超时，失败重试一次；固定 User-Agent `JiuMi/{version}`；不带任何用户数据。`onlineDataEnabled` 关闭时不发请求，缓存仍可读；仅内存设置（无缓存根）时直接跳过。
+- **校验**：manifest 的 schema、版本、文件名集合与哈希格式；每个文件的大小与 SHA-256；三份 JSON 能完整解析且无数据问题。任何一项不通过都不落地，记 Warning，不弹 InfoBar。
+- **缓存**：下载内容先写入 `cache\catalog\.tmp-{version}\`，全部写完再整体改名为 `{version}\`，然后删掉旧版本目录，只保留最新一份。写失败保留旧缓存；坏缓存被 provider 忽略并回退内置。
+- **生效**：更新只写缓存，不回写设置，也不改当前页面；下次进入世界工作时间页时 provider 发现新版本并重新加载，不重启。
+- **状态**：设置页显示「上次检查」与「目录更新于」；内置目录显示「目录为内置版本」。检查进行中按钮禁用，状态行改为「正在检查…」。
 
 ### 节假日
 
@@ -624,8 +636,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 测试缝
 
-1. `JiuMi.Application` 纯函数：工作窗口校验、日期/时区换算（含 DST、+5:45、+5:30、跨日）、状态优先级、重叠并列、目录解析与名称回退、跨层搜索、代表时区。
-2. Infrastructure：临时设置目录 + fake `HttpMessageHandler` + 可控 `TimeProvider`，验证缓存命中、禁用联网、404/空数组、重试、过期缓存回退；设置读写 round-trip 与坏条目丢弃。
+1. `JiuMi.Application` 纯函数：工作窗口校验、日期/时区换算（含 DST、+5:45、+5:30、跨日）、状态优先级、重叠并列、目录解析与名称回退、跨层搜索、代表时区；manifest 解析与拒绝、版本比较、SHA-256 比对、24h 节流判定。
+2. Infrastructure：临时设置目录 + fake `HttpMessageHandler` + 可控 `TimeProvider`，验证缓存命中、禁用联网、404/空数组、重试、过期缓存回退；设置读写 round-trip 与坏条目丢弃。目录更新另验：新版本下载与缓存、同版本只取 manifest、节流与强制检查、哈希/清单不合格不落地、坏缓存回退内置、缓存目录只留最新版本。
 
 相关：[ADR-0007](./adr/0007-holiday-network.md)、[ADR-0008](./adr/0008-world-clock-catalog.md)、[#53](https://github.com/ZLiLiang/JiuMi/issues/53)、[#56](https://github.com/ZLiLiang/JiuMi/issues/56)。
 

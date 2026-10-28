@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 namespace JiuMi.Application.WorldClock;
 
 /// <summary>
-/// Supplies the world clock catalog. The bundled implementation reads the package files; a future
-/// online implementation can replace it without changing the page.
+/// Supplies the world clock catalog. The implementation prefers a downloaded version that passed
+/// verification and falls back to the bundled files, so the page never deals with the difference.
 /// </summary>
 public interface IWorldClockCatalogProvider
 {

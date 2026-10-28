@@ -122,25 +122,60 @@
                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1">
-              <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                  <TextBlock FontSize="13"
-                             FontWeight="SemiBold"
-                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                             Text="{loc:Localize Settings.Data.Label}" />
-                  <TextBlock Margin="0,2,0,0"
-                             FontSize="11.5"
-                             TextWrapping="Wrap"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             Text="{loc:Localize Settings.Data.Hint}" />
-                </StackPanel>
-                <ToggleSwitch Grid.Column="1"
-                              VerticalAlignment="Center"
-                              OnContent=""
-                              OffContent=""
-                              AutomationProperties.Name="{loc:Localize Settings.Data.Label}"
-                              IsChecked="{Binding IsOnlineDataEnabled, Mode=TwoWay}" />
-              </Grid>
+              <StackPanel>
+                <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                  <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                               Text="{loc:Localize Settings.Data.Label}" />
+                    <TextBlock Margin="0,2,0,0"
+                               FontSize="11.5"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{loc:Localize Settings.Data.Hint}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{loc:Localize Settings.Data.Label}"
+                                IsChecked="{Binding IsOnlineDataEnabled, Mode=TwoWay}" />
+                </Grid>
+                <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                  <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                               Text="{loc:Localize Settings.Data.Catalog.Title}" />
+                    <TextBlock Margin="0,2,0,0"
+                               FontSize="11.5"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{loc:Localize Settings.Data.Catalog.Hint}" />
+                    <TextBlock Margin="0,4,0,0"
+                               FontSize="11.5"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding CatalogStatusText}" />
+                    <TextBlock Margin="0,2,0,0"
+                               FontSize="11.5"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding CatalogVersionText}" />
+                  </StackPanel>
+                  <Button Grid.Column="1"
+                          MinWidth="96"
+                          Height="32"
+                          VerticalAlignment="Center"
+                          CornerRadius="4"
+                          FontSize="13"
+                          AutomationProperties.Name="{loc:Localize Settings.Data.Catalog.Check}"
+                          Command="{Binding CheckCatalogCommand}"
+                          Content="{loc:Localize Settings.Data.Catalog.Check}" />
+                </Grid>
+              </StackPanel>
             </Border>
           </StackPanel>
 

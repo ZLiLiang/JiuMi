@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Application.WorldClock;
 
 namespace JiuMi.ViewModels;
 
@@ -18,6 +20,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
+    private readonly IWorldClockCatalogUpdater _catalogUpdater;
     private readonly Serilog.ILogger _logger;
     private readonly ShellNavigationItem _settingsNavigationItem;
     private readonly ShellNavigationItem _worldClockNavigationItem;
@@ -27,6 +30,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private ViewModelBase _currentPage;
     private bool _isNavigationExpanded;
     private bool _savedOnExit;
+    private bool _catalogCheckStarted;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindowViewModel"/> class.
@@ -37,6 +41,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
+    /// <param name="catalogUpdater">Checks the published world clock catalog after the shell is up.</param>
     /// <param name="logger">Receives navigation and window-lifecycle events.</param>
     public MainWindowViewModel(
         IApplicationInfo applicationInfo,
@@ -45,6 +50,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         WorldClockViewModel worldClockPage,
         InfoBarViewModel infoBar,
         ISettingsStore settingsStore,
+        IWorldClockCatalogUpdater catalogUpdater,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -53,12 +59,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(catalogUpdater);
         ArgumentNullException.ThrowIfNull(logger);
 
         AppName = applicationInfo.Name;
         AppVersion = applicationInfo.Version;
         _localization = localization;
         _settingsStore = settingsStore;
+        _catalogUpdater = catalogUpdater;
         _logger = logger;
         _worldClockPage = worldClockPage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
@@ -267,9 +275,35 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void OnWindowActivated()
     {
+        StartCatalogCheckOnce();
         if (ReferenceEquals(CurrentPage, _worldClockPage))
         {
             _worldClockPage.Refresh();
+        }
+    }
+
+    private void StartCatalogCheckOnce()
+    {
+        if (_catalogCheckStarted)
+        {
+            return;
+        }
+
+        // Background work the shell never waits for: the updater throttles itself, keeps the switch
+        // in mind and logs every failure, so nothing here can reach the InfoBar.
+        _catalogCheckStarted = true;
+        _ = CheckCatalogAsync();
+    }
+
+    private async Task CheckCatalogAsync()
+    {
+        try
+        {
+            await _catalogUpdater.CheckAsync(force: false);
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "World clock catalog check failed");
         }
     }
 
