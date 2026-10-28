@@ -196,8 +196,9 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 世界工作时间 · 管理地点
 
 - 独立对话框窗口：初始 960 × 640，可缩放，最小 760 × 520，标题取 `Tool.WorldClock.Manage.Title`，`CenterOwner`，不显示在任务栏。
-- 头部内边距 24 22 24 14：标题 20px / SemiBold，副标题 12px / 次文字色；右上角 22 × 22 关闭按钮。
-- 主体左右分栏：左 `*`、右 360，中间 1px `DividerStrokeColorDefaultBrush`。
+- 窗口采用与外壳一致的岛屿式底：`JiuMiWindowBackdropBrush` 渐变底 + `JiuMiWindowHighlightBrush` 高光，外层内边距 14；页头与页脚直接落在底上，中间是可滚动的两块岛。
+- 页头（外边距 4 2 4 12）：标题 20px / SemiBold，副标题 12px / 次文字色；右上角 22 × 22 关闭按钮。
+- 主体两岛：左 `*`、右 360，岛间 14；两岛圆角 12，`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + `JiuMiIslandShadow`，与窗口岛同款；岛内边距 20 16 / 18 16。
 - 左侧：
   - 「国家 / 城市」分段（默认城市），样式同页头分段；`国家` 搜索国家中英名 / ISO / 区号 / 代表城市，`城市` 搜索城市中英名 / IANA / 所属国家中英名 / 区号。
   - 搜索框高 34、13px、`PlaceholderText` 随分段切换。
@@ -206,8 +207,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
   - 头部「已选地点」12px + 计数 chip；下方已选列表可滚动，行间距 4。
   - 每行：拖动柄 10px（`SizeAll` 光标）/ 「国家 / 城市」徽标（9px）/ 名称 12px + 次行 10px / 区号 chip / 编辑、删除 22 × 22 图标按钮。
   - 拖动柄按住后拖动可重排；顺序即时生效并写盘。
-- 底部：左侧「恢复默认」，右侧「取消」「完成」（完成用强调色按钮）；两者都关闭窗口，修改已即时生效。
-- 工作时间编辑器覆盖在对话框上，遮罩 `JiuMiScrimBrush`；卡片宽 420、内边距 22、圆角 8，`SolidBackgroundFillColorBaseBrush` + 1px 描边：
+- 底部（外边距 4 12 4 0，落在渐变底上，不画分隔线）：左侧「恢复默认」，右侧「取消」「完成」（完成用强调色按钮）；两者都关闭窗口，修改已即时生效。
+- 工作时间编辑器覆盖在对话框上，遮罩 `JiuMiScrimBrush`；卡片宽 420、内边距 22、圆角 12，`SolidBackgroundFillColorBaseBrush` + 1px 描边 + `JiuMiIslandShadow`：
   - 标题 16px / SemiBold，地点名 12px / 次文字色。
   - 上班 / 下班各一个 `ComboBox`，选项为 00:00–23:45 的 15 分钟步进；标签 11px / 次文字色。
   - 工作日七个 `CheckBox`，可换行，12px。
@@ -224,7 +225,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 七张 1200 × 760 截图取自定稿原型 [`world-clock.html`](./prototypes/world-clock.html) 的 `?capture=1` 出图，是本节与 #53 的视觉基准；原型只作复现与对照，不参与构建。
 
-> 2026-10-28 文案收紧：摘要去掉「本机时间」与「没有全员重叠」，页脚两句移入问号 ToolTip；七张图仍保留原版式，文字以上文为准。
+> 2026-10-28 文案收紧：摘要去掉「本机时间」与「没有全员重叠」，页脚两句移入问号 ToolTip；七张图仍保留原版式，文字以上文为准。管理地点图仍是单块内容版式，岛式布局以本节为准。
 
 ![看板：每地点一行，双语名 + 国家区号 + 当地时间与状态](./images/world-clock-board.png)
 

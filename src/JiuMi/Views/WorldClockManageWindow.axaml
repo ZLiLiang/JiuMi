@@ -14,7 +14,7 @@
         CanResize="True"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+        Background="{DynamicResource JiuMiWindowBackdropBrush}">
   <Window.Styles>
     <Style Selector="Button.segment">
       <Setter Property="Height" Value="28" />
@@ -96,120 +96,118 @@
     </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="Auto,*,Auto">
-    <Grid Margin="24,22,24,14" ColumnDefinitions="*,Auto">
-      <StackPanel>
-        <TextBlock FontSize="20"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                   Text="{loc:Localize Tool.WorldClock.Manage.Title}" />
-        <TextBlock Margin="0,5,0,0"
-                   FontSize="12"
-                   TextWrapping="Wrap"
-                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                   Text="{loc:Localize Tool.WorldClock.Manage.Subtitle}" />
-      </StackPanel>
-      <Button Grid.Column="1"
-              Classes="icon"
-              Click="OnCloseClick"
-              AutomationProperties.Name="{loc:Localize Common.Close}">
-        <fac:FASymbolIcon Symbol="Dismiss" FontSize="14" />
-      </Button>
-    </Grid>
+  <Grid>
+    <Border Background="{DynamicResource JiuMiWindowHighlightBrush}" IsHitTestVisible="False" />
 
-    <Border Grid.Row="1"
-            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-            BorderThickness="0,1,0,0">
-      <Grid ColumnDefinitions="*,360">
-        <Grid Grid.Column="0"
-              Margin="24,16,20,18"
-              RowDefinitions="Auto,Auto,*">
-          <Border Grid.Row="0"
-                  Padding="2"
-                  CornerRadius="4"
-                  HorizontalAlignment="Left"
-                  Background="{DynamicResource SubtleFillColorSecondaryBrush}">
-            <StackPanel Orientation="Horizontal" Spacing="2">
-              <Button Classes="segment"
-                      Classes.active="{Binding IsCountryMode}"
-                      Command="{Binding SetModeCommand}"
-                      CommandParameter="{x:Static wc:PlaceKind.Country}"
-                      Content="{loc:Localize Tool.WorldClock.Manage.Mode.Country}" />
-              <Button Classes="segment"
-                      Classes.active="{Binding IsCityMode}"
-                      Command="{Binding SetModeCommand}"
-                      CommandParameter="{x:Static wc:PlaceKind.City}"
-                      Content="{loc:Localize Tool.WorldClock.Manage.Mode.City}" />
-            </StackPanel>
-          </Border>
+    <Grid Margin="14" RowDefinitions="Auto,*,Auto">
+      <Grid Grid.Row="0" Margin="4,2,4,12" ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock FontSize="20"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                     Text="{loc:Localize Tool.WorldClock.Manage.Title}" />
+          <TextBlock Margin="0,5,0,0"
+                     FontSize="12"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                     Text="{loc:Localize Tool.WorldClock.Manage.Subtitle}" />
+        </StackPanel>
+        <Button Grid.Column="1"
+                Classes="icon"
+                Click="OnCloseClick"
+                AutomationProperties.Name="{loc:Localize Common.Close}">
+          <fac:FASymbolIcon Symbol="Dismiss" FontSize="14" />
+        </Button>
+      </Grid>
 
-          <TextBox Grid.Row="1"
-                   Margin="0,12,0,0"
-                   Height="34"
-                   FontSize="13"
-                   PlaceholderText="{Binding SearchPlaceholder}"
-                   Text="{Binding SearchQuery, Mode=TwoWay}" />
+      <Grid Grid.Row="1" ColumnDefinitions="*,14,360">
+        <Border Grid.Column="0" Classes="island">
+          <Grid Margin="20,16" RowDefinitions="Auto,Auto,*">
+            <Border Grid.Row="0"
+                    Padding="2"
+                    CornerRadius="4"
+                    HorizontalAlignment="Left"
+                    Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="2">
+                <Button Classes="segment"
+                        Classes.active="{Binding IsCountryMode}"
+                        Command="{Binding SetModeCommand}"
+                        CommandParameter="{x:Static wc:PlaceKind.Country}"
+                        Content="{loc:Localize Tool.WorldClock.Manage.Mode.Country}" />
+                <Button Classes="segment"
+                        Classes.active="{Binding IsCityMode}"
+                        Command="{Binding SetModeCommand}"
+                        CommandParameter="{x:Static wc:PlaceKind.City}"
+                        Content="{loc:Localize Tool.WorldClock.Manage.Mode.City}" />
+              </StackPanel>
+            </Border>
 
-          <ScrollViewer Grid.Row="2"
-                        Margin="0,12,0,0"
-                        HorizontalScrollBarVisibility="Disabled"
-                        VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-              <ItemsControl ItemsSource="{Binding Results}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:WorldClockCatalogItemViewModel">
-                    <StackPanel>
-                      <TextBlock Classes="group-label"
-                                 IsVisible="{Binding IsGroupHeader}"
-                                 Text="{Binding GroupName}" />
-                      <Button Classes="result"
-                              IsVisible="{Binding IsItem}"
-                              Command="{Binding ToggleCommand}"
-                              CommandParameter="{Binding}">
-                        <Grid ColumnDefinitions="16,*,Auto" ColumnSpacing="10">
-                          <Border Grid.Column="0"
-                                  Classes="check-box"
-                                  Classes.checked="{Binding IsSelected}">
-                            <TextBlock FontSize="10"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding IsSelected}"
-                                       Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
-                                       Text="✓" />
-                          </Border>
-                          <StackPanel Grid.Column="1" Spacing="1">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                              <TextBlock FontSize="13"
-                                         TextTrimming="CharacterEllipsis"
-                                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                         Text="{Binding PrimaryName}" />
-                              <Border Classes="dial-chip" IsVisible="{Binding HasDialCode}">
-                                <TextBlock FontSize="10"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Text="{Binding DialCode}" />
-                              </Border>
+            <TextBox Grid.Row="1"
+                     Margin="0,12,0,0"
+                     Height="34"
+                     FontSize="13"
+                     PlaceholderText="{Binding SearchPlaceholder}"
+                     Text="{Binding SearchQuery, Mode=TwoWay}" />
+
+            <ScrollViewer Grid.Row="2"
+                          Margin="0,12,0,0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel>
+                <ItemsControl ItemsSource="{Binding Results}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WorldClockCatalogItemViewModel">
+                      <StackPanel>
+                        <TextBlock Classes="group-label"
+                                   IsVisible="{Binding IsGroupHeader}"
+                                   Text="{Binding GroupName}" />
+                        <Button Classes="result"
+                                IsVisible="{Binding IsItem}"
+                                Command="{Binding ToggleCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="16,*,Auto" ColumnSpacing="10">
+                            <Border Grid.Column="0"
+                                    Classes="check-box"
+                                    Classes.checked="{Binding IsSelected}">
+                              <TextBlock FontSize="10"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         IsVisible="{Binding IsSelected}"
+                                         Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                         Text="✓" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                              <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock FontSize="13"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                           Text="{Binding PrimaryName}" />
+                                <Border Classes="dial-chip" IsVisible="{Binding HasDialCode}">
+                                  <TextBlock FontSize="10"
+                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                             Text="{Binding DialCode}" />
+                                </Border>
+                              </StackPanel>
+                              <TextBlock Classes="result-en" Text="{Binding SecondaryName}" />
                             </StackPanel>
-                            <TextBlock Classes="result-en" Text="{Binding SecondaryName}" />
-                          </StackPanel>
-                        </Grid>
-                      </Button>
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <TextBlock Margin="2,8,0,0"
-                         FontSize="11"
-                         IsVisible="{Binding !HasResults}"
-                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                         Text="{Binding NoResultsText}" />
-            </StackPanel>
-          </ScrollViewer>
-        </Grid>
+                          </Grid>
+                        </Button>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Margin="2,8,0,0"
+                           FontSize="11"
+                           IsVisible="{Binding !HasResults}"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Text="{Binding NoResultsText}" />
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </Border>
 
-        <Border Grid.Column="1"
-                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="1,0,0,0">
-          <Grid Margin="20,16,24,18" RowDefinitions="Auto,*">
+        <Border Grid.Column="2" Classes="island">
+          <Grid Margin="18,16" RowDefinitions="Auto,*">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock FontSize="12"
                          VerticalAlignment="Center"
@@ -229,9 +227,7 @@
                           Margin="0,10,0,0"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-              <ItemsControl Grid.Row="1"
-                            Margin="0,10,0,0"
-                            ItemsSource="{Binding Selected}">
+              <ItemsControl ItemsSource="{Binding Selected}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="4" />
@@ -309,12 +305,8 @@
           </Grid>
         </Border>
       </Grid>
-    </Border>
 
-    <Border Grid.Row="2"
-            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-            BorderThickness="0,1,0,0">
-      <Grid Margin="24,14,24,18" ColumnDefinitions="Auto,*,Auto">
+      <Grid Grid.Row="2" Margin="4,12,4,0" ColumnDefinitions="Auto,*,Auto">
         <Button Command="{Binding ResetCommand}"
                 Content="{loc:Localize Tool.WorldClock.Manage.Reset}" />
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
@@ -325,87 +317,87 @@
                   Content="{loc:Localize Tool.WorldClock.Manage.Done}" />
         </StackPanel>
       </Grid>
-    </Border>
-
-    <Grid Grid.RowSpan="3"
-          IsVisible="{Binding IsEditing}"
-          Background="{DynamicResource JiuMiScrimBrush}">
-      <Border Width="420"
-              Padding="22"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              CornerRadius="8"
-              Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
-              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-              BorderThickness="1">
-        <StackPanel Spacing="12">
-          <TextBlock FontSize="16"
-                     FontWeight="SemiBold"
-                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                     Text="{loc:Localize Tool.WorldClock.Manage.Edit.Title}" />
-          <TextBlock FontSize="12"
-                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                     Text="{Binding EditPlaceName}" />
-
-          <Grid ColumnDefinitions="*,12,*">
-            <StackPanel Grid.Column="0">
-              <TextBlock FontSize="11"
-                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                         Text="{loc:Localize Tool.WorldClock.Manage.Edit.Start}" />
-              <ComboBox Margin="0,4,0,0"
-                        HorizontalAlignment="Stretch"
-                        FontSize="13"
-                        ItemsSource="{Binding TimeOptions}"
-                        SelectedItem="{Binding SelectedStart, Mode=TwoWay}" />
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-              <TextBlock FontSize="11"
-                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                         Text="{loc:Localize Tool.WorldClock.Manage.Edit.End}" />
-              <ComboBox Margin="0,4,0,0"
-                        HorizontalAlignment="Stretch"
-                        FontSize="13"
-                        ItemsSource="{Binding TimeOptions}"
-                        SelectedItem="{Binding SelectedEnd, Mode=TwoWay}" />
-            </StackPanel>
-          </Grid>
-
-          <StackPanel>
-            <TextBlock FontSize="11"
-                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                       Text="{loc:Localize Tool.WorldClock.Manage.Edit.Days}" />
-            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding EditDays}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <WrapPanel />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:WorldClockDayToggleViewModel">
-                  <CheckBox Margin="0,0,10,4"
-                            FontSize="12"
-                            Content="{Binding Label}"
-                            IsChecked="{Binding IsChecked, Mode=TwoWay}" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-
-          <TextBlock FontSize="11"
-                     TextWrapping="Wrap"
-                     IsVisible="{Binding HasEditError}"
-                     Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                     Text="{Binding EditError}" />
-
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Command="{Binding CancelEditCommand}"
-                    Content="{loc:Localize Tool.WorldClock.Manage.Cancel}" />
-            <Button Classes="primary"
-                    Command="{Binding SaveEditCommand}"
-                    Content="{loc:Localize Tool.WorldClock.Manage.Edit.Save}" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
     </Grid>
+
+    <Grid IsVisible="{Binding IsEditing}"
+          Background="{DynamicResource JiuMiScrimBrush}">
+        <Border Width="420"
+                Padding="22"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                CornerRadius="12"
+                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                BoxShadow="{DynamicResource JiuMiIslandShadow}">
+          <StackPanel Spacing="12">
+            <TextBlock FontSize="16"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Tool.WorldClock.Manage.Edit.Title}" />
+            <TextBlock FontSize="12"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{Binding EditPlaceName}" />
+
+            <Grid ColumnDefinitions="*,12,*">
+              <StackPanel Grid.Column="0">
+                <TextBlock FontSize="11"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.WorldClock.Manage.Edit.Start}" />
+                <ComboBox Margin="0,4,0,0"
+                          HorizontalAlignment="Stretch"
+                          FontSize="13"
+                          ItemsSource="{Binding TimeOptions}"
+                          SelectedItem="{Binding SelectedStart, Mode=TwoWay}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock FontSize="11"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.WorldClock.Manage.Edit.End}" />
+                <ComboBox Margin="0,4,0,0"
+                          HorizontalAlignment="Stretch"
+                          FontSize="13"
+                          ItemsSource="{Binding TimeOptions}"
+                          SelectedItem="{Binding SelectedEnd, Mode=TwoWay}" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel>
+              <TextBlock FontSize="11"
+                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                         Text="{loc:Localize Tool.WorldClock.Manage.Edit.Days}" />
+              <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding EditDays}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WorldClockDayToggleViewModel">
+                    <CheckBox Margin="0,0,10,4"
+                              FontSize="12"
+                              Content="{Binding Label}"
+                              IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <TextBlock FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding HasEditError}"
+                       Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                       Text="{Binding EditError}" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+              <Button Command="{Binding CancelEditCommand}"
+                      Content="{loc:Localize Tool.WorldClock.Manage.Cancel}" />
+              <Button Classes="primary"
+                      Command="{Binding SaveEditCommand}"
+                      Content="{loc:Localize Tool.WorldClock.Manage.Edit.Save}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
   </Grid>
 </Window>
