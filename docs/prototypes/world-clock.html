@@ -6,10 +6,15 @@
     ?view=board|plan                 打开哪个视图（默认 board，对应「首次打开落在看板」）
     ?theme=light|dark                主题（默认 light）
     ?at=<0-1439>                     规划视图的游标位置，单位分钟（默认落在当前时刻，按 15 分钟取整）
+    ?now=YYYY-MM-DDTHH:MM            冻结本机参考时间（默认取当前时刻），用于可复现出图
     ?holiday=YYYY-MM-DD              把该本地日期当作法定假日
-    ?holidayCities=<IANA id,...>     限定哪些城市放这一天（默认全部）
+    ?holidayCities=<IANA id,...>     限定哪些地点放这一天（默认全部）
+    ?demo=country                     用「美国（代表纽约）」替换纽约，演示国家条目
+    ?manage=1                        打开「管理地点」弹窗
     ?capture=1                       出图模式：隐藏页面滚动条与窗口外底色，只留 1200×760 的窗口本身
 
+  地点有两种粒度：city 与 country。国家条目绑定一个代表时区；
+  只有多时区国家才在行内标注代表城市（如「美国 · 纽约」）。
   假日数据在实现中来自运行时拉取，原型用上面两个参数演示：
   假日覆盖周末与工作窗口，且不计入重叠计数——结论会跟着变，可据此复核优先级。
 
@@ -44,6 +49,7 @@
     --daybreak: rgba(0, 0, 0, 0.28);
     --hatch: rgba(0, 0, 0, 0.07);
     --holiday-hatch: rgba(0, 0, 0, 0.18);
+    --scrim: rgba(12, 18, 28, 0.38);
   }
   [data-theme="dark"] {
     --bg: #16171b;
@@ -67,6 +73,7 @@
     --daybreak: rgba(255, 255, 255, 0.34);
     --hatch: rgba(255, 255, 255, 0.09);
     --holiday-hatch: rgba(255, 255, 255, 0.22);
+    --scrim: rgba(0, 0, 0, 0.60);
   }
   html, body { height: 100%; }
   html.capture body {
@@ -84,6 +91,7 @@
     color: var(--text);
   }
   .app {
+    position: relative;
     width: 1200px;
     height: 760px;
     flex: none;
@@ -204,6 +212,9 @@
     white-space: nowrap;
   }
   .btn svg { color: var(--text-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  [data-theme="dark"] .btn.primary { color: #0b0b0b; }
+  .btn.ghost { background: transparent; }
 
   .card {
     margin-top: 22px;
@@ -228,7 +239,7 @@
       repeating-linear-gradient(-45deg, var(--holiday-hatch) 0 2px, transparent 2px 4px);
   }
 
-  .timeline { position: relative; --label: 150px; --gap: 2px; }
+  .timeline { position: relative; --label: 176px; --gap: 2px; }
   .axis { display: flex; gap: var(--gap); height: 18px; }
   .axis .spacer { flex: 0 0 var(--label); }
   .ticks { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: var(--gap); }
@@ -241,14 +252,28 @@
   .band i.zero { background: var(--off); }
 
   .rows { margin-top: 6px; display: flex; flex-direction: column; gap: var(--gap); }
-  .row { display: flex; gap: var(--gap); height: 38px; }
+  .row { display: flex; gap: var(--gap); height: 50px; }
   .row .meta {
     flex: 0 0 var(--label);
     display: flex; flex-direction: column; justify-content: center;
-    gap: 1px; padding-right: 8px; overflow: hidden;
+    gap: 1px; padding-right: 10px; overflow: hidden;
   }
-  .row .city { font-size: 13px; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-  .row .now { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .place { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .place .zh { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dial {
+    flex: none;
+    display: inline-flex; align-items: center;
+    font-size: 10px; line-height: 15px; padding: 0 5px;
+    border-radius: 3px; background: var(--chip); color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+  .row .place { font-size: 13px; line-height: 1.25; }
+  .row .en {
+    font-size: 10.5px; line-height: 1.25; color: var(--text-3);
+    white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+  }
+  .row .now { font-size: 10.5px; line-height: 1.25; color: var(--text-3); font-variant-numeric: tabular-nums; }
   .row .now.is-work { color: var(--accent); }
   .row .cells { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: var(--gap); }
   .row .cells i { border-radius: 2px; }
@@ -286,9 +311,14 @@
   .footnote { margin-top: 14px; font-size: 11px; color: var(--text-3); line-height: 1.6; }
 
   .list { display: flex; flex-direction: column; }
-  .list-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+  .list-row { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--divider); }
   .list-row:last-child { border-bottom: 0; }
-  .list-row .city { font-size: 14px; width: 120px; }
+  .list-row .name { flex: 0 0 190px; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .list-row .place { font-size: 14px; line-height: 1.25; }
+  .list-row .en {
+    font-size: 11px; line-height: 1.25; color: var(--text-3);
+    white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+  }
   .list-row .clock { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .list-row .day { font-size: 12px; color: var(--text-2); }
   .list-row .spacer { flex: 1; }
@@ -301,6 +331,100 @@
   }
   .chip.work { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
   .chip.holiday { box-shadow: inset 0 0 0 1px var(--daybreak); color: var(--text); }
+
+  /* 管理地点 */
+  .overlay {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--scrim);
+  }
+  .dialog {
+    width: 960px; height: 640px;
+    display: flex; flex-direction: column;
+    border: 1px solid var(--island-border);
+    border-radius: 12px;
+    background: #f9f9f9;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+  [data-theme="dark"] .dialog { background: #2b2b2b; }
+  .dialog-head { display: flex; align-items: flex-start; gap: 16px; padding: 22px 24px 14px; }
+  .dialog-head h2 { margin: 0; font-size: 20px; font-weight: 600; }
+  .dialog-sub { margin: 5px 0 0; font-size: 12px; color: var(--text-2); }
+  .dialog-head .icon-btn { margin-left: auto; }
+  .dialog-body { flex: 1; min-height: 0; display: flex; border-top: 1px solid var(--divider); }
+  .dialog-left {
+    flex: 1 1 auto; min-width: 0;
+    padding: 16px 20px 18px 24px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .dialog-right {
+    flex: 0 0 360px; min-width: 0;
+    padding: 16px 24px 18px 20px;
+    border-left: 1px solid var(--divider);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .mode-tabs { display: flex; gap: 2px; padding: 2px; border-radius: 4px; background: var(--chip); align-self: flex-start; }
+  .mode-tab {
+    height: 28px; padding: 0 14px;
+    border: 0; border-radius: 3px;
+    background: transparent; color: var(--text-2);
+    font: inherit; font-size: 13px; white-space: nowrap;
+  }
+  .mode-tab.active { background: var(--card); color: var(--text); }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 10px;
+    border: 1px solid var(--island-border); border-radius: 4px;
+    background: var(--card); color: var(--text-2);
+  }
+  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
+  .search input::placeholder { color: var(--text-3); }
+  .result-list { flex: 1; min-height: 0; overflow: auto; padding-right: 4px; padding-bottom: 4px; }
+  .result-list::-webkit-scrollbar, .selected-list::-webkit-scrollbar { width: 0; height: 0; }
+  .group-label { padding: 6px 2px 2px; font-size: 11px; color: var(--text-3); }
+  .result { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 4px; }
+  .result:hover { background: var(--sel); }
+  .check {
+    width: 16px; height: 16px; flex: none;
+    border: 1px solid var(--text-3); border-radius: 3px;
+    display: grid; place-items: center; color: transparent;
+  }
+  .result.checked .check { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .result-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .result-name .place { font-size: 13px; line-height: 1.25; }
+  .result-name .en {
+    font-size: 10.5px; line-height: 1.25; color: var(--text-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .right-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-2); }
+  .count { font-size: 10px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--chip); color: var(--text-3); }
+  .selected-list { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+  .selected-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 6px; border-radius: 4px;
+    background: var(--card); border: 1px solid var(--card-border);
+  }
+  .drag { flex: none; width: 10px; color: var(--text-3); display: grid; place-items: center; }
+  .kind {
+    flex: none; font-size: 9px; line-height: 15px; padding: 0 5px;
+    border-radius: 3px; background: var(--chip); color: var(--text-3);
+  }
+  .selected-row .name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .selected-row .place { font-size: 12px; line-height: 1.2; }
+  .selected-row .en {
+    font-size: 10px; line-height: 1.2; color: var(--text-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .icon-btn {
+    flex: none; width: 22px; height: 22px; padding: 0;
+    display: grid; place-items: center;
+    border: 0; border-radius: 4px;
+    background: transparent; color: var(--text-3);
+  }
+  .icon-btn:hover { background: var(--sel); color: var(--text); }
+  .dialog-foot { display: flex; align-items: center; gap: 10px; padding: 14px 24px 18px; border-top: 1px solid var(--divider); }
+  .foot-actions { margin-left: auto; display: flex; gap: 8px; }
 </style>
 </head>
 <body>
@@ -352,16 +476,16 @@
         <div class="page-head">
           <div>
             <h1>世界工作时间</h1>
-            <p class="subtitle">看看哪些城市正好在上班，什么时候能凑到一起。</p>
+            <p class="subtitle">看看哪些国家或城市正好在上班，什么时候能凑到一起。</p>
           </div>
           <div class="page-actions">
             <div class="segments" role="tablist">
               <button class="segment" data-view="board" role="tab">看板</button>
               <button class="segment" data-view="plan" role="tab">规划</button>
             </div>
-            <button class="btn">
+            <button class="btn" id="manage-open">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3v10M3 8h10" /></svg>
-              管理城市
+              管理地点
             </button>
           </div>
         </div>
@@ -405,27 +529,104 @@
           </div>
 
           <div class="footnote">
-            横轴为本机时区的今天 00:00–24:00 · 工作窗口与工作周按各城市本地日历判定 · 虚线 = 该城市本地 00:00<br />
+            横轴为本机时区的今天 00:00–24:00 · 工作窗口与工作周按各地点本地日历判定 · 虚线 = 该地点本地 00:00<br />
             时间与偏移均逐瞬间取自系统时区库，夏令时切换日同样成立<span id="holiday-note"></span>
           </div>
         </section>
       </div>
     </main>
   </div>
+
+  <div class="overlay" id="manage-overlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="manage-title">
+      <div class="dialog-head">
+        <div>
+          <h2 id="manage-title">管理地点</h2>
+          <p class="dialog-sub">选择要对比的国家或城市，并调整各自的工作时间。</p>
+        </div>
+        <button class="icon-btn" id="manage-close" aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <section class="dialog-left">
+          <div class="mode-tabs" role="tablist">
+            <button class="mode-tab" data-mode="country" role="tab">国家</button>
+            <button class="mode-tab active" data-mode="city" role="tab">城市</button>
+          </div>
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>
+            <input id="manage-search" placeholder="搜索城市、国家或区号" />
+          </div>
+          <div class="result-list" id="result-list"></div>
+        </section>
+        <section class="dialog-right">
+          <div class="right-head"><span>已选地点</span><span class="count" id="selected-count">0</span></div>
+          <div class="selected-list" id="selected-list"></div>
+        </section>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn ghost" id="manage-reset">恢复默认</button>
+        <div class="foot-actions">
+          <button class="btn" id="manage-cancel">取消</button>
+          <button class="btn primary" id="manage-done">完成</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
 const CITIES = [
-  { name: "上海", tz: "Asia/Shanghai" },
-  { name: "伦敦", tz: "Europe/London" },
-  { name: "纽约", tz: "America/New_York" },
-  { name: "旧金山", tz: "America/Los_Angeles" },
+  { kind: "city", zh: "上海", en: "Shanghai", dial: "+86", country: "CN", tz: "Asia/Shanghai" },
+  { kind: "city", zh: "伦敦", en: "London", dial: "+44", country: "GB", tz: "Europe/London" },
+  { kind: "city", zh: "纽约", en: "New York", dial: "+1", country: "US", tz: "America/New_York" },
+  { kind: "city", zh: "旧金山", en: "San Francisco", dial: "+1", country: "US", tz: "America/Los_Angeles" },
+  { kind: "city", zh: "东京", en: "Tokyo", dial: "+81", country: "JP", tz: "Asia/Tokyo" },
+  { kind: "city", zh: "悉尼", en: "Sydney", dial: "+61", country: "AU", tz: "Australia/Sydney" },
 ];
+
+const COUNTRIES = [
+  { kind: "country", zh: "美国", en: "United States", dial: "+1", country: "US", tz: "America/New_York", repZh: "纽约", repEn: "New York" },
+  { kind: "country", zh: "日本", en: "Japan", dial: "+81", country: "JP", tz: "Asia/Tokyo" },
+  { kind: "country", zh: "英国", en: "United Kingdom", dial: "+44", country: "GB", tz: "Europe/London" },
+  { kind: "country", zh: "中国", en: "China", dial: "+86", country: "CN", tz: "Asia/Shanghai" },
+  { kind: "country", zh: "澳大利亚", en: "Australia", dial: "+61", country: "AU", tz: "Australia/Sydney", repZh: "悉尼", repEn: "Sydney" },
+  { kind: "country", zh: "德国", en: "Germany", dial: "+49", country: "DE", tz: "Europe/Berlin" },
+];
+
+const COUNTRY_NAMES = {
+  AU: "澳大利亚", CN: "中国", DE: "德国", GB: "英国", JP: "日本", US: "美国",
+};
+
+const DEFAULT_PLACES = [
+  CITIES.find((c) => c.tz === "Asia/Shanghai"),
+  CITIES.find((c) => c.tz === "Europe/London"),
+  CITIES.find((c) => c.tz === "America/New_York"),
+  CITIES.find((c) => c.tz === "America/Los_Angeles"),
+];
+
+const COUNTRY_DEMO_PLACES = [
+  CITIES.find((c) => c.tz === "Asia/Shanghai"),
+  COUNTRIES.find((c) => c.country === "US"),
+  CITIES.find((c) => c.tz === "Europe/London"),
+  CITIES.find((c) => c.tz === "America/Los_Angeles"),
+];
+
 const REF_TZ = "Asia/Shanghai";
 const WORK_START = 9;
 const WORK_END = 18;
 
 const params = new URLSearchParams(location.search);
+
+function parseNow(value) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value || "")) return null;
+  const date = new Date(`${value}:00+08:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+const fixedNow = parseNow(params.get("now"));
+
 const state = {
   view: params.get("view") === "plan" ? "plan" : "board",
   theme: params.get("theme") === "dark" ? "dark" : "light",
@@ -433,9 +634,19 @@ const state = {
   holiday: /^\d{4}-\d{2}-\d{2}$/.test(params.get("holiday") || "") ? params.get("holiday") : null,
   holidayCities: new Set(
     (params.get("holidayCities") || "").split(",").map((s) => s.trim()).filter(Boolean)),
+  manage: params.get("manage") === "1",
+  mode: "city",
+  query: "",
+  places: (params.get("demo") === "country" ? COUNTRY_DEMO_PLACES : DEFAULT_PLACES)
+    .filter(Boolean)
+    .map((place) => ({ ...place })),
 };
 
 const pad = (n) => String(n).padStart(2, "0");
+
+function currentNow() {
+  return fixedNow ? new Date(fixedNow.getTime()) : new Date();
+}
 
 function parts(date, tz) {
   const fmt = new Intl.DateTimeFormat("en-GB", {
@@ -461,21 +672,32 @@ function isHoliday(tz, iso) {
 const WEEKDAY_CN = { Mon: "周一", Tue: "周二", Wed: "周三", Thu: "周四", Fri: "周五", Sat: "周六", Sun: "周日" };
 const weekdayCn = (short) => WEEKDAY_CN[short];
 
-function referenceMidnight() {
-  const now = new Date();
+function displayZh(place) {
+  return place.kind === "country" && place.repZh ? `${place.zh} · ${place.repZh}` : place.zh;
+}
+
+function displayEn(place) {
+  return place.kind === "country" && place.repEn ? `${place.en} · ${place.repEn}` : place.en;
+}
+
+function placeKey(place) {
+  return place.kind === "country" ? `country:${place.country}` : `city:${place.tz}`;
+}
+
+function referenceMidnight(now) {
   const p = parts(now, REF_TZ);
   const elapsed = (p.hour * 3600 + p.minute * 60 + now.getSeconds()) * 1000 + now.getMilliseconds();
   return new Date(now.getTime() - elapsed);
 }
 
 function buildModel(now) {
-  const midnight = referenceMidnight();
+  const midnight = referenceMidnight(now);
   const columns = [];
   for (let i = 0; i < 24; i++) {
     const instant = new Date(midnight.getTime() + i * 3600000);
-    const cells = CITIES.map((city) => {
-      const p = parts(instant, city.tz);
-      const holiday = isHoliday(city.tz, p.iso);
+    const cells = state.places.map((place) => {
+      const p = parts(instant, place.tz);
+      const holiday = isHoliday(place.tz, p.iso);
       const weekend = p.weekday === "Sat" || p.weekday === "Sun";
       return {
         working: !holiday && !weekend && p.hour >= WORK_START && p.hour < WORK_END,
@@ -508,14 +730,14 @@ function renderPlanSummary(model) {
   const best = ranges(counts, (v) => v === max && max >= 2);
   const el = document.getElementById("plan-summary");
   if (max < 2) {
-    el.innerHTML = "<strong>今天没有两个城市同时上班的时段</strong>";
+    el.innerHTML = "<strong>今天没有两个地点同时上班的时段</strong>";
     return;
   }
   const span = best.map(([a, b]) => `${pad(a)}:00–${pad(b === 24 ? 24 : b)}:00`).join("、");
-  const headline = max === CITIES.length
+  const headline = max === state.places.length
     ? `<strong>全员共同工作时间：本机时间 ${span}</strong>`
-    : `<strong>最多 ${max} 个城市重叠：本机时间 ${span}</strong>`;
-  const note = max === CITIES.length ? "" : ' <span class="note">· 没有全员重叠</span>';
+    : `<strong>最多 ${max} 个地点重叠：本机时间 ${span}</strong>`;
+  const note = max === state.places.length ? "" : ' <span class="note">· 没有全员重叠</span>';
   el.innerHTML = headline + note;
 }
 
@@ -539,7 +761,7 @@ function statusOf(p, tz) {
 }
 
 function renderPlan() {
-  const now = new Date();
+  const now = currentNow();
   const model = buildModel(now);
   const rounding = 15 * 60000;
   const cursor = new Date(Math.round((state.cursor === null
@@ -556,7 +778,7 @@ function renderPlan() {
     if (column.count === 0) {
       cell.className = "zero";
     } else {
-      cell.style.opacity = String(0.14 + (column.count / CITIES.length) * 0.6);
+      cell.style.opacity = String(0.14 + (column.count / Math.max(1, state.places.length)) * 0.6);
     }
     band.appendChild(cell);
   });
@@ -565,15 +787,16 @@ function renderPlan() {
   rows.innerHTML = "";
   const cursorHour = Math.floor((cursor.getTime() - model.midnight.getTime()) / 3600000);
 
-  CITIES.forEach((city, index) => {
+  state.places.forEach((place, index) => {
     const row = document.createElement("div");
     row.className = "row";
 
-    const p = parts(cursor, city.tz);
-    const status = statusOf(p, city.tz);
+    const p = parts(cursor, place.tz);
+    const status = statusOf(p, place.tz);
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.innerHTML = `<span class="city">${city.name}</span>
+    meta.innerHTML = `<span class="place"><span class="zh">${displayZh(place)}</span><span class="dial">${place.dial}</span></span>
+      <span class="en">${displayEn(place)}</span>
       <span class="now${status.working ? " is-work" : ""}">${pad(p.hour)}:${pad(p.minute)} ${weekdayCn(p.weekday)}</span>`;
 
     const cells = document.createElement("div");
@@ -628,21 +851,24 @@ function renderPlan() {
   const holidayNote = document.getElementById("holiday-note");
   holidayNote.innerHTML = state.holiday === null
     ? ""
-    : `<br />演示：${state.holiday} 为法定假日（${state.holidayCities.size ? [...state.holidayCities].join("、") : "全部城市"}），该日不计入重叠`;
+    : `<br />演示：${state.holiday} 为法定假日（${state.holidayCities.size ? [...state.holidayCities].join("、") : "全部地点"}），该日不计入重叠`;
 }
 
 function renderBoard() {
-  const now = new Date();
+  const now = currentNow();
   const list = document.getElementById("board-list");
   list.innerHTML = "";
   let working = 0;
-  CITIES.forEach((city) => {
-    const p = parts(now, city.tz);
-    const status = statusOf(p, city.tz);
+  state.places.forEach((place) => {
+    const p = parts(now, place.tz);
+    const status = statusOf(p, place.tz);
     if (status.working) working += 1;
     const row = document.createElement("div");
     row.className = "list-row";
-    row.innerHTML = `<span class="city">${city.name}</span>
+    row.innerHTML = `<span class="name">
+        <span class="place"><span class="zh">${displayZh(place)}</span><span class="dial">${place.dial}</span></span>
+        <span class="en">${displayEn(place)}</span>
+      </span>
       <span class="clock">${pad(p.hour)}:${pad(p.minute)}</span>
       <span class="day">${weekdayCn(p.weekday)}</span>
       <span class="spacer"></span>
@@ -650,10 +876,10 @@ function renderBoard() {
     list.appendChild(row);
   });
   document.getElementById("board-summary").innerHTML =
-    `<strong>现在有 ${working} 个城市在工作时间</strong> <span class="note">· 按各城市当地时间</span>`;
+    `<strong>现在有 ${working} 个地点在工作时间</strong> <span class="note">· 按各地点当地时间</span>`;
 }
 
-function render() {
+function renderPage() {
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.classList.toggle("capture", params.get("capture") === "1");
   document.querySelectorAll(".segment").forEach((button) => {
@@ -665,24 +891,164 @@ function render() {
   else renderPlan();
 }
 
+const dragSvg = `<svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></svg>`;
+const pencilSvg = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M11.5 2.5 13.5 4.5 5 13H3v-2z"/></svg>`;
+const xSvg = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m4 4 8 8M12 4l-8 8"/></svg>`;
+const checkSvg = `<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m2.5 6 2.4 2.4L9.5 3.6"/></svg>`;
+
+function isSelected(place) {
+  return state.places.some((p) => placeKey(p) === placeKey(place));
+}
+
+function matches(place, query) {
+  if (!query) return true;
+  const haystack = [
+    place.zh, place.en, place.dial, place.dial.replace("+", ""), place.tz,
+    COUNTRY_NAMES[place.country] || "", place.repZh || "", place.repEn || "",
+  ].join(" ").toLowerCase();
+  return haystack.includes(query.toLowerCase());
+}
+
+function resultHtml(place) {
+  const checked = isSelected(place);
+  return `<div class="result${checked ? " checked" : ""}" data-key="${placeKey(place)}">
+      <span class="check">${checked ? checkSvg : ""}</span>
+      <span class="result-name">
+        <span class="place"><span class="zh">${displayZh(place)}</span><span class="dial">${place.dial}</span></span>
+        <span class="en">${displayEn(place)}</span>
+      </span>
+    </div>`;
+}
+
+function renderResults() {
+  const query = state.query.trim();
+  const list = document.getElementById("result-list");
+  if (state.mode === "country") {
+    const items = COUNTRIES
+      .filter((place) => matches(place, query))
+      .sort((a, b) => a.zh.localeCompare(b.zh, "zh-CN"));
+    list.innerHTML = items.length
+      ? items.map(resultHtml).join("")
+      : `<div class="group-label">没有匹配的国家</div>`;
+    return;
+  }
+
+  const groups = new Map();
+  CITIES.filter((place) => matches(place, query)).forEach((place) => {
+    const name = COUNTRY_NAMES[place.country] || place.country;
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(place);
+  });
+  const ordered = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], "zh-CN"));
+  list.innerHTML = ordered.length
+    ? ordered.map(([name, items]) =>
+        `<div class="group-label">${name}</div>${items.map(resultHtml).join("")}`).join("")
+    : `<div class="group-label">没有匹配的城市</div>`;
+}
+
+function renderSelected() {
+  const list = document.getElementById("selected-list");
+  list.innerHTML = state.places.map((place) => `<div class="selected-row" data-key="${placeKey(place)}">
+      <span class="drag">${dragSvg}</span>
+      <span class="kind">${place.kind === "country" ? "国家" : "城市"}</span>
+      <span class="name">
+        <span class="place"><span class="zh">${displayZh(place)}</span></span>
+        <span class="en">${displayEn(place)}</span>
+      </span>
+      <span class="dial">${place.dial}</span>
+      <button class="icon-btn edit" title="调整工作时间">${pencilSvg}</button>
+      <button class="icon-btn remove" title="移除">${xSvg}</button>
+    </div>`).join("");
+  document.getElementById("selected-count").textContent = String(state.places.length);
+}
+
+function renderDialog() {
+  document.querySelectorAll(".mode-tab").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === state.mode);
+  });
+  document.getElementById("manage-search").placeholder = state.mode === "country"
+    ? "搜索国家、代表城市或区号"
+    : "搜索城市、国家或区号";
+  renderResults();
+  renderSelected();
+}
+
+function openManage(open) {
+  state.manage = open;
+  document.getElementById("manage-overlay").hidden = !open;
+  if (open) renderDialog();
+}
+
 document.querySelector(".segments").addEventListener("click", (event) => {
   const button = event.target.closest(".segment");
   if (!button) return;
   state.view = button.dataset.view;
-  render();
+  renderPage();
 });
 
 document.getElementById("scrub-range").addEventListener("input", (event) => {
   state.cursor = Number(event.target.value);
-  render();
+  renderPage();
 });
 
 document.getElementById("scrub-reset").addEventListener("click", () => {
   state.cursor = null;
-  render();
+  renderPage();
 });
 
-render();
+document.getElementById("manage-open").addEventListener("click", () => openManage(true));
+document.getElementById("manage-close").addEventListener("click", () => openManage(false));
+document.getElementById("manage-cancel").addEventListener("click", () => openManage(false));
+document.getElementById("manage-done").addEventListener("click", () => openManage(false));
+document.getElementById("manage-reset").addEventListener("click", () => {
+  state.places = DEFAULT_PLACES.map((place) => ({ ...place }));
+  renderPage();
+  renderDialog();
+});
+
+document.querySelectorAll(".mode-tab").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.mode = button.dataset.mode;
+    renderDialog();
+  });
+});
+
+document.getElementById("manage-search").addEventListener("input", (event) => {
+  state.query = event.target.value;
+  renderResults();
+});
+
+document.getElementById("result-list").addEventListener("click", (event) => {
+  const row = event.target.closest(".result");
+  if (!row) return;
+  const key = row.dataset.key;
+  const source = [...CITIES, ...COUNTRIES].find((place) => placeKey(place) === key);
+  if (!source) return;
+  if (isSelected(source)) {
+    state.places = state.places.filter((place) => placeKey(place) !== key);
+  } else {
+    state.places.push({ ...source });
+  }
+  renderPage();
+  renderDialog();
+});
+
+document.getElementById("selected-list").addEventListener("click", (event) => {
+  const button = event.target.closest(".remove");
+  if (!button) return;
+  const row = button.closest(".selected-row");
+  if (!row) return;
+  state.places = state.places.filter((place) => placeKey(place) !== row.dataset.key);
+  renderPage();
+  renderDialog();
+});
+
+document.getElementById("manage-overlay").addEventListener("click", (event) => {
+  if (event.target.id === "manage-overlay") openManage(false);
+});
+
+renderPage();
+if (state.manage) openManage(true);
 </script>
 </body>
 </html>
