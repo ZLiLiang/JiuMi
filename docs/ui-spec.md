@@ -160,7 +160,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 世界工作时间 · 看板
 
 - 卡片外边距上 22，内边距 20 18 20 20，圆角 8，`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`。
-- 首行摘要：14px / SemiBold / 主文字色，只写「现在有 N 个地点在工作时间」，不追加说明。
+- 首行摘要：14px / SemiBold / 主文字色，只写「处于工作时间：N」，不追加说明。
 - 每地点一行：
   - 名称列宽 190：主行 14px + 国家区号 chip（10px、`SubtleFillColorSecondaryBrush`、圆角 3、内边距 5 0），次行 10.5px / `TextFillColorTertiaryBrush`。
   - 中间列：当地时间 20px / SemiBold / 主文字色，星期 12px / 次文字色，间距 10。
@@ -172,16 +172,16 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 世界工作时间 · 规划
 
 - 摘要规则：
-  - 至少一个地点且全部可用地点都重叠时：`Tool.WorldClock.Plan.Summary.All`（全员，只有一个地点也算全员），格式「全员重叠 · 00:00–02:00」。
-  - 否则取最大重叠：`Tool.WorldClock.Plan.Summary.Max`，格式「最多 3 个地点重叠 · 00:00–02:00」；范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接。
-  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`，即「今天没有重叠时段」。
-  - 不显示「本机时间」「没有全员重叠」等可由数字与视图推出的说明；计数与文案一律用「地点」。
+  - 至少一个地点且全部可用地点都同时上班时：`Tool.WorldClock.Plan.Summary.All`（只有一个地点也算全员），格式「所有地点同时上班：00:00–02:00」。
+  - 否则取同时上班地点数的最大值：`Tool.WorldClock.Plan.Summary.Max`，格式「最多 3 个地点同时上班：00:00–02:00」；范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接。
+  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`，即「今天没有同时上班的时段」。
+  - 不用「重叠」作为摘要文案；「同时上班」才是用户语言。计数与文案一律用「地点」。
 - 摘要与图例同处卡片首行：摘要 `*` 可换行，图例右对齐、可换行；图例四项依次为上班 / 下班 / 周末 / 法定假日，色块 10 × 10、圆角 2，文字 11px / `TextFillColorTertiaryBrush`。
 - 图例最右侧是一个 20 × 20 的圆形问号按钮（`SubtleFillColorSecondaryBrush` 底、1px `ControlStrokeColorDefaultBrush` 描边、三级文字色），鼠标悬停显示时间轴说明：横轴范围、工作窗口/工作周的判定方式、虚线含义与时区来源。按钮可聚焦，`AutomationProperties.Name` 取 `Tool.WorldClock.Footnote.Help`。
 - 时间轴：
   - 标签列固定 176px，行高 50，网格列缝 2，24 列等宽。
   - 轴刻度 10px / `TextFillColorTertiaryBrush`，只显示偶数小时；横轴为本机时区今天 00:00–24:00。
-  - 行上方是「重叠」热度带，高 18，列缝同网格；每格 `JiuMiOverlapBandBrush`，不透明度 `0.14 + 工作地点数 / 可用地点数 × 0.6`；零重叠用 `JiuMiCellOffBrush`。
+  - 行上方是「同时上班」热度带，高 18，列缝同网格；每格 `JiuMiOverlapBandBrush`，不透明度 `0.14 + 工作地点数 / 可用地点数 × 0.6`；零重叠用 `JiuMiCellOffBrush`。
   - 标签三行：13px 主名 + 区号 chip / 10.5px 另一语言 / 10.5px 当地时间 + 星期；英文超长 `CharacterEllipsis`；第三行在工作中用 `AccentFillColorDefaultBrush`。
   - 单元格：圆角 2，高 50。基础 `JiuMiCellOffBrush`；深夜（本地 06:00 前或 22:00 后）`JiuMiCellNightBrush`；工作中 `JiuMiCellWorkingBrush` + 1px `JiuMiCellWorkingBorderBrush`；周末叠 45° 斜纹 `JiuMiWeekendHatchBrush`；法定假日叠 ±45° 交叉网纹 `JiuMiHolidayHatchBrush`；时区不可用透明底、行内文案说明。
   - 每行在「该地点本地 00:00」所在列画 1px 虚线（`JiuMiDayBreakBrush`），含义写在页脚。
