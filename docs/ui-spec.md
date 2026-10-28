@@ -160,7 +160,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 世界工作时间 · 看板
 
 - 卡片外边距上 22，内边距 20 18 20 20，圆角 8，`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`。
-- 首行摘要：14px / SemiBold / 主文字色，后接 14px / `TextFillColorTertiaryBrush` 的「按各地点当地时间」。
+- 首行摘要：14px / SemiBold / 主文字色，只写「现在有 N 个地点在工作时间」，不追加说明。
 - 每地点一行：
   - 名称列宽 190：主行 14px + 国家区号 chip（10px、`SubtleFillColorSecondaryBrush`、圆角 3、内边距 5 0），次行 10.5px / `TextFillColorTertiaryBrush`。
   - 中间列：当地时间 20px / SemiBold / 主文字色，星期 12px / 次文字色，间距 10。
@@ -172,11 +172,12 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 世界工作时间 · 规划
 
 - 摘要规则：
-  - 至少一个地点且全部可用地点都重叠时：`Tool.WorldClock.Plan.Summary.All`（全员，只有一个地点也算全员）。
-  - 否则取最大重叠：`Tool.WorldClock.Plan.Summary.Max`，范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接，并追加 `Plan.Summary.NoAll`。
-  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`。
-  - 计数与文案一律用「地点」。
+  - 至少一个地点且全部可用地点都重叠时：`Tool.WorldClock.Plan.Summary.All`（全员，只有一个地点也算全员），格式「全员重叠 · 00:00–02:00」。
+  - 否则取最大重叠：`Tool.WorldClock.Plan.Summary.Max`，格式「最多 3 个地点重叠 · 00:00–02:00」；范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接。
+  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`，即「今天没有重叠时段」。
+  - 不显示「本机时间」「没有全员重叠」等可由数字与视图推出的说明；计数与文案一律用「地点」。
 - 摘要与图例同处卡片首行：摘要 `*` 可换行，图例右对齐、可换行；图例四项依次为上班 / 下班 / 周末 / 法定假日，色块 10 × 10、圆角 2，文字 11px / `TextFillColorTertiaryBrush`。
+- 图例最右侧是一个 20 × 20 的圆形问号按钮（`SubtleFillColorSecondaryBrush` 底、1px `ControlStrokeColorDefaultBrush` 描边、三级文字色），鼠标悬停显示时间轴说明：横轴范围、工作窗口/工作周的判定方式、虚线含义与时区来源。按钮可聚焦，`AutomationProperties.Name` 取 `Tool.WorldClock.Footnote.Help`。
 - 时间轴：
   - 标签列固定 176px，行高 50，网格列缝 2，24 列等宽。
   - 轴刻度 10px / `TextFillColorTertiaryBrush`，只显示偶数小时；横轴为本机时区今天 00:00–24:00。
@@ -187,7 +188,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
   - 「现在」竖线 2px 强调色，贯穿轴、热度带与行区；右上角标签 10px 强调色、`CardBackgroundFillColorDefaultBrush` 底、圆角 3、内边距 4 0，靠近右缘时翻到竖线左侧。
   - 游标带宽一小时（15 分钟吸附），`JiuMiCursorBandBrush` 填充 + 左右各 2px 强调色描边，贯穿行区；拖动下方 `Slider`（0–1425，步长 15）或点「回到现在」移动。
   - 游标读数 12px / 次文字色，格式 `{0}（本机）`；「回到现在」为普通按钮。
-- 页脚 11px / `TextFillColorTertiaryBrush`，行高三行结构：横轴说明 / 时区来源说明 / 降级说明。时区不可用时追加 `Footnote.ZoneUnavailable`（列出地点名）；节假日不可用时追加 `Footnote.HolidayUnavailable`，联网开关打开时附「重试」`HyperlinkButton`。
+- 卡片底部只保留降级说明（11px / `TextFillColorTertiaryBrush`），且仅在有降级时显示：时区不可用时追加 `Footnote.ZoneUnavailable`（列出地点名）；节假日不可用时追加 `Footnote.HolidayUnavailable`，联网开关打开时附「重试」`HyperlinkButton`。横轴与时区来源两句不常驻，放在页头问号按钮的 ToolTip 里。
 - 窄窗：标签列固定 176px；网格最小宽度 382，触底后网格区横向滚动、标签列不滚动；摘要与图例允许换行。
 - 无地点时用空态卡片替代两块内容：标题 `Tool.WorldClock.Empty`、说明 `Tool.WorldClock.Empty.Hint`、一个「管理地点」按钮。
 
@@ -221,6 +222,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 参考图
 
 七张 1200 × 760 截图取自定稿原型 [`world-clock.html`](./prototypes/world-clock.html) 的 `?capture=1` 出图，是本节与 #53 的视觉基准；原型只作复现与对照，不参与构建。
+
+> 2026-10-28 文案收紧：摘要去掉「本机时间」与「没有全员重叠」，页脚两句移入问号 ToolTip；七张图仍保留原版式，文字以上文为准。
 
 ![看板：每地点一行，双语名 + 国家区号 + 当地时间与状态](./images/world-clock-board.png)
 

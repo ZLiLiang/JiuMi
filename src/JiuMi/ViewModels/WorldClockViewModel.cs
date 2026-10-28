@@ -46,7 +46,6 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
     private string _nowLabel = string.Empty;
     private bool _nowLabelFlip;
     private string _summaryText = string.Empty;
-    private string _summaryNote = string.Empty;
     private string _zoneNote = string.Empty;
     private string _holidayNote = string.Empty;
     private bool _hasZoneNote;
@@ -181,24 +180,17 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Gets the secondary part of the summary line.
+    /// Gets the timeline explanation shown by the help tooltip.
     /// </summary>
-    public string SummaryNote
-    {
-        get => _summaryNote;
-        private set
-        {
-            if (SetProperty(ref _summaryNote, value))
-            {
-                OnPropertyChanged(nameof(HasSummaryNote));
-            }
-        }
-    }
+    public string TimelineHelpText => string.Join(
+        Environment.NewLine,
+        _localization["Tool.WorldClock.Footnote.Axis"],
+        _localization["Tool.WorldClock.Footnote.Zone"]);
 
     /// <summary>
-    /// Gets a value indicating whether the summary has a secondary part.
+    /// Gets a value indicating whether the card shows a degradation note.
     /// </summary>
-    public bool HasSummaryNote => !string.IsNullOrEmpty(_summaryNote);
+    public bool HasTimelineNotes => HasZoneNote || HasHolidayNote;
 
     /// <summary>
     /// Gets the cursor position in minutes from the reference midnight.
@@ -761,7 +753,6 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         if (_places.Count == 0)
         {
             SummaryText = string.Empty;
-            SummaryNote = string.Empty;
             return;
         }
 
@@ -769,7 +760,6 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         {
             int working = _rows.Count(row => row.Status == WorldClockStatus.Working);
             SummaryText = _localization.Format("Tool.WorldClock.Board.Summary", working);
-            SummaryNote = _localization["Tool.WorldClock.Board.SummaryNote"];
             return;
         }
 
@@ -782,20 +772,13 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         if (!overlap.HasFullOverlap && !overlap.HasOverlap)
         {
             SummaryText = _localization["Tool.WorldClock.Plan.Summary.None"];
-            SummaryNote = string.Empty;
             return;
         }
 
         string ranges = FormatRanges(overlap.Ranges);
-        if (overlap.HasFullOverlap)
-        {
-            SummaryText = _localization.Format("Tool.WorldClock.Plan.Summary.All", ranges);
-            SummaryNote = string.Empty;
-            return;
-        }
-
-        SummaryText = _localization.Format("Tool.WorldClock.Plan.Summary.Max", overlap.MaxCount, ranges);
-        SummaryNote = _localization["Tool.WorldClock.Plan.Summary.NoAll"];
+        SummaryText = overlap.HasFullOverlap
+            ? _localization.Format("Tool.WorldClock.Plan.Summary.All", ranges)
+            : _localization.Format("Tool.WorldClock.Plan.Summary.Max", overlap.MaxCount, ranges);
     }
 
     private string FormatRanges(IReadOnlyList<OverlapRange> ranges)
@@ -818,6 +801,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
 
         HasHolidayNote = _holidaysUnavailable && _places.Count > 0;
         HolidayNote = HasHolidayNote ? _localization["Tool.WorldClock.Footnote.HolidayUnavailable"] : string.Empty;
+        OnPropertyChanged(nameof(HasTimelineNotes));
         OnPropertyChanged(nameof(CanRetryHolidays));
     }
 
@@ -897,6 +881,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         }
 
         OnPropertyChanged(nameof(CursorReadout));
+        OnPropertyChanged(nameof(TimelineHelpText));
         OnPropertyChanged(nameof(CanRetryHolidays));
         Refresh();
     }

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:JiuMi.Localization"
+             xmlns:fac="using:FluentAvalonia.UI.Controls"
              xmlns:vm="using:JiuMi.ViewModels"
              xmlns:wc="using:JiuMi.Application.WorldClock"
              x:Class="JiuMi.Views.WorldClockView"
@@ -129,6 +130,20 @@
     <Style Selector="TextBlock.footnote.warning">
       <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
     </Style>
+    <Style Selector="Button.help">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Button.help:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
   </UserControl.Styles>
 
   <Border Padding="44,32,44,36">
@@ -210,16 +225,10 @@
                 BorderThickness="1"
                 IsVisible="{Binding IsBoardView}">
           <StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <TextBlock FontSize="14"
-                         FontWeight="SemiBold"
-                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                         Text="{Binding SummaryText}" />
-              <TextBlock FontSize="14"
-                         IsVisible="{Binding HasSummaryNote}"
-                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                         Text="{Binding SummaryNote}" />
-            </StackPanel>
+            <TextBlock FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{Binding SummaryText}" />
 
             <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding Rows}">
               <ItemsControl.ItemTemplate>
@@ -268,7 +277,9 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <StackPanel Margin="0,12,0,0" Spacing="2">
+            <StackPanel Margin="0,12,0,0"
+                        Spacing="2"
+                        IsVisible="{Binding HasTimelineNotes}">
               <TextBlock Classes="footnote warning"
                          IsVisible="{Binding HasZoneNote}"
                          Text="{Binding ZoneNote}" />
@@ -294,6 +305,17 @@
                 IsVisible="{Binding IsPlanView}">
           <StackPanel>
             <DockPanel LastChildFill="True">
+              <Button DockPanel.Dock="Right"
+                      Classes="help"
+                      Margin="6,0,0,0"
+                      AutomationProperties.Name="{loc:Localize Tool.WorldClock.Footnote.Help}"
+                      ToolTip.Tip="{Binding TimelineHelpText}">
+                <TextBlock Text="?"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+              </Button>
               <WrapPanel DockPanel.Dock="Right"
                          Margin="12,0,0,0"
                          HorizontalAlignment="Right"
@@ -328,12 +350,10 @@
                 </StackPanel>
               </WrapPanel>
               <TextBlock FontSize="14"
+                         FontWeight="SemiBold"
                          TextWrapping="Wrap"
-                         Foreground="{DynamicResource TextFillColorPrimaryBrush}">
-                <Run Text="{Binding SummaryText, Mode=OneWay}" FontWeight="SemiBold" />
-                <Run Text="{Binding SummaryNote, Mode=OneWay}"
-                     Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-              </TextBlock>
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                         Text="{Binding SummaryText}" />
             </DockPanel>
 
             <Grid Margin="0,14,0,0" ColumnDefinitions="176,*">
@@ -503,9 +523,9 @@
                       Content="{loc:Localize Tool.WorldClock.BackToNow}" />
             </Grid>
 
-            <StackPanel Margin="0,14,0,0" Spacing="2">
-              <TextBlock Classes="footnote" Text="{loc:Localize Tool.WorldClock.Footnote.Axis}" />
-              <TextBlock Classes="footnote" Text="{loc:Localize Tool.WorldClock.Footnote.Zone}" />
+            <StackPanel Margin="0,14,0,0"
+                        Spacing="2"
+                        IsVisible="{Binding HasTimelineNotes}">
               <TextBlock Classes="footnote warning"
                          IsVisible="{Binding HasZoneNote}"
                          Text="{Binding ZoneNote}" />

@@ -505,12 +505,13 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
 | `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |
-| `Tool.WorldClock.Board.Summary` / `.SummaryNote` | 看板首行摘要与说明；`Summary` 含 `{0}` |
-| `Tool.WorldClock.Plan.Summary.All` / `.Max` / `.None` / `.NoAll` | 规划结论：全员、最多 N 个地点、无重叠、没有全员重叠；`All` 含 `{0}`，`Max` 含 `{0}`、`{1}` |
+| `Tool.WorldClock.Board.Summary` | 看板首行摘要；含 `{0}` |
+| `Tool.WorldClock.Plan.Summary.All` / `.Max` / `.None` | 规划结论：全员、最多 N 个地点、无重叠；`All` 含 `{0}`，`Max` 含 `{0}`、`{1}` |
 | `Tool.WorldClock.Plan.Range` / `.RangeSeparator` / `Tool.WorldClock.ListSeparator` | 重叠时段格式、时段分隔符与列表分隔符 |
 | `Tool.WorldClock.Legend.Working` / `.Off` / `.Weekend` / `.Holiday` / `Tool.WorldClock.Overlap` | 图例四项与「重叠」热度带标题 |
 | `Tool.WorldClock.Now` / `Tool.WorldClock.Cursor.Readout` / `Tool.WorldClock.BackToNow` | 现在标签、游标读数（`{0}`）、回到现在按钮 |
-| `Tool.WorldClock.Footnote.Axis` / `.Zone` / `.HolidayUnavailable` / `.ZoneUnavailable` | 页脚说明；`ZoneUnavailable` 含 `{0}` |
+| `Tool.WorldClock.Footnote.Axis` / `.Zone` / `.Help` | 时间轴说明与问号按钮的可访问名；前两键作为 ToolTip 文案 |
+| `Tool.WorldClock.Footnote.HolidayUnavailable` / `.ZoneUnavailable` | 看板与规划底部的降级说明；`ZoneUnavailable` 含 `{0}` |
 | `Tool.WorldClock.Status.Working` / `.Off` / `.Weekend` / `.Holiday` / `.Unavailable` | 看板状态 chip 与行内降级文案 |
 | `Tool.WorldClock.Weekday.Mon` … `.Sun` | 星期名，共七键 |
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
