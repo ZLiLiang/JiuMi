@@ -85,4 +85,4 @@
 ## 实施
 
 - 功能票：[#59](https://github.com/ZLiLiang/JiuMi/issues/59)
-- 体积票：[#60](https://github.com/ZLiLiang/JiuMi/issues/60)
+- 体积票：[#60](https://github.com/ZLiLiang/JiuMi/issues/60)，阻塞于 #59：先拿到真实的体积基线再动手
