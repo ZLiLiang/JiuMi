@@ -159,6 +159,7 @@ internal static class Program
         services.AddSingleton<DiagnosticsExportController>();
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<WorldClockViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();
@@ -179,11 +180,17 @@ internal static class Program
         SettingsLoadResult result = services.GetRequiredService<ISettingsStore>().Load();
         IErrorReporter reporter = services.GetRequiredService<IErrorReporter>();
         ErrorRecordFactory recordFactory = services.GetRequiredService<ErrorRecordFactory>();
+        Serilog.ILogger logger = services.GetRequiredService<Serilog.ILogger>();
 
-        services.GetRequiredService<Serilog.ILogger>().Information(
+        logger.Information(
             "Settings loaded from {Kind} with issues {Issues}",
             result.Location.Kind,
             result.Issues);
+
+        if (result.Issues.HasFlag(SettingsLoadIssue.InvalidWorldClockPlaces))
+        {
+            logger.Warning("Settings contained world clock places that failed validation; they were dropped");
+        }
 
         if (result.Issues.HasFlag(SettingsLoadIssue.Corrupted))
         {

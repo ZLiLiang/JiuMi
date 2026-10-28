@@ -22,7 +22,7 @@ This file is the single source of truth for how JiuMi is built and gated. Do not
 - `pwsh ./publish.ps1` publishes `src/JiuMi.Desktop` as a self-contained `win-x64` build and writes `artifacts/JiuMi-<version>-win-x64.zip`; the ZIP contains `JiuMi.Desktop.exe` at its root.
 - `publish.ps1` is packaging, not a gate. `verify.ps1` still decides whether a change is done; publishing must not re-implement the build or test commands.
 - The semantic version comes from `<Version>` in `Directory.Build.props`. Bump it there when cutting a release. The SDK appends the source revision to the informational version (`<version>+<commit>`), while the application's version helper strips that metadata before Settings → About displays it.
-- `.github/workflows/ci.yml` runs on every push and pull request: the `verify` job calls `pwsh ./verify.ps1`, then the `publish` job runs `pwsh ./publish.ps1` and uploads the ZIP as an Actions artifact.
+- `.github/workflows/ci.yml` runs on pull requests only, skipping changes that touch just `docs/**` or Markdown, plus manual dispatch: the `verify` job calls `pwsh ./verify.ps1`, then the `publish` job runs `pwsh ./publish.ps1` and uploads the ZIP as an Actions artifact. Pushes do not start a run, so manual dispatch is the way to cut an artifact from `dev`.
 - Signing, auto-update, rollback, non-Windows artifacts and store distribution are out of scope.
 
 ## Rules

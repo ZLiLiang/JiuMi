@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
+using JiuMi.Application.WorldClock;
 
 namespace JiuMi.ViewModels;
 
@@ -14,17 +16,21 @@ namespace JiuMi.ViewModels;
 public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private const double ExpandedNavigationWidth = 280;
-    private const double CollapsedNavigationWidth = 48;
+    private const double CollapsedNavigationWidth = 56;
 
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
+    private readonly IWorldClockCatalogUpdater _catalogUpdater;
     private readonly Serilog.ILogger _logger;
     private readonly ShellNavigationItem _settingsNavigationItem;
+    private readonly ShellNavigationItem _worldClockNavigationItem;
+    private readonly WorldClockViewModel _worldClockPage;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
     private bool _isNavigationExpanded;
     private bool _savedOnExit;
+    private bool _catalogCheckStarted;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindowViewModel"/> class.
@@ -32,43 +38,54 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="applicationInfo">Application name and version shown by the shell.</param>
     /// <param name="localization">The localization service that supplies interface text.</param>
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
+    /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
+    /// <param name="catalogUpdater">Checks the published world clock catalog after the shell is up.</param>
     /// <param name="logger">Receives navigation and window-lifecycle events.</param>
     public MainWindowViewModel(
         IApplicationInfo applicationInfo,
         ILocalizationService localization,
         SettingsViewModel settingsPage,
+        WorldClockViewModel worldClockPage,
         InfoBarViewModel infoBar,
         ISettingsStore settingsStore,
+        IWorldClockCatalogUpdater catalogUpdater,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsPage);
+        ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(catalogUpdater);
         ArgumentNullException.ThrowIfNull(logger);
 
         AppName = applicationInfo.Name;
         AppVersion = applicationInfo.Version;
         _localization = localization;
         _settingsStore = settingsStore;
+        _catalogUpdater = catalogUpdater;
         _logger = logger;
+        _worldClockPage = worldClockPage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
+        HomePage.OpenWorldClockCommand = new RelayCommand(OpenWorldClock);
         SettingsPage = settingsPage;
         InfoBar = infoBar;
         _currentPage = HomePage;
 
+        _worldClockNavigationItem = CreateItem(
+            "world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", ShellPage.WorldClock, isEnabled: true);
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
             CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
             CreateItem("batch-rename", "Tool.BatchRename.Name", "Rename", "Rename", page: null, isEnabled: false),
             CreateItem("icon-convert", "Tool.IconConvert.Name", "Image", "ImageFilled", page: null, isEnabled: false),
-            CreateItem("world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", page: null, isEnabled: false),
+            _worldClockNavigationItem,
         ];
         _settingsNavigationItem = CreateItem(
             "settings", "Shell.Nav.Settings", "Settings", "SettingsFilled", ShellPage.Settings, isEnabled: true);
@@ -254,6 +271,43 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Recomputes the current page when the window is activated again.
+    /// </summary>
+    public void OnWindowActivated()
+    {
+        StartCatalogCheckOnce();
+        if (ReferenceEquals(CurrentPage, _worldClockPage))
+        {
+            _worldClockPage.Refresh();
+        }
+    }
+
+    private void StartCatalogCheckOnce()
+    {
+        if (_catalogCheckStarted)
+        {
+            return;
+        }
+
+        // Background work the shell never waits for: the updater throttles itself, keeps the switch
+        // in mind and logs every failure, so nothing here can reach the InfoBar.
+        _catalogCheckStarted = true;
+        _ = CheckCatalogAsync();
+    }
+
+    private async Task CheckCatalogAsync()
+    {
+        try
+        {
+            await _catalogUpdater.CheckAsync(force: false);
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "World clock catalog check failed");
+        }
+    }
+
+    /// <summary>
     /// Opens the settings page through the same navigation the rail uses; an already open page stays put.
     /// </summary>
     public void ShowSettings()
@@ -270,6 +324,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _localization.PropertyChanged -= OnLocalizationChanged;
+        _worldClockPage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
     }
@@ -299,8 +354,29 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void NavigateTo(ShellPage? page)
     {
-        CurrentPage = page == ShellPage.Settings ? SettingsPage : HomePage;
+        ViewModelBase target = page switch
+        {
+            ShellPage.Settings => SettingsPage,
+            ShellPage.WorldClock => _worldClockPage,
+            _ => HomePage,
+        };
+
+        if (ReferenceEquals(target, _worldClockPage))
+        {
+            _worldClockPage.Activate();
+        }
+        else
+        {
+            _worldClockPage.Deactivate();
+        }
+
+        CurrentPage = target;
         _logger.Debug("Navigated to {Page}", page);
+    }
+
+    private void OpenWorldClock()
+    {
+        SelectedPrimaryItem = _worldClockNavigationItem;
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

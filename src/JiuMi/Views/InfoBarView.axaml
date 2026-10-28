@@ -6,7 +6,7 @@
              x:DataType="vm:InfoBarViewModel">
   <UserControl.Styles>
     <Style Selector="Border.bar">
-      <Setter Property="Margin" Value="16,12,16,0" />
+      <Setter Property="Margin" Value="12,12,12,0" />
       <Setter Property="Padding" Value="16,12" />
       <Setter Property="CornerRadius" Value="4" />
       <Setter Property="MinHeight" Value="48" />

@@ -13,3 +13,16 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 | 崩溃文件 | CrashFile | 进程无法继续时写下的纯文本文件，记录时间、阶段、异常与堆栈。它独立于日志文件，尽力写入，写不成即放弃。 |
 | 详情缓冲 | DetailBuffer | 会话内最近 50 条错误记录的内存环形缓冲。同类提示靠它合并计数，用户在提示上看「复制详情」时读的也是它；界面不读日志文件。 |
 | 诊断包 | DiagnosticsBundle | 用户手动导出的压缩包，装当前日志、崩溃文件、设置快照与环境摘要。它是排障素材的搬运方式，不是自动上报渠道。 |
+
+## 世界工作时间
+
+| 术语 | 代码名 | 定义 |
+| --- | --- | --- |
+| 地点 | Place | 世界工作时间里可被选中的一个条目，`kind` 为 `country` 或 `city`；看板、规划、摘要与结论都以「地点」计数。 |
+| 国家条目 | `PlaceKind.Country` / `CountryCatalogEntry` | 绑定一个代表时区的国家条目；多时区国家在行内标注代表城市，单时区国家只显示国名。 |
+| 城市条目 | `PlaceKind.City` / `CityCatalogEntry` | 绑定一个 IANA 时区的城市条目；内置城市表只收策展的主要商务城市，同一时区只保留一个代表城市。 |
+| 代表时区 | `CountryCatalogEntry.Zone` | 国家条目用于计算当地时间、工作窗口、假日与重叠的 IANA 时区；由代表城市决定，行内不可改。 |
+| 世界时钟目录 | `WorldClockCatalog` | 内置的 `countries.json`、`cities.json` 与 `office-hours.json`；开发期由生成脚本产出入库，运行期以冻结快照兜底。 |
+| 目录清单 | `WorldClockCatalogManifest` | 一次目录发布的说明：`schemaVersion`、单调递增的 `version`、`updatedAt` 与三份文件的 `sha256` / `size`。应用只按它判断「有没有新版本」与「下载是否完整」。 |
+| 目录缓存 | `WorldClockCatalogCache` | 已下载并校验通过的目录版本，位于 `<设置同根>\cache\catalog\{version}\`，只保留最新一份；删除后工具回到内置快照。它不是用户状态，也不随设置迁移。 |
+

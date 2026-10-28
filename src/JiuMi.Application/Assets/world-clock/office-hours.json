@@ -1,0 +1,168 @@
+{
+  "source": {
+    "cldrVersion": "49",
+    "unicodeVersion": "16.0.0",
+    "tzdbVersion": "2026e",
+    "libphonenumberCommit": "1ae0d623301b302f828628dfc368c983e8d27141",
+    "sources": {
+      "names": "https://github.com/unicode-org/cldr-json",
+      "zones": "https://github.com/eggert/tz",
+      "dialCodes": "https://github.com/google/libphonenumber"
+    }
+  },
+  "global": {
+    "start": "09:00",
+    "end": "18:00",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+    "updatedAt": "2026-10-28"
+  },
+  "overrides": [
+    {
+      "country": "SA",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "QA",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "KW",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "BH",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "OM",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "IL",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "EG",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "JO",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "IQ",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    },
+    {
+      "country": "DZ",
+      "start": "09:00",
+      "end": "18:00",
+      "days": [
+        7,
+        1,
+        2,
+        3,
+        4
+      ],
+      "source": "https://en.wikipedia.org/wiki/Workweek_and_weekend",
+      "updatedAt": "2026-10-28"
+    }
+  ]
+}
