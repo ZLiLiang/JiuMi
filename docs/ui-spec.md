@@ -172,9 +172,10 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 世界工作时间 · 规划
 
 - 摘要规则：
-  - 至少一个地点且全部可用地点都同时上班时：`Tool.WorldClock.Plan.Summary.All`（只有一个地点也算全员），格式「所有地点同时上班：00:00–02:00」。
-  - 否则取同时上班地点数的最大值：`Tool.WorldClock.Plan.Summary.Max`，格式「最多 3 个地点同时上班：00:00–02:00」；范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接。
-  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`，即「今天没有同时上班的时段」。
+  - 至少一个地点且全部可用地点都同时上班时：`Tool.WorldClock.Plan.Summary.All`（只有一个地点也算全员），格式「最佳时段 00:00–02:00：4 个地点同时上班」。
+  - 否则取同时上班地点数的最大值：`Tool.WorldClock.Plan.Summary.Max`，格式「最佳时段 00:00–02:00：4 个地点中 3 个同时上班」；范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接。
+  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`，即「今天没有地点同时上班」。
+  - 总数取**可用地点数**；时区不可用的地点不计入分母，由下方降级说明列出。
   - 不用「重叠」作为摘要文案；「同时上班」才是用户语言。计数与文案一律用「地点」。
 - 摘要与图例同处卡片首行：摘要 `*` 可换行，图例右对齐、可换行；图例四项依次为上班 / 下班 / 周末 / 法定假日，色块 10 × 10、圆角 2，文字 11px / `TextFillColorTertiaryBrush`。
 - 图例最右侧是一个 20 × 20 的圆形问号按钮（`SubtleFillColorSecondaryBrush` 底、1px `ControlStrokeColorDefaultBrush` 描边、三级文字色），鼠标悬停显示时间轴说明：横轴范围、工作窗口/工作周的判定方式、虚线含义与时区来源。按钮可聚焦，`AutomationProperties.Name` 取 `Tool.WorldClock.Footnote.Help`。

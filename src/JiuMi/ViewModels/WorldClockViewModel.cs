@@ -777,8 +777,12 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
 
         string ranges = FormatRanges(overlap.Ranges);
         SummaryText = overlap.HasFullOverlap
-            ? _localization.Format("Tool.WorldClock.Plan.Summary.All", ranges)
-            : _localization.Format("Tool.WorldClock.Plan.Summary.Max", overlap.MaxCount, ranges);
+            ? _localization.Format("Tool.WorldClock.Plan.Summary.All", ranges, overlap.PlaceCount)
+            : _localization.Format(
+                "Tool.WorldClock.Plan.Summary.Max",
+                ranges,
+                overlap.PlaceCount,
+                overlap.MaxCount);
     }
 
     private string FormatRanges(IReadOnlyList<OverlapRange> ranges)

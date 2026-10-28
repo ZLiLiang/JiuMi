@@ -506,7 +506,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
 | `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |
 | `Tool.WorldClock.Board.Summary` | 看板首行摘要；含 `{0}` |
-| `Tool.WorldClock.Plan.Summary.All` / `.Max` / `.None` | 规划结论：所有地点同时上班、最多 N 个地点同时上班、没有同时上班的时段；`All` 含 `{0}`，`Max` 含 `{0}`、`{1}` |
+| `Tool.WorldClock.Plan.Summary.All` / `.Max` / `.None` | 规划结论：最佳时段与同时上班地点数；`All` 含 `{0}`、`{1}`，`Max` 含 `{0}`、`{1}`、`{2}` |
 | `Tool.WorldClock.Plan.Range` / `.RangeSeparator` / `Tool.WorldClock.ListSeparator` | 重叠时段格式、时段分隔符与列表分隔符 |
 | `Tool.WorldClock.Legend.Working` / `.Off` / `.Weekend` / `.Holiday` / `Tool.WorldClock.Overlap` | 图例四项与「同时上班」热度带标题 |
 | `Tool.WorldClock.Now` / `Tool.WorldClock.Cursor.Readout` / `Tool.WorldClock.BackToNow` | 现在标签、游标读数（`{0}`）、回到现在按钮 |
