@@ -47,6 +47,12 @@
   </fa:FAAppWindow.Resources>
 
   <Grid RowDefinitions="40,*">
+    <Border x:Name="BackdropHighlight"
+            Grid.RowSpan="2"
+            Background="{DynamicResource JiuMiWindowHighlightBrush}"
+            IsHitTestVisible="False"
+            IsVisible="False" />
+
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
       <Border x:Name="TitleBarMark"
               Width="18"
@@ -71,8 +77,9 @@
                  Text="{Binding AppName}" />
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Background="Transparent">
+    <Grid Grid.Row="1" Margin="14" ColumnDefinitions="Auto,14,*">
       <Border Grid.Column="0"
+              Classes="island"
               Width="{Binding NavigationWidth}"
               Padding="8,8,8,12">
         <Grid RowDefinitions="Auto,*,Auto,Auto">
@@ -136,13 +143,15 @@
         </Grid>
       </Border>
 
-      <DockPanel Grid.Column="1">
-        <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-          <ContentControl Content="{Binding CurrentPage}" />
-        </ScrollViewer>
-      </DockPanel>
+      <Border Grid.Column="2" Classes="island">
+        <DockPanel>
+          <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <ContentControl Content="{Binding CurrentPage}" />
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
     </Grid>
   </Grid>
 </fa:FAAppWindow>

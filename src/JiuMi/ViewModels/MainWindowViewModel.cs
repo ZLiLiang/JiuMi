@@ -14,7 +14,7 @@ namespace JiuMi.ViewModels;
 public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private const double ExpandedNavigationWidth = 280;
-    private const double CollapsedNavigationWidth = 48;
+    private const double CollapsedNavigationWidth = 56;
 
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;

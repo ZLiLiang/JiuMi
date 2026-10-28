@@ -2,6 +2,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fac="using:FluentAvalonia.UI.Controls">
 
+  <Style Selector="Border.island">
+    <Setter Property="Background" Value="{DynamicResource JiuMiIslandBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource JiuMiIslandBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BoxShadow" Value="{DynamicResource JiuMiIslandShadow}" />
+  </Style>
+
   <Style Selector="ListBox.nav">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
