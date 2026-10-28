@@ -84,5 +84,5 @@
 
 ## 实施
 
-- 功能票：#TBD-FEATURE
-- 体积票：#TBD-SIZE
+- 功能票：[#59](https://github.com/ZLiLiang/JiuMi/issues/59)
+- 体积票：[#60](https://github.com/ZLiLiang/JiuMi/issues/60)

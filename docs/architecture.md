@@ -694,7 +694,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 2. Infrastructure：用 Magick.NET 在测试里自行写出的小 PSD/PSB 夹具，验证读合成图、sRGB 转换、元数据剥离、JPG 底色合成、等比缩放；坏文件返回可读原因而不抛未处理异常。
 3. UI 的拖拽、进度与汇总文案不设自动化测试。
 
-相关：[ADR-0009](./adr/0009-image-conversion.md)。
+相关：[ADR-0009](./adr/0009-image-conversion.md)、[#59](https://github.com/ZLiLiang/JiuMi/issues/59)、[#60](https://github.com/ZLiLiang/JiuMi/issues/60)。
 
 ## 参考
 
