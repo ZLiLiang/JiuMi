@@ -218,6 +218,32 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
   - 校验：下班必须晚于上班、至少一个工作日；不满足时显示 11px / `SystemFillColorCautionBrush` 的 `Manage.Edit.Invalid`，保存按钮禁用。
   - 底部「取消」「保存」，保存写回该地点并重新计算。
 
+### 图片格式转换
+
+参考图待补：本小节为文字规格，实现后按定稿界面补 1200 × 760 截图（浅色、深色、失败态各一张）。
+
+- 页头沿用上一节的结构与字号；动作区只有「添加文件」（普通按钮，高 32）与「开始转换」（强调色按钮，高 32），不使用分段控件。文案键前缀 `Tool.ImageConvert.*`。
+- 主体是一张卡片（外边距上 22、内边距 20、圆角 8、`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`），自上而下为参数区、分隔线、文件列表、底栏。
+- 参数区（12px 标签 + 控件，行间距 12，可换行）：
+  - 目标格式：`ComboBox`，宽 120，选项 PNG / JPEG / WebP。
+  - 质量：`Slider` 宽 160 + 右侧数值 40px 右对齐；仅目标格式为 JPEG/WebP 时可用，PNG 时置灰并保留数值。
+  - 最大边：`TextBox` 宽 88 + 「px」后缀 11px 次文字色；空值表示原始尺寸，非法值用 11px `SystemFillColorCriticalBrush` 提示且禁用「开始转换」。
+  - JPG 底色：20 × 20 圆角色块按钮 + 当前色值 11px 次文字色；仅目标格式为 JPEG 时可用。
+  - 输出：`HyperlinkButton`，显示「同目录」或目录名（`CharacterEllipsis`，最大宽 240）。
+  - 进阶：行尾的折叠切换（Chevron 图标 +「进阶」12px）。展开后在参数区下方追加三行，行高 28、标签列宽 110、11.5px 次文字色：WebP 有损 `CheckBox`、PNG 压缩级别 `Slider` 0–9、保留源元数据 `CheckBox`。折叠状态不记忆。
+- 文件列表：行高 56，行内边距 8 0，行间 1px `DividerStrokeColorDefaultBrush`。
+  - 缩略图 40 × 40、圆角 4、1px `ControlStrokeColorDefaultBrush`；未出图时显示格式文字 10px 次文字色。仅等比缩小，不放大，不裁剪。
+  - 主行文件名 13px，超长 `CharacterEllipsis`；次行 10.5px `TextFillColorTertiaryBrush`，格式「宽 × 高 · 源格式 → 目标格式」。
+  - 右侧状态 chip（11px、高 18、圆角 4、内边距 7 0）四态：待处理（`SubtleFillColorSecondaryBrush` 底、次文字色）、转换中（同上 + 进度环 12 × 12）、完成（`JiuMiCellWorkingBrush` 底 + 强调色文字）、失败（`SystemFillColorCriticalBrush` 描边 + 同色文字）。
+  - 失败行在次行位置追加原因，11px `SystemFillColorCriticalBrush`，与状态 chip 同一行换行显示。
+  - 行尾 22 × 22 删除图标按钮；转换中禁用。
+  - 列表最大高度按内容岛剩余空间，超出则纵向滚动，表头（文件名 / 状态）不吸顶。
+- 空态：以空态卡片替代参数区与列表，标题 `Tool.ImageConvert.Empty`、说明 `Tool.ImageConvert.Empty.Hint`、一个「添加文件」按钮。
+- 拖拽：整个内容岛接受文件拖放；拖入时岛描边换强调色并覆盖 12px 提示「松开以添加文件」。不接受的扩展名在入列时即标为失败，原因「不支持的格式」。
+- 底栏（列表下方、无分隔线以外装饰）：左侧 `ProgressBar` 高 4、圆角 2、宽 240 + 「已完成 / 总数」12px 次文字色；右侧「取消」按钮仅转换中显示。
+- 结束汇总走全局 InfoBar（见「错误呈现」章节）：全部成功为成功态，含「打开输出目录」动作；有失败为警告态，正文写「已完成 N，失败 M」，同样带「打开输出目录」。
+- 窄窗：参数区换行优先，列表中文件名与状态 chip 之间先压缩文件名；缩略图与状态 chip 不换行。
+
 ### 配色与降级
 
 - 网格不新增语义色：下班、深夜、上班、周末、法定假日都复用强调色与中性色资源；周末/假日另用斜纹，不只靠颜色区分。

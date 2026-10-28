@@ -641,6 +641,61 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 相关：[ADR-0007](./adr/0007-holiday-network.md)、[ADR-0008](./adr/0008-world-clock-catalog.md)、[#53](https://github.com/ZLiLiang/JiuMi/issues/53)、[#56](https://github.com/ZLiLiang/JiuMi/issues/56)。
 
+## 图片格式转换
+
+工具页的外壳、页头与导航复用「工具模块」章节；本节只记该工具的领域规则、接缝与降级。选型依据见 [ADR-0009](./adr/0009-image-conversion.md)。
+
+### 分层
+
+| 层 | 内容 | 约束 |
+| --- | --- | --- |
+| `JiuMi.Application` | `ImageConversion/`：`ImageConversionRequest`、`ImageFormatCatalog`、`OutputPathPlanner`、转换结果模型 | 纯函数、无 Avalonia、无原生依赖 |
+| `JiuMi.Infrastructure` | `IImageProbe` 与 `IImageConverter` 的 Magick.NET 实现，含 sRGB 转换与元数据剥离 | 只做文件与编解码 I/O，不含 UI 规则 |
+| `JiuMi`（UI） | `ImageConvertViewModel`、`ImageConvertView`、行模型、拖拽与进度 | 绑定与编组，文案走 i18n |
+
+### 格式与参数
+
+- 输入 `.psd` `.psb` `.png` `.jpg` `.jpeg` `.webp` `.bmp`；输出 PNG / JPEG / WebP。扩展名匹配大小写不敏感，其余扩展名在入列时即判为不支持。
+- PSD/PSB 只读内嵌合成图；文件没有合成数据时按解析失败处理，不做图层合成兜底。
+- 质量 1–100，默认 90，只对 JPEG 与 WebP 有损生效；PNG 忽略该值。
+- 最大边等比缩放：目标最大边大于原图时**保持原始尺寸，不放大**。
+- JPG 底色：默认白、可选自定义颜色、跨会话记住；仅当输出 JPEG 且源带透明通道时生效。
+- 进阶折叠区：WebP 有损/无损、PNG 压缩级别、保留源元数据。默认收起，不记忆展开状态。
+- 同格式转换允许（如 JPG→JPG），行内提示「将重新压缩」。
+
+### 色彩与元数据
+
+- 所有输出统一转换到 sRGB 并嵌入 sRGB profile；源为 CMYK/AdobeRGB 时先转色域再编码。
+- EXIF/GPS/相机信息默认剥离；仅当进阶里打开「保留源元数据」才写入。
+- 16 bit 源输出 16 bit PNG；JPEG 与 WebP 恒为 8 bit。
+
+### 输出与命名
+
+- 默认写回源文件同目录；可切换到用户选定目录，并跨会话记住上次选择。
+- 命名为 `原名.<新后缀>`；目标已存在时追加序号（`a-1.png`、`a-2.png`），**绝不覆盖已有文件或源文件**。
+- 输出目录不可写时该行失败，不静默改写到别处。
+
+### 批量执行
+
+- 并发度 `min(CPU, 4)`；单个文件失败不影响其余文件。
+- 列表缩略图 ≤ 256 px、异步解码；探测结果（尺寸、可解析性、解码图）缓存后在转换阶段复用，不重复解码。
+- 显示总进度并可取消；取消后已完成的输出保留，未开始的置为未处理。
+- 结束时汇总一条 InfoBar，含「打开输出目录」；失败行在列表内标红给出原因，不弹全局错误窗（[ADR-0003](./adr/0003-error-presentation.md)）。
+- 失败原因按判定顺序固定为：不支持的扩展名 → 解析失败（可能未保存合成预览）→ 编码失败 → 写入失败。
+
+### 降级
+
+- 原生成像库加载失败时，工具页禁用转换按钮并给出页内说明，不影响启动与其它工具。
+- 无输出目录写权限、磁盘已满：行级失败，汇总计数包含在内。
+
+### 测试缝
+
+1. `JiuMi.Application` 纯函数：扩展名与格式映射、参数校验（质量范围、最大边、进阶组合）、`OutputPathPlanner`（同名递增、连续重名、保护源文件、非法字符）、失败原因优先级。
+2. Infrastructure：用 Magick.NET 在测试里自行写出的小 PSD/PSB 夹具，验证读合成图、sRGB 转换、元数据剥离、JPG 底色合成、等比缩放；坏文件返回可读原因而不抛未处理异常。
+3. UI 的拖拽、进度与汇总文案不设自动化测试。
+
+相关：[ADR-0009](./adr/0009-image-conversion.md)。
+
 ## 参考
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
@@ -651,6 +706,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0006 外壳岛屿化：导航与内容各成一块浮岛](./adr/0006-island-shell.md)
 - [ADR-0007 世界时钟节假日：Nager.Date、缓存与失败降级](./adr/0007-holiday-network.md)
 - [ADR-0008 世界时钟目录：内置快照、双粒度与代表时区](./adr/0008-world-clock-catalog.md)
+- [ADR-0009 图片格式转换：PSD 解码选型与批量转换管线](./adr/0009-image-conversion.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)

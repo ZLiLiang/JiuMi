@@ -24,5 +24,17 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 | 代表时区 | `CountryCatalogEntry.Zone` | 国家条目用于计算当地时间、工作窗口、假日与重叠的 IANA 时区；由代表城市决定，行内不可改。 |
 | 世界时钟目录 | `WorldClockCatalog` | 内置的 `countries.json`、`cities.json` 与 `office-hours.json`；开发期由生成脚本产出入库，运行期以冻结快照兜底。 |
 | 目录清单 | `WorldClockCatalogManifest` | 一次目录发布的说明：`schemaVersion`、单调递增的 `version`、`updatedAt` 与三份文件的 `sha256` / `size`。应用只按它判断「有没有新版本」与「下载是否完整」。 |
-| 目录缓存 | `WorldClockCatalogCache` | 已下载并校验通过的目录版本，位于 `<设置同根>\cache\catalog\{version}\`，只保留最新一份；删除后工具回到内置快照。它不是用户状态，也不随设置迁移。 |
+| 世界工作时间目录缓存 | `WorldClockCatalogCache` | 已下载并校验通过的目录版本，位于 `<设置同根>\cache\catalog\{version}\`，只保留最新一份；删除后工具回到内置快照。它不是用户状态，也不随设置迁移。 |
+
+## 图片格式转换
+
+| 术语 | 代码名 | 定义 |
+| --- | --- | --- |
+| 图片格式转换 | `ImageConvert` | 工具页与功能的正式名称；README 路线图里「PS 格式图标转换」的口语说法一律以它为准。 |
+| 转换请求 | `ImageConversionRequest` | 一次批量任务的不变参数集：目标格式、质量、最大边、JPG 底色、元数据策略、输出目录。它不随单个文件变化。 |
+| 源图探测 | `IImageProbe` | 读一次源文件得到尺寸、能否解析与缩略图解码结果；列表用它，转换阶段复用同一结果。 |
+| 转换器 | `IImageConverter` | 把源文件按转换请求写成目标文件的唯一接缝；Windows 实现基于 Magick.NET。 |
+| 输出路径规划 | `OutputPathPlanner` | 决定输出目录与文件名的纯函数：`原名.<后缀>`，重名追加序号，绝不覆盖已有文件或源文件。 |
+| 内嵌合成图 | PSD Composite | PSD/PSB 中 Photoshop 保存时写入的扁平位图。转换只读它，不自己合成图层，也不做选层导出。 |
+| 进阶参数 | `ImageConversionAdvancedOptions` | 折叠区里的参数：WebP 有损/无损、PNG 压缩级别、保留源元数据。默认收起，不记忆展开状态。 |
 
