@@ -56,7 +56,7 @@
   </Style>
 
   <Style Selector="ListBox.nav.collapsed Grid.nav-text">
-    <Setter Property="IsVisible" Value="False" />
+    <Setter Property="Opacity" Value="0" />
   </Style>
 
   <Style Selector="ListBox.nav.collapsed Grid.nav-content">

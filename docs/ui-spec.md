@@ -60,6 +60,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 四个工具项本期**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
 - **选中态**：整行填充；左侧 3 × 16、圆角 2 的 `AccentFillColorDefaultBrush` 指示条；图标改为强调色并使用填充变体，文字颜色不变。
 - **收起态**：导航岛宽 56，只剩图标、水平居中；项文案转为 `ToolTip`，可访问名仍取同一键。
+- **展开/收起过渡**：导航岛宽度 200ms `CubicEaseOut`，项文案同步 200ms 淡入淡出；内容岛随列宽连续重排。
 - 默认展开。展开/收起是**唯一被记忆的状态**（`settings.json` 的 `navExpanded`，见 [`docs/architecture.md`](./architecture.md) 配置章节）：启动时恢复上次关闭时的状态；点按钮立即改变界面但不立即写盘，退出时统一落盘。
 
 ### 内容岛骨架
