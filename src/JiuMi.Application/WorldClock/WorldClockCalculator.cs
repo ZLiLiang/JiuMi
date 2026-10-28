@@ -70,19 +70,28 @@ public static class WorldClockCalculator
     {
         PlacePresentation? presentation = null;
         string? countryCode = null;
+        string? zoneId;
         if (catalog.TryPresent(place, languageCode, out PlacePresentation? resolved) && resolved is not null)
         {
             presentation = resolved;
             countryCode = catalog.GetCountryCode(place);
+            zoneId = resolved.ZoneId;
         }
         else
         {
-            // A place that outlived the catalog still gets a row; an unresolvable zone degrades it in place.
-            string zoneId = place.Kind == PlaceKind.City ? place.Id : "UTC";
-            presentation = new PlacePresentation(place, place.Id, place.Id, string.Empty, zoneId, place.Hours);
+            // A place that outlived the catalog still gets a row. A country without a catalog entry
+            // has no trustworthy zone, so it degrades to unavailable instead of guessing UTC.
+            zoneId = place.Kind == PlaceKind.City ? place.Id : null;
+            presentation = new PlacePresentation(
+                place,
+                place.Id,
+                place.Id,
+                string.Empty,
+                zoneId ?? place.Id,
+                place.Hours);
         }
 
-        TimeZoneInfo? zone = TryFindZone(presentation.ZoneId);
+        TimeZoneInfo? zone = zoneId is null ? null : TryFindZone(zoneId);
         var cells = new List<WorldClockCell>(WorldClockTimeline.ColumnCount);
         for (int hour = 0; hour < WorldClockTimeline.ColumnCount; hour++)
         {
@@ -118,7 +127,7 @@ public static class WorldClockCalculator
         }
 
         var ranges = new List<OverlapRange>();
-        if (maxCount >= 2)
+        if (maxCount >= 2 || (availablePlaceCount > 0 && maxCount == availablePlaceCount))
         {
             int rangeStart = -1;
             for (int hour = 0; hour < columns.Count; hour++)

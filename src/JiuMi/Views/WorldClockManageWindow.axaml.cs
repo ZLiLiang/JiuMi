@@ -44,11 +44,18 @@ public partial class WorldClockManageWindow : Window
             return;
         }
 
-        using var transfer = new DataTransfer();
-        var item = new DataTransferItem();
-        item.Set(_placeFormat, place);
-        transfer.Add(item);
-        await DragDrop.DoDragDropAsync(e, transfer, DragDropEffects.Move);
+        try
+        {
+            using var transfer = new DataTransfer();
+            var item = new DataTransferItem();
+            item.Set(_placeFormat, place);
+            transfer.Add(item);
+            await DragDrop.DoDragDropAsync(e, transfer, DragDropEffects.Move);
+        }
+        catch (Exception exception) when (DataContext is WorldClockManageViewModel viewModel)
+        {
+            viewModel.ReportDragFailure(exception);
+        }
     }
 
     private void OnSelectedDragOver(object? sender, DragEventArgs e)

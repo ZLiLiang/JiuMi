@@ -601,7 +601,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 目录
 
 - `Assets/world-clock/{countries,cities,office-hours}.json` 随程序发布；运行期零网络。
-- `countries.json`：`iso2`、双语名、`dialCode`、代表时区 `zone`；多时区国家另有 `representativeCity`。`cities.json`：IANA id、国家、双语名，一城一区。`office-hours.json`：全球默认 + 国家/城市覆盖（含 `source` 与 `updatedAt`），回退链 城市 → 国家 → 全球。
+- `countries.json`：`iso2`、双语名、`dialCode`、`representative: { zone, city? }`；`city` 只在多时区国家出现。`cities.json`：IANA id、国家、双语名，一城一区。`office-hours.json`：全球默认 + 国家/城市覆盖（含 `source` 与 `updatedAt`），回退链 城市 → 国家 → 全球。
 - `tools/generate-world-clock-data.ps1` 从 CLDR（名称）、IANA tzdb（代表时区）、libphonenumber（区号）生成；JSON 记录 CLDR/Unicode/tzdb 版本与 libphonenumber commit。脚本不进构建、不接 CI。
 - `IWorldClockCatalogProvider` 是唯一接缝；当前实现 `BundledWorldClockCatalogProvider` 只读包内文件。在线更新（Release 资产 + manifest/哈希 + 24h 后台检查 + 缓存回退）在 #56，实现替换不改页面。
 - 目录缺失或解析失败不阻塞启动：provider 记 Warning 并返回空目录；未知时区的地点单行降级、不计入重叠。

@@ -231,11 +231,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Gets the page that hosts the world working hours.
-    /// </summary>
-    public WorldClockViewModel WorldClockPage => _worldClockPage;
-
-    /// <summary>
     /// Gets the application-wide error notice shown above the content.
     /// </summary>
     public InfoBarViewModel InfoBar

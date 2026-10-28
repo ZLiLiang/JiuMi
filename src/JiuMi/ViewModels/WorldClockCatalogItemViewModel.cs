@@ -10,7 +10,6 @@ namespace JiuMi.ViewModels;
 public sealed class WorldClockCatalogItemViewModel : ObservableObject
 {
     private readonly IRelayCommand<WorldClockCatalogItemViewModel> _toggleCommand;
-    private bool _isSelected;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorldClockCatalogItemViewModel"/> class.
@@ -28,7 +27,7 @@ public sealed class WorldClockCatalogItemViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(toggleCommand);
         Item = item;
         GroupName = groupName ?? string.Empty;
-        _isSelected = isSelected;
+        IsSelected = isSelected;
         _toggleCommand = toggleCommand;
     }
 
@@ -79,12 +78,11 @@ public sealed class WorldClockCatalogItemViewModel : ObservableObject
     public bool HasDialCode => !string.IsNullOrEmpty(DialCode);
 
     /// <summary>
-    /// Gets or sets a value indicating whether the item is selected.
+    /// Gets a value indicating whether the item is selected.
     /// </summary>
     public bool IsSelected
     {
-        get => _isSelected;
-        internal set => SetProperty(ref _isSelected, value);
+        get;
     }
 
     /// <summary>

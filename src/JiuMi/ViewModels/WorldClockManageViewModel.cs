@@ -305,6 +305,12 @@ public sealed class WorldClockManageViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Records a failure to start the drag operation.
+    /// </summary>
+    /// <param name="exception">The failure.</param>
+    public void ReportDragFailure(Exception exception) => _page.ReportManageFailure(exception);
+
+    /// <summary>
     /// Moves a selected place to another position.
     /// </summary>
     /// <param name="fromIndex">The current index.</param>
@@ -528,9 +534,9 @@ public sealed class WorldClockManageViewModel : ObservableObject, IDisposable
             System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.None,
             out TimeOnly end);
-        bool hasDays = _editDays.Any(day => day.IsChecked);
+        int[] days = [.. _editDays.Where(day => day.IsChecked).Select(day => day.IsoDay)];
 
-        if (!startParsed || !endParsed || start >= end || !hasDays)
+        if (!startParsed || !endParsed || !WorkWindow.TryCreate(start, end, days, out _, out _))
         {
             EditError = _localization["Tool.WorldClock.Manage.Edit.Invalid"];
             CanSaveEdit = false;
@@ -541,16 +547,7 @@ public sealed class WorldClockManageViewModel : ObservableObject, IDisposable
         CanSaveEdit = true;
     }
 
-    private string DayLabel(int isoDay) => _localization[isoDay switch
-    {
-        1 => "Tool.WorldClock.Weekday.Mon",
-        2 => "Tool.WorldClock.Weekday.Tue",
-        3 => "Tool.WorldClock.Weekday.Wed",
-        4 => "Tool.WorldClock.Weekday.Thu",
-        5 => "Tool.WorldClock.Weekday.Fri",
-        6 => "Tool.WorldClock.Weekday.Sat",
-        _ => "Tool.WorldClock.Weekday.Sun",
-    }];
+    private string DayLabel(int isoDay) => WorldClockWeekdayText.Resolve(_localization, isoDay);
 
     private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

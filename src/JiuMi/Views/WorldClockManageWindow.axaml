@@ -231,7 +231,6 @@
                           VerticalScrollBarVisibility="Auto">
               <ItemsControl Grid.Row="1"
                             Margin="0,10,0,0"
-                            x:Name="SelectedListHost"
                             ItemsSource="{Binding Selected}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>

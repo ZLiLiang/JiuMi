@@ -267,6 +267,21 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <StackPanel Margin="0,12,0,0" Spacing="2">
+              <TextBlock Classes="footnote warning"
+                         IsVisible="{Binding HasZoneNote}"
+                         Text="{Binding ZoneNote}" />
+              <StackPanel Orientation="Horizontal"
+                          Spacing="8"
+                          IsVisible="{Binding HasHolidayNote}">
+                <TextBlock Classes="footnote warning" Text="{Binding HolidayNote}" />
+                <HyperlinkButton FontSize="11"
+                                 IsVisible="{Binding CanRetryHolidays}"
+                                 Command="{Binding RetryHolidaysCommand}"
+                                 Content="{loc:Localize Common.Retry}" />
+              </StackPanel>
+            </StackPanel>
           </StackPanel>
         </Border>
 

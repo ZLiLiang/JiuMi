@@ -32,6 +32,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
     private readonly TimeProvider _timeProvider;
     private readonly DispatcherTimer _timer;
     private readonly Dictionary<(string CountryCode, int Year), HolidayLookup> _holidayLookups = [];
+    private readonly HashSet<string> _reportedZoneFailures = new(StringComparer.Ordinal);
     private WorldClockCatalog? _catalog;
     private WorldClockTimeline? _timeline;
     private HolidayCalendar _holidays = HolidayCalendar.Empty;
@@ -56,7 +57,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
     private bool _isActive;
     private bool _disposed;
     private int _refreshVersion;
-    private Task? _refreshTask;
+    private CancellationTokenSource? _activationCancellation;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorldClockViewModel"/> class.
@@ -375,6 +376,8 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         }
 
         _isActive = true;
+        _activationCancellation?.Dispose();
+        _activationCancellation = new CancellationTokenSource();
         _timer.Start();
         Refresh();
     }
@@ -387,6 +390,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         _isActive = false;
         _timer.Stop();
         _refreshVersion++;
+        _activationCancellation?.Cancel();
     }
 
     /// <summary>
@@ -399,7 +403,8 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _refreshTask = RefreshAsync();
+        // Failures and cancellation are handled inside RefreshAsync; the page keeps running.
+        _ = RefreshAsync();
     }
 
     /// <summary>
@@ -468,7 +473,9 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(hours);
         _places = [.. _places.Select(place =>
-            string.Equals(place.Key, key, StringComparison.Ordinal) ? place.WithHours(hours) : place)];
+            string.Equals(place.Key, key, StringComparison.Ordinal)
+                ? place with { Hours = hours }
+                : place)];
         OnPlacesChanged();
     }
 
@@ -491,6 +498,8 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
 
         _disposed = true;
         Deactivate();
+        _activationCancellation?.Dispose();
+        _activationCancellation = null;
         _timer.Tick -= OnTimerTick;
         _localization.PropertyChanged -= OnLocalizationChanged;
         Manage.Dispose();
@@ -501,12 +510,13 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
     private async Task RefreshAsync()
     {
         int version = ++_refreshVersion;
+        CancellationToken cancellationToken = _activationCancellation?.Token ?? CancellationToken.None;
         try
         {
             WorldClockCatalog? catalog = _catalog;
             if (catalog is null)
             {
-                catalog = await _catalogProvider.LoadAsync().ConfigureAwait(true);
+                catalog = await _catalogProvider.LoadAsync(cancellationToken).ConfigureAwait(true);
                 if (version != _refreshVersion)
                 {
                     return;
@@ -518,7 +528,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
 
             // Draw the grid from the last known holidays first; the request below can take seconds.
             BuildTimeline(catalog);
-            await EnsureHolidaysAsync(catalog).ConfigureAwait(true);
+            await EnsureHolidaysAsync(catalog, cancellationToken).ConfigureAwait(true);
             if (version != _refreshVersion || !_isActive)
             {
                 return;
@@ -535,7 +545,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task EnsureHolidaysAsync(WorldClockCatalog catalog)
+    private async Task EnsureHolidaysAsync(WorldClockCatalog catalog, CancellationToken cancellationToken)
     {
         bool allowNetwork = _settingsStore.Current.OnlineDataEnabled;
         int referenceYear = TimeZoneInfo.ConvertTime(_timeProvider.GetUtcNow(), TimeZoneInfo.Local).Year;
@@ -572,7 +582,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
                 continue;
             }
 
-            pending.Add(LoadHolidayAsync(countryCode, year, allowNetwork));
+            pending.Add(LoadHolidayAsync(countryCode, year, allowNetwork, cancellationToken));
         }
 
         if (pending.Count > 0)
@@ -615,12 +625,17 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         _holidaysUnavailable = unavailable;
     }
 
-    private async Task LoadHolidayAsync(string countryCode, int year, bool allowNetwork)
+    private async Task LoadHolidayAsync(
+        string countryCode,
+        int year,
+        bool allowNetwork,
+        CancellationToken cancellationToken)
     {
         try
         {
-            _holidayLookups[(countryCode, year)] =
-                await _holidayProvider.GetHolidaysAsync(countryCode, year, allowNetwork).ConfigureAwait(true);
+            _holidayLookups[(countryCode, year)] = await _holidayProvider
+                .GetHolidaysAsync(countryCode, year, allowNetwork, cancellationToken)
+                .ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -658,6 +673,16 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         }
 
         Rows = rows;
+        foreach (WorldClockRow row in timeline.Rows)
+        {
+            if (!row.IsAvailable && _reportedZoneFailures.Add(row.Presentation.ZoneId))
+            {
+                _logger.Warning(
+                    "Time zone {ZoneId} is unavailable; the place is excluded from overlap",
+                    row.Presentation.ZoneId);
+            }
+        }
+
         Ticks = [.. Enumerable.Range(0, WorldClockTimeline.ColumnCount)
             .Select(hour => new WorldClockTickViewModel(
                 hour % 2 == 0 ? hour.ToString("00", CultureInfo.InvariantCulture) : string.Empty))];
@@ -754,7 +779,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        if (!overlap.HasOverlap)
+        if (!overlap.HasFullOverlap && !overlap.HasOverlap)
         {
             SummaryText = _localization["Tool.WorldClock.Plan.Summary.None"];
             SummaryNote = string.Empty;

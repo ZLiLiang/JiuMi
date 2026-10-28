@@ -102,21 +102,29 @@ public static class WorldClockCatalogJson
             index++;
             string? iso2 = ReadString(element, "iso2");
             string? dialCode = ReadString(element, "dialCode");
-            string? zone = ReadString(element, "zone");
-            if (iso2 is null || dialCode is null || zone is null ||
+            if (iso2 is null || dialCode is null ||
                 !TryReadName(element, "name", out WorldClockName? name) ||
-                name is null)
+                name is null ||
+                !element.TryGetProperty("representative", out JsonElement representative) ||
+                representative.ValueKind != JsonValueKind.Object)
             {
-                problems.Add($"countries[{index}]: missing iso2, name, dialCode or zone.");
+                problems.Add($"countries[{index}]: missing iso2, name, dialCode or representative.");
+                continue;
+            }
+
+            string? zone = ReadString(representative, "zone");
+            if (zone is null)
+            {
+                problems.Add($"countries[{index}]: representative has no zone.");
                 continue;
             }
 
             WorldClockName? representativeCity = null;
-            if (element.TryGetProperty("representativeCity", out JsonElement representative) &&
-                representative.ValueKind == JsonValueKind.Object &&
-                !TryReadName(element, "representativeCity", out representativeCity))
+            if (representative.TryGetProperty("city", out JsonElement city) &&
+                city.ValueKind == JsonValueKind.Object &&
+                !TryReadName(representative, "city", out representativeCity))
             {
-                problems.Add($"countries[{index}]: representativeCity has no usable name.");
+                problems.Add($"countries[{index}]: representative.city has no usable name.");
             }
 
             try
@@ -274,14 +282,14 @@ public static class WorldClockCatalogJson
             return false;
         }
 
-        if (!TryReadDays(element, out IReadOnlyList<int>? days))
+        if (!TryReadDays(element, out IReadOnlyList<int>? days) || days is null)
         {
             window = null;
             error = "days must be an array of ISO weekdays.";
             return false;
         }
 
-        return WorkWindow.TryCreate(startTime, endTime, days!, out window, out error);
+        return WorkWindow.TryCreate(startTime, endTime, days, out window, out error);
     }
 
     private static bool TryReadDays(JsonElement element, out IReadOnlyList<int>? days)

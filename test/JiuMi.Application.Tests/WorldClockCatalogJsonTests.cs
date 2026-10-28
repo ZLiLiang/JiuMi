@@ -17,8 +17,10 @@ public sealed class WorldClockCatalogJsonTests
         {
           "countries": [
             { "iso2": "US", "name": { "zh": "美国", "en": "United States" }, "dialCode": "+1",
-              "zone": "America/New_York", "representativeCity": { "zh": "纽约", "en": "New York" } },
-            { "iso2": "JP", "name": { "zh": "日本" }, "dialCode": "+81", "zone": "Asia/Tokyo" }
+              "representative": { "zone": "America/New_York",
+                "city": { "zh": "纽约", "en": "New York" } } },
+            { "iso2": "JP", "name": { "zh": "日本" }, "dialCode": "+81",
+              "representative": { "zone": "Asia/Tokyo" } }
           ]
         }
         """;
@@ -74,8 +76,9 @@ public sealed class WorldClockCatalogJsonTests
         const string countries = """
             {
               "countries": [
-                { "iso2": "US", "name": { "zh": "美国" } },
-                { "iso2": "JP", "name": { "zh": "日本" }, "dialCode": "+81", "zone": "Asia/Tokyo" }
+                { "iso2": "US", "name": { "zh": "美国" }, "dialCode": "+1" },
+                { "iso2": "JP", "name": { "zh": "日本" }, "dialCode": "+81",
+                  "representative": { "zone": "Asia/Tokyo" } }
               ]
             }
             """;

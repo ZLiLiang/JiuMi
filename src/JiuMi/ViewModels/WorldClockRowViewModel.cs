@@ -179,18 +179,7 @@ public sealed class WorldClockRowViewModel : ObservableObject
         }
 
         LocalTimeText = local.LocalDateTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
-        WeekdayText = WeekdayName(local.LocalDateTime.DayOfWeek);
+        WeekdayText = WorldClockWeekdayText.Resolve(_localization, local.LocalDateTime.DayOfWeek);
         OnPropertyChanged(nameof(LocalTimeLine));
     }
-
-    private string WeekdayName(DayOfWeek day) => day switch
-    {
-        DayOfWeek.Monday => _localization["Tool.WorldClock.Weekday.Mon"],
-        DayOfWeek.Tuesday => _localization["Tool.WorldClock.Weekday.Tue"],
-        DayOfWeek.Wednesday => _localization["Tool.WorldClock.Weekday.Wed"],
-        DayOfWeek.Thursday => _localization["Tool.WorldClock.Weekday.Thu"],
-        DayOfWeek.Friday => _localization["Tool.WorldClock.Weekday.Fri"],
-        DayOfWeek.Saturday => _localization["Tool.WorldClock.Weekday.Sat"],
-        _ => _localization["Tool.WorldClock.Weekday.Sun"],
-    };
 }

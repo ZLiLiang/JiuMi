@@ -240,6 +240,47 @@ public sealed class WorldClockCalculatorTests
     }
 
     [Fact]
+    public void Build_OneWorkingPlace_ReportsFullOverlap()
+    {
+        TimeZoneInfo zone = WorldClockTestData.Zone("Asia/Shanghai");
+        DateTimeOffset now = new(2026, 10, 19, 12, 0, 0, TimeSpan.FromHours(8));
+
+        WorldClockTimeline timeline = WorldClockCalculator.Build(
+            _catalog,
+            [WorldClockTestData.City("Asia/Shanghai")],
+            "zh-CN",
+            now,
+            zone,
+            HolidayCalendar.Empty);
+
+        Assert.True(timeline.Overlap.HasFullOverlap);
+        OverlapRange range = Assert.Single(timeline.Overlap.Ranges);
+        Assert.Equal(9, range.StartHour);
+        Assert.Equal(18, range.EndHour);
+    }
+
+    [Fact]
+    public void Build_UnknownCountry_DegradesInsteadOfUsingUtc()
+    {
+        TimeZoneInfo zone = WorldClockTestData.Zone("America/New_York");
+        DateTimeOffset now = new(2026, 10, 19, 12, 0, 0, TimeSpan.FromHours(-4));
+
+        WorldClockTimeline timeline = WorldClockCalculator.Build(
+            _catalog,
+            [WorldClockTestData.Country("XX")],
+            "zh-CN",
+            now,
+            zone,
+            HolidayCalendar.Empty);
+
+        WorldClockRow row = Assert.Single(timeline.Rows);
+        Assert.False(row.IsAvailable);
+        Assert.Null(row.Zone);
+        Assert.All(row.Cells, cell => Assert.Equal(WorldClockStatus.Unavailable, cell.Status));
+        Assert.Equal(0, timeline.Overlap.PlaceCount);
+    }
+
+    [Fact]
     public void Build_WhenOnlyOnePlaceCanWork_ReportsNoOverlap()
     {
         TimeZoneInfo zone = WorldClockTestData.Zone("America/New_York");

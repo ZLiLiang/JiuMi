@@ -27,7 +27,7 @@ public sealed record WorkWindow
 
         if (!TryValidate(start, end, days, out string? error))
         {
-            throw new ArgumentException(error, nameof(days));
+            throw new ArgumentException(error);
         }
 
         Start = start;

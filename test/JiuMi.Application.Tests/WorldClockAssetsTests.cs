@@ -51,6 +51,18 @@ public sealed class WorldClockAssetsTests
         Assert.True(catalog.TryGetCountry("JP", out CountryCatalogEntry? japan));
         Assert.Null(japan!.RepresentativeCity);
 
+        // Germany and China each have one offset; tzdb links extra zones but the row must not
+        // claim a representative city.
+        Assert.True(catalog.TryGetCountry("DE", out CountryCatalogEntry? germany));
+        Assert.Equal("Europe/Berlin", germany!.Zone);
+        Assert.Null(germany.RepresentativeCity);
+        Assert.True(catalog.TryGetCountry("CN", out CountryCatalogEntry? china));
+        Assert.Equal("Asia/Shanghai", china!.Zone);
+        Assert.Null(china.RepresentativeCity);
+
+        Assert.True(catalog.TryGetCountry("AU", out CountryCatalogEntry? australia));
+        Assert.NotNull(australia!.RepresentativeCity);
+
         Assert.True(catalog.TryGetCountry("HK", out CountryCatalogEntry? hongKong));
         Assert.Equal("+852", hongKong!.DialCode);
         Assert.Equal("香港", hongKong.Name.Zh);
@@ -65,6 +77,8 @@ public sealed class WorldClockAssetsTests
         foreach (CityCatalogEntry city in catalog.Cities)
         {
             Assert.True(zones.Add(city.Id), $"The zone {city.Id} appears more than once.");
+            Assert.False(string.IsNullOrWhiteSpace(city.Name.Zh), $"{city.Id} has no Chinese name.");
+            Assert.False(string.IsNullOrWhiteSpace(city.Name.En), $"{city.Id} has no English name.");
             Assert.True(
                 TimeZoneInfo.TryFindSystemTimeZoneById(city.Id, out _),
                 $"{city.Id} is not a resolvable zone.");

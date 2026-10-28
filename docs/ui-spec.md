@@ -167,12 +167,14 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
   - 右侧状态 chip：11px、高 18、圆角 4、内边距 7 0。工作中用 `JiuMiCellWorkingBrush` 底 + `JiuMiCellWorkingBorderBrush` 1px 描边 + 强调色文字；法定假日用 `JiuMiDayBreakBrush` 1px 描边 + 主文字色；其余用 `SubtleFillColorSecondaryBrush` 底 + 次文字色。
   - 行内边距 10 0，行间 1px `DividerStrokeColorDefaultBrush`，最后一行不带分隔线。
 - 国家条目绑定代表时区；多时区国家的主行显示「国名 · 代表城市」（如「美国 · 纽约」），单时区国家只显示国名。
+- 看板卡片底部与规划一样承载降级说明：时区不可用时列出地点名，节假日不可用时给出提示与「重试」（联网开关打开时）。
 
 ### 世界工作时间 · 规划
 
 - 摘要规则：
-  - 至少两个地点重叠时：`Tool.WorldClock.Plan.Summary.All`（全员）/ `Tool.WorldClock.Plan.Summary.Max`（最多 N 个地点），范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接；非全员时追加 `Plan.Summary.NoAll`。
-  - 没有任何两个地点同时上班：`Plan.Summary.None`。
+  - 至少一个地点且全部可用地点都重叠时：`Tool.WorldClock.Plan.Summary.All`（全员，只有一个地点也算全员）。
+  - 否则取最大重叠：`Tool.WorldClock.Plan.Summary.Max`，范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接，并追加 `Plan.Summary.NoAll`。
+  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`。
   - 计数与文案一律用「地点」。
 - 摘要与图例同处卡片首行：摘要 `*` 可换行，图例右对齐、可换行；图例四项依次为上班 / 下班 / 周末 / 法定假日，色块 10 × 10、圆角 2，文字 11px / `TextFillColorTertiaryBrush`。
 - 时间轴：

@@ -28,6 +28,7 @@ public sealed record Place
     public PlaceKind Kind
     {
         get;
+        init;
     }
 
     /// <summary>
@@ -36,6 +37,7 @@ public sealed record Place
     public string Id
     {
         get;
+        init;
     }
 
     /// <summary>
@@ -44,19 +46,13 @@ public sealed record Place
     public WorkWindow Hours
     {
         get;
+        init;
     }
 
     /// <summary>
     /// Gets the stable key of the place across the catalog and the selected list.
     /// </summary>
     public string Key => Kind == PlaceKind.Country ? $"country:{Id}" : $"city:{Id}";
-
-    /// <summary>
-    /// Returns a copy of the place with another working window.
-    /// </summary>
-    /// <param name="hours">The new window.</param>
-    /// <returns>The updated place.</returns>
-    public Place WithHours(WorkWindow hours) => new(Kind, Id, hours);
 
     /// <summary>
     /// Tries to build a place from stored values.
@@ -130,7 +126,8 @@ public sealed record Place
             return false;
         }
 
-        if (!WorkWindow.TryCreate(parsedStart, parsedEnd, days, out WorkWindow? hours, out error))
+        if (!WorkWindow.TryCreate(parsedStart, parsedEnd, days, out WorkWindow? hours, out error) ||
+            hours is null)
         {
             return false;
         }
@@ -138,7 +135,7 @@ public sealed record Place
         place = new Place(
             parsedKind,
             parsedKind == PlaceKind.Country ? trimmedId.ToUpperInvariant() : trimmedId,
-            hours!);
+            hours);
         return true;
     }
 }

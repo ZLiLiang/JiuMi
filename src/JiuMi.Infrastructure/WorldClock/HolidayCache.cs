@@ -133,23 +133,32 @@ internal sealed class HolidayCache
         }
     }
 
-    private string GetPath(string countryCode, int year) =>
-        Path.Combine(_directory!, $"{countryCode.ToUpperInvariant()}-{year}.json");
+    private string GetPath(string countryCode, int year)
+    {
+        if (_directory is null)
+        {
+            throw new InvalidOperationException("The holiday cache has no directory.");
+        }
+
+        return Path.Combine(_directory, $"{countryCode.ToUpperInvariant()}-{year}.json");
+    }
 
     private static bool IsFileFailure(Exception exception) =>
         exception is IOException or UnauthorizedAccessException or NotSupportedException or System.Security.SecurityException;
 
-    private static void TryDelete(string path)
+    private void TryDelete(string path)
     {
         try
         {
             File.Delete(path);
         }
-        catch (IOException)
+        catch (IOException exception)
         {
+            _logger.Debug(exception, "Holiday cache temporary file could not be deleted");
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException exception)
         {
+            _logger.Debug(exception, "Holiday cache temporary file could not be deleted");
         }
     }
 

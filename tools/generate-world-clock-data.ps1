@@ -35,14 +35,17 @@ function Get-Source {
     $target = Join-Path $cacheDirectory $Name
     if (-not (Test-Path $target)) {
         Write-Host "Downloading $Uri"
+        $temp = "$target.tmp"
         $attempt = 0
         while ($true) {
             $attempt++
             try {
-                Invoke-WebRequest -Uri $Uri -OutFile $target -UseBasicParsing -TimeoutSec 60
+                Invoke-WebRequest -Uri $Uri -OutFile $temp -UseBasicParsing -TimeoutSec 60
+                Move-Item -LiteralPath $temp -Destination $target -Force
                 break
             }
             catch {
+                Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
                 if ($attempt -ge 3) {
                     throw
                 }
@@ -174,6 +177,13 @@ $representatives = @{
     VN = @{ zone = 'Asia/Ho_Chi_Minh'; zh = '胡志明市'; en = 'Ho Chi Minh City' }
 }
 
+# Countries whose territory spans different UTC offsets. Only these append a representative
+# city to the row name; the others use their single offset even if tzdb links more zones.
+$multiZoneCountries = @(
+    'AR', 'AU', 'BR', 'CA', 'CD', 'CL', 'EC', 'ES', 'FM', 'GL', 'ID', 'KI', 'KZ', 'MH',
+    'MN', 'MX', 'NZ', 'PF', 'PG', 'PT', 'RU', 'UA', 'US'
+)
+
 $countries = [System.Collections.Generic.List[object]]::new()
 $countryCodes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 foreach ($code in ($zonesByCountry.Keys | Sort-Object)) {
@@ -194,21 +204,29 @@ foreach ($code in ($zonesByCountry.Keys | Sort-Object)) {
         dialCode = "+$($phoneCodes[$code])"
     }
 
-    if ($countryZones.Count -gt 1) {
-        if (-not $representatives.ContainsKey($code)) {
-            throw "Multi-zone country $code has no representative zone and city."
-        }
-
+    $zone = $null
+    $city = $null
+    if ($representatives.ContainsKey($code)) {
         $representative = $representatives[$code]
         if (-not $knownZones.Contains($representative.zone)) {
             throw "Representative zone $($representative.zone) of $code is not an IANA id."
         }
 
-        $entry.zone = $representative.zone
-        $entry.representativeCity = [ordered]@{ zh = $representative.zh; en = $representative.en }
+        $zone = $representative.zone
+        if ($multiZoneCountries -contains $code) {
+            $city = [ordered]@{ zh = $representative.zh; en = $representative.en }
+        }
+    }
+    elseif ($countryZones.Count -eq 1) {
+        $zone = $countryZones[0]
     }
     else {
-        $entry.zone = $countryZones[0]
+        throw "Multi-zone country $code has no representative zone."
+    }
+
+    $entry.representative = [ordered]@{ zone = $zone }
+    if ($null -ne $city) {
+        $entry.representative.city = $city
     }
 
     $countries.Add($entry)
@@ -370,8 +388,8 @@ $cities = $cities | Sort-Object -Property { $_.country }, { $_.name.en }
 # Every emitted zone must be resolvable by the system the application runs on.
 foreach ($country in $countries) {
     $resolved = $null
-    if (-not [TimeZoneInfo]::TryFindSystemTimeZoneById($country.zone, [ref]$resolved)) {
-        throw "Zone $($country.zone) of $($country.iso2) is not resolvable by this system."
+    if (-not [TimeZoneInfo]::TryFindSystemTimeZoneById($country.representative.zone, [ref]$resolved)) {
+        throw "Zone $($country.representative.zone) of $($country.iso2) is not resolvable by this system."
     }
 }
 
@@ -408,7 +426,6 @@ $officeHours = [ordered]@{
 }
 
 $source = [ordered]@{
-    generatedAt = (Get-Date).ToString('yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture)
     cldrVersion = $cldrVersion._cldrVersion
     unicodeVersion = $cldrVersion._unicodeVersion
     tzdbVersion = $tzdbVersion
