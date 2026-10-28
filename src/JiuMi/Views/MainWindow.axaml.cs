@@ -26,6 +26,7 @@ public partial class MainWindow : FAAppWindow
         TitleBar.ExtendsContentIntoTitleBar = true;
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
         Activated += OnFirstActivated;
+        Activated += OnWindowActivated;
     }
 
     private void ApplyBrandMark()
@@ -51,6 +52,14 @@ public partial class MainWindow : FAAppWindow
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.InfoBar.Activate();
+        }
+    }
+
+    private void OnWindowActivated(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.OnWindowActivated();
         }
     }
 

@@ -1,4 +1,6 @@
-﻿namespace JiuMi.Application.Settings;
+﻿using JiuMi.Application.WorldClock;
+
+namespace JiuMi.Application.Settings;
 
 /// <summary>
 /// The user-adjustable state persisted in the settings file.
@@ -40,6 +42,24 @@ public sealed record AppSettings
         get;
         init;
     } = true;
+
+    /// <summary>
+    /// Gets a value indicating whether the tools may fetch data from the network.
+    /// </summary>
+    public bool OnlineDataEnabled
+    {
+        get;
+        init;
+    } = true;
+
+    /// <summary>
+    /// Gets the persisted world clock view and places.
+    /// </summary>
+    public WorldClockSettings WorldClock
+    {
+        get;
+        init;
+    } = WorldClockSettings.CreateDefault();
 
     /// <summary>
     /// Creates the settings used when the file is missing or unusable.

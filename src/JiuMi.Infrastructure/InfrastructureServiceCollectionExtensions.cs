@@ -8,6 +8,7 @@ using JiuMi.Application.Logging;
 using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.WorldClock;
 using JiuMi.Infrastructure.Diagnostics;
 using JiuMi.Infrastructure.Errors;
 using JiuMi.Infrastructure.Localization;
@@ -15,6 +16,7 @@ using JiuMi.Infrastructure.Logging;
 using JiuMi.Infrastructure.Notifications;
 using JiuMi.Infrastructure.Settings;
 using JiuMi.Infrastructure.Shell;
+using JiuMi.Infrastructure.WorldClock;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JiuMi.Infrastructure;
@@ -45,6 +47,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
         services.AddSingleton<ISingleInstanceCoordinator, SingleInstanceCoordinator>();
+        services.AddSingleton<IWorldClockCatalogProvider>(provider => new BundledWorldClockCatalogProvider(
+            Path.Combine(AppContext.BaseDirectory, "Assets", "world-clock"),
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton<IHolidayProvider, NagerDateHolidayProvider>();
 
         if (OperatingSystem.IsWindows())
         {

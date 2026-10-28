@@ -411,8 +411,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `<exe>\config\` | 用户可改的应用状态 | 创建 |
 | `<exe>\data\` | 工具产物，按工具分子目录 | 预留，不创建 |
 | `<exe>\logs\` | 日志、崩溃文件与诊断包的来源 | 创建 |
+| `<exe>\config\cache\holidays\` | 节假日缓存，跟随设置位置 | 按需创建 |
 
-三者语义分开：`config` 是应用状态，`data` 是工具产物，`logs` 是排障输出。exe 侧不可写时，`logs` 与 `config` 一起回落到 `%AppData%\JiuMi\`（见日志与诊断章节）。
+三者语义分开：`config` 是应用状态，`data` 是工具产物，`logs` 是排障输出。exe 侧不可写时，`logs` 与 `config` 一起回落到 `%AppData%\JiuMi\`（见日志与诊断章节）。`cache\holidays\` 与设置同根，见[工具模块](#工具模块)的节假日小节。
 
 ### 文件契约（半稳定）
 
@@ -436,6 +437,19 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - `navExpanded` **只在主窗口关闭时写一次**；用户点展开/收起按钮不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
 - 关闭时写入失败**静默**：记一条不带 `code` 的 Warning 日志（操作 `Settings.SaveOnExit`），不进详情缓冲、不弹 InfoBar。此时窗口正在关，用户无从处理；「保存失败必须可见」的契约针对用户主动修改的设置。
 - 该键属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
+
+### 世界工作时间状态
+
+| 键 | 类型 | 缺省 | 含义 |
+| --- | --- | --- | --- |
+| `onlineDataEnabled` | boolean | `true` | 允许工具联网取数；当前唯一的请求是节假日 |
+| `worldClock.view` | `"board"` / `"plan"` | `"board"` | 上次打开的视图 |
+| `worldClock.places[]` | `{ kind, id, start, end, days }` | 上海、伦敦、纽约、旧金山四个城市 | 已选地点、各自工作窗口与工作周 |
+
+- `kind` 为 `country` / `city`；国家 `id` 是 ISO alpha-2，城市 `id` 是 IANA；`start` / `end` 为 `HH:mm`（15 分钟粒度），`days` 为 ISO 1–7。
+- 坏条目在加载时丢弃并置 `SettingsLoadIssue.InvalidWorldClockPlaces`，启动日志记 Warning；重复的地点 key 只保留第一条。
+- 添加地点时把内置默认窗口复制进条目，此后与目录默认表脱钩；升级内置表不覆盖用户改过的值。
+- 切换视图、增删、排序、编辑窗口后立即整文件写；`onlineDataEnabled` 在设置页切换时立即写。两者都是新增键，`schemaVersion` 保持 `1`。
 
 ### 写入
 
@@ -488,6 +502,20 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
 | `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `BatchRename` / `IconConvert` / `WorldClock` |
+| `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
+| `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
+| `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |
+| `Tool.WorldClock.Board.Summary` / `.SummaryNote` | 看板首行摘要与说明；`Summary` 含 `{0}` |
+| `Tool.WorldClock.Plan.Summary.All` / `.Max` / `.None` / `.NoAll` | 规划结论：全员、最多 N 个地点、无重叠、没有全员重叠；`All` 含 `{0}`，`Max` 含 `{0}`、`{1}` |
+| `Tool.WorldClock.Plan.Range` / `.RangeSeparator` / `Tool.WorldClock.ListSeparator` | 重叠时段格式、时段分隔符与列表分隔符 |
+| `Tool.WorldClock.Legend.Working` / `.Off` / `.Weekend` / `.Holiday` / `Tool.WorldClock.Overlap` | 图例四项与「重叠」热度带标题 |
+| `Tool.WorldClock.Now` / `Tool.WorldClock.Cursor.Readout` / `Tool.WorldClock.BackToNow` | 现在标签、游标读数（`{0}`）、回到现在按钮 |
+| `Tool.WorldClock.Footnote.Axis` / `.Zone` / `.HolidayUnavailable` / `.ZoneUnavailable` | 页脚说明；`ZoneUnavailable` 含 `{0}` |
+| `Tool.WorldClock.Status.Working` / `.Off` / `.Weekend` / `.Holiday` / `.Unavailable` | 看板状态 chip 与行内降级文案 |
+| `Tool.WorldClock.Weekday.Mon` … `.Sun` | 星期名，共七键 |
+| `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
+| `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
+| `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Subtitle` | 设置页副标题 |
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
@@ -538,6 +566,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 - 命中退路记一条 Debug 日志；**绝不抛异常**。
 - 直接回显键名，让遗漏在界面上暴露出来。
+- **数据名称例外**：工具目录里的国家/城市名不是 i18n 键。回退链是 **目标语言 → `zh-CN` → 数据 id**，由 `WorldClockName.Resolve` 实现；这是本地化章节的唯一例外，新增目录名称不登记键、不加 JSON 文案。
 
 ### 单测
 
@@ -549,6 +578,56 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 4. `languages.json` 列出的每个 `code` 都有对应文件且可解析。
 5. 每个 `Error.*` 键都能被某个 `ErrorRecord.code` 映射到（与错误章节的映射表一致）。
 
+## 工具模块
+
+工具页共用外壳的内容岛、页头与导航；工具自身只负责领域计算、provider 与页面。
+
+### 分层
+
+| 层 | 世界工作时间 | 约束 |
+| --- | --- | --- |
+| `JiuMi.Application` | `WorldClock/`：`Place`、目录、`WorkWindow`、网格计算、节假日契约 | 纯函数、无 Avalonia、无网络 |
+| `JiuMi.Infrastructure` | `BundledWorldClockCatalogProvider`、`NagerDateHolidayProvider` 与缓存 | 只做文件/网络 I/O，不含业务规则 |
+| `JiuMi`（UI） | `WorldClockViewModel`、`WorldClockView`、`WorldClockManageWindow` | 绑定与编组，文案走 i18n |
+
+### 工具页骨架
+
+- 页头：标题、副标题、右侧「分段视图 + 管理地点」；看板与规划共用同一个 `WorldClockViewModel` 与 `WorldClockTimeline`，只是标签取「现在」或游标时刻。
+- 生命周期：导航到工具时 `Activate()` 启动每分钟的计时器并首次刷新；离开时 `Deactivate()` 停表；主窗口 `Activated` 时重算。
+- 刷新顺序：加载目录后**先用已知节假日绘制**，再请求节假日并重绘；网络请求不阻塞首屏。
+- 管理地点是独立窗口（`WorldClockManageWindow`），不是页面内弹层；修改即时写设置并重算。
+- 工具页只在 `JiuMi` 层引用 Avalonia；领域计算可脱离界面单测。
+
+### 目录
+
+- `Assets/world-clock/{countries,cities,office-hours}.json` 随程序发布；运行期零网络。
+- `countries.json`：`iso2`、双语名、`dialCode`、代表时区 `zone`；多时区国家另有 `representativeCity`。`cities.json`：IANA id、国家、双语名，一城一区。`office-hours.json`：全球默认 + 国家/城市覆盖（含 `source` 与 `updatedAt`），回退链 城市 → 国家 → 全球。
+- `tools/generate-world-clock-data.ps1` 从 CLDR（名称）、IANA tzdb（代表时区）、libphonenumber（区号）生成；JSON 记录 CLDR/Unicode/tzdb 版本与 libphonenumber commit。脚本不进构建、不接 CI。
+- `IWorldClockCatalogProvider` 是唯一接缝；当前实现 `BundledWorldClockCatalogProvider` 只读包内文件。在线更新（Release 资产 + manifest/哈希 + 24h 后台检查 + 缓存回退）在 #56，实现替换不改页面。
+- 目录缺失或解析失败不阻塞启动：provider 记 Warning 并返回空目录；未知时区的地点单行降级、不计入重叠。
+
+### 节假日
+
+- `IHolidayProvider.GetHolidaysAsync(country, year, allowNetwork, ct)`；`NagerDateHolidayProvider` 请求 `GET https://date.nager.at/api/v3/PublicHolidays/{year}/{country}`，走系统代理、5 秒超时、失败重试一次、可取消。
+- 404 或空数组视为「该国家/年份无假日数据」，不重试、不提示失败；其它非成功状态重试后返回 Failed。
+- 缓存：`<设置同根>\cache\holidays\{国家码}-{年}.json`，内容 `{ fetchedAt, dates }`，TTL 7 天；同目录临时文件 + 原子替换；写失败只记 Debug，不影响会话。
+- 联网开关关闭时不发请求，只读缓存（含过期缓存）；无缓存返回 Disabled。请求失败时先用过期缓存；页面无数据时在页脚提示并提供重试，不弹全局 InfoBar。
+- 假日优先于周末与工作窗口；国家条目用代表时区、城市条目用城市时区的本地日期判定。
+
+### 计算
+
+- `WorldClockCalculator.Build` 以本机时区今天 00:00 为起点，按**绝对时刻**逐小时推进；每格先换到地点时区再判定日期、星期、窗口与假日，因此夏令时切换日不会整行偏移。
+- 状态优先级：法定假日 > 周末（工作周不含该日）> 工作中 > 已下班；深夜只改变下班格子的底色。
+- 重叠结论按列统计可用地点的工作数，取最大值的全部并列区间；最大值低于 2 时不报重叠，等于可用地点数时说明「全员」。
+- 名称与区号：主名随界面语言、次名为另一语言；多时区国家追加代表城市；区号只显示国家电话码（NANP 统一 `+1`）。
+
+### 测试缝
+
+1. `JiuMi.Application` 纯函数：工作窗口校验、日期/时区换算（含 DST、+5:45、+5:30、跨日）、状态优先级、重叠并列、目录解析与名称回退、跨层搜索、代表时区。
+2. Infrastructure：临时设置目录 + fake `HttpMessageHandler` + 可控 `TimeProvider`，验证缓存命中、禁用联网、404/空数组、重试、过期缓存回退；设置读写 round-trip 与坏条目丢弃。
+
+相关：[ADR-0007](./adr/0007-holiday-network.md)、[ADR-0008](./adr/0008-world-clock-catalog.md)、[#53](https://github.com/ZLiLiang/JiuMi/issues/53)、[#56](https://github.com/ZLiLiang/JiuMi/issues/56)。
+
 ## 参考
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
@@ -557,6 +636,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0004 日志：Serilog 写 JSON Lines、崩溃文件独立、不外发](./adr/0004-logging.md)
 - [ADR-0005 窗口状态：只记导航栏展开，不记窗口几何](./adr/0005-window-state-memory.md)
 - [ADR-0006 外壳岛屿化：导航与内容各成一块浮岛](./adr/0006-island-shell.md)
+- [ADR-0007 世界时钟节假日：Nager.Date、缓存与失败降级](./adr/0007-holiday-network.md)
+- [ADR-0008 世界时钟目录：内置快照、双粒度与代表时区](./adr/0008-world-clock-catalog.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)

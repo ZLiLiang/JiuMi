@@ -1,0 +1,1008 @@
+{
+  "source": {
+    "generatedAt": "2026-10-28",
+    "cldrVersion": "49",
+    "unicodeVersion": "16.0.0",
+    "tzdbVersion": "2026e",
+    "libphonenumberCommit": "1ae0d623301b302f828628dfc368c983e8d27141",
+    "sources": {
+      "names": "https://github.com/unicode-org/cldr-json",
+      "zones": "https://github.com/eggert/tz",
+      "dialCodes": "https://github.com/google/libphonenumber"
+    }
+  },
+  "cities": [
+    {
+      "id": "Asia/Dubai",
+      "country": "AE",
+      "name": {
+        "zh": "迪拜",
+        "en": "Dubai"
+      }
+    },
+    {
+      "id": "Asia/Kabul",
+      "country": "AF",
+      "name": {
+        "zh": "喀布尔",
+        "en": "Kabul"
+      }
+    },
+    {
+      "id": "Asia/Yerevan",
+      "country": "AM",
+      "name": {
+        "zh": "埃里温",
+        "en": "Yerevan"
+      }
+    },
+    {
+      "id": "America/Argentina/Buenos_Aires",
+      "country": "AR",
+      "name": {
+        "zh": "布宜诺斯艾利斯",
+        "en": "Buenos Aires"
+      }
+    },
+    {
+      "id": "Europe/Vienna",
+      "country": "AT",
+      "name": {
+        "zh": "维也纳",
+        "en": "Vienna"
+      }
+    },
+    {
+      "id": "Australia/Adelaide",
+      "country": "AU",
+      "name": {
+        "zh": "阿德莱德",
+        "en": "Adelaide"
+      }
+    },
+    {
+      "id": "Australia/Brisbane",
+      "country": "AU",
+      "name": {
+        "zh": "布里斯班",
+        "en": "Brisbane"
+      }
+    },
+    {
+      "id": "Australia/Darwin",
+      "country": "AU",
+      "name": {
+        "zh": "达尔文",
+        "en": "Darwin"
+      }
+    },
+    {
+      "id": "Australia/Hobart",
+      "country": "AU",
+      "name": {
+        "zh": "霍巴特",
+        "en": "Hobart"
+      }
+    },
+    {
+      "id": "Australia/Melbourne",
+      "country": "AU",
+      "name": {
+        "zh": "墨尔本",
+        "en": "Melbourne"
+      }
+    },
+    {
+      "id": "Australia/Perth",
+      "country": "AU",
+      "name": {
+        "zh": "珀斯",
+        "en": "Perth"
+      }
+    },
+    {
+      "id": "Australia/Sydney",
+      "country": "AU",
+      "name": {
+        "zh": "悉尼",
+        "en": "Sydney"
+      }
+    },
+    {
+      "id": "Asia/Baku",
+      "country": "AZ",
+      "name": {
+        "zh": "巴库",
+        "en": "Baku"
+      }
+    },
+    {
+      "id": "Asia/Dhaka",
+      "country": "BD",
+      "name": {
+        "zh": "达卡",
+        "en": "Dhaka"
+      }
+    },
+    {
+      "id": "Europe/Brussels",
+      "country": "BE",
+      "name": {
+        "zh": "布鲁塞尔",
+        "en": "Brussels"
+      }
+    },
+    {
+      "id": "Europe/Sofia",
+      "country": "BG",
+      "name": {
+        "zh": "索菲亚",
+        "en": "Sofia"
+      }
+    },
+    {
+      "id": "Asia/Bahrain",
+      "country": "BH",
+      "name": {
+        "zh": "麦纳麦",
+        "en": "Manama"
+      }
+    },
+    {
+      "id": "Asia/Brunei",
+      "country": "BN",
+      "name": {
+        "zh": "斯里巴加湾市",
+        "en": "Bandar Seri Begawan"
+      }
+    },
+    {
+      "id": "America/La_Paz",
+      "country": "BO",
+      "name": {
+        "zh": "拉巴斯",
+        "en": "La Paz"
+      }
+    },
+    {
+      "id": "America/Manaus",
+      "country": "BR",
+      "name": {
+        "zh": "马瑙斯",
+        "en": "Manaus"
+      }
+    },
+    {
+      "id": "America/Sao_Paulo",
+      "country": "BR",
+      "name": {
+        "zh": "圣保罗",
+        "en": "Sao Paulo"
+      }
+    },
+    {
+      "id": "Europe/Minsk",
+      "country": "BY",
+      "name": {
+        "zh": "明斯克",
+        "en": "Minsk"
+      }
+    },
+    {
+      "id": "America/Edmonton",
+      "country": "CA",
+      "name": {
+        "zh": "卡尔加里",
+        "en": "Calgary"
+      }
+    },
+    {
+      "id": "America/Halifax",
+      "country": "CA",
+      "name": {
+        "zh": "哈利法克斯",
+        "en": "Halifax"
+      }
+    },
+    {
+      "id": "America/Toronto",
+      "country": "CA",
+      "name": {
+        "zh": "多伦多",
+        "en": "Toronto"
+      }
+    },
+    {
+      "id": "America/Vancouver",
+      "country": "CA",
+      "name": {
+        "zh": "温哥华",
+        "en": "Vancouver"
+      }
+    },
+    {
+      "id": "America/Winnipeg",
+      "country": "CA",
+      "name": {
+        "zh": "温尼伯",
+        "en": "Winnipeg"
+      }
+    },
+    {
+      "id": "Europe/Zurich",
+      "country": "CH",
+      "name": {
+        "zh": "苏黎世",
+        "en": "Zurich"
+      }
+    },
+    {
+      "id": "America/Santiago",
+      "country": "CL",
+      "name": {
+        "zh": "圣地亚哥",
+        "en": "Santiago"
+      }
+    },
+    {
+      "id": "Asia/Shanghai",
+      "country": "CN",
+      "name": {
+        "zh": "上海",
+        "en": "Shanghai"
+      }
+    },
+    {
+      "id": "America/Bogota",
+      "country": "CO",
+      "name": {
+        "zh": "波哥大",
+        "en": "Bogota"
+      }
+    },
+    {
+      "id": "America/Costa_Rica",
+      "country": "CR",
+      "name": {
+        "zh": "圣何塞",
+        "en": "San Jose"
+      }
+    },
+    {
+      "id": "America/Havana",
+      "country": "CU",
+      "name": {
+        "zh": "哈瓦那",
+        "en": "Havana"
+      }
+    },
+    {
+      "id": "Asia/Nicosia",
+      "country": "CY",
+      "name": {
+        "zh": "尼科西亚",
+        "en": "Nicosia"
+      }
+    },
+    {
+      "id": "Europe/Prague",
+      "country": "CZ",
+      "name": {
+        "zh": "布拉格",
+        "en": "Prague"
+      }
+    },
+    {
+      "id": "Europe/Berlin",
+      "country": "DE",
+      "name": {
+        "zh": "柏林",
+        "en": "Berlin"
+      }
+    },
+    {
+      "id": "Europe/Copenhagen",
+      "country": "DK",
+      "name": {
+        "zh": "哥本哈根",
+        "en": "Copenhagen"
+      }
+    },
+    {
+      "id": "America/Santo_Domingo",
+      "country": "DO",
+      "name": {
+        "zh": "圣多明各",
+        "en": "Santo Domingo"
+      }
+    },
+    {
+      "id": "Africa/Algiers",
+      "country": "DZ",
+      "name": {
+        "zh": "阿尔及尔",
+        "en": "Algiers"
+      }
+    },
+    {
+      "id": "America/Guayaquil",
+      "country": "EC",
+      "name": {
+        "zh": "瓜亚基尔",
+        "en": "Guayaquil"
+      }
+    },
+    {
+      "id": "Europe/Tallinn",
+      "country": "EE",
+      "name": {
+        "zh": "塔林",
+        "en": "Tallinn"
+      }
+    },
+    {
+      "id": "Africa/Cairo",
+      "country": "EG",
+      "name": {
+        "zh": "开罗",
+        "en": "Cairo"
+      }
+    },
+    {
+      "id": "Europe/Madrid",
+      "country": "ES",
+      "name": {
+        "zh": "马德里",
+        "en": "Madrid"
+      }
+    },
+    {
+      "id": "Europe/Helsinki",
+      "country": "FI",
+      "name": {
+        "zh": "赫尔辛基",
+        "en": "Helsinki"
+      }
+    },
+    {
+      "id": "Pacific/Fiji",
+      "country": "FJ",
+      "name": {
+        "zh": "苏瓦",
+        "en": "Suva"
+      }
+    },
+    {
+      "id": "Europe/Paris",
+      "country": "FR",
+      "name": {
+        "zh": "巴黎",
+        "en": "Paris"
+      }
+    },
+    {
+      "id": "Europe/London",
+      "country": "GB",
+      "name": {
+        "zh": "伦敦",
+        "en": "London"
+      }
+    },
+    {
+      "id": "Asia/Tbilisi",
+      "country": "GE",
+      "name": {
+        "zh": "第比利斯",
+        "en": "Tbilisi"
+      }
+    },
+    {
+      "id": "Europe/Athens",
+      "country": "GR",
+      "name": {
+        "zh": "雅典",
+        "en": "Athens"
+      }
+    },
+    {
+      "id": "America/Guatemala",
+      "country": "GT",
+      "name": {
+        "zh": "危地马拉城",
+        "en": "Guatemala City"
+      }
+    },
+    {
+      "id": "Asia/Hong_Kong",
+      "country": "HK",
+      "name": {
+        "zh": "香港",
+        "en": "Hong Kong"
+      }
+    },
+    {
+      "id": "Europe/Zagreb",
+      "country": "HR",
+      "name": {
+        "zh": "萨格勒布",
+        "en": "Zagreb"
+      }
+    },
+    {
+      "id": "Europe/Budapest",
+      "country": "HU",
+      "name": {
+        "zh": "布达佩斯",
+        "en": "Budapest"
+      }
+    },
+    {
+      "id": "Asia/Jakarta",
+      "country": "ID",
+      "name": {
+        "zh": "雅加达",
+        "en": "Jakarta"
+      }
+    },
+    {
+      "id": "Europe/Dublin",
+      "country": "IE",
+      "name": {
+        "zh": "都柏林",
+        "en": "Dublin"
+      }
+    },
+    {
+      "id": "Asia/Jerusalem",
+      "country": "IL",
+      "name": {
+        "zh": "耶路撒冷",
+        "en": "Jerusalem"
+      }
+    },
+    {
+      "id": "Asia/Kolkata",
+      "country": "IN",
+      "name": {
+        "zh": "加尔各答",
+        "en": "Kolkata"
+      }
+    },
+    {
+      "id": "Asia/Baghdad",
+      "country": "IQ",
+      "name": {
+        "zh": "巴格达",
+        "en": "Baghdad"
+      }
+    },
+    {
+      "id": "Asia/Tehran",
+      "country": "IR",
+      "name": {
+        "zh": "德黑兰",
+        "en": "Tehran"
+      }
+    },
+    {
+      "id": "Atlantic/Reykjavik",
+      "country": "IS",
+      "name": {
+        "zh": "雷克雅未克",
+        "en": "Reykjavik"
+      }
+    },
+    {
+      "id": "Europe/Rome",
+      "country": "IT",
+      "name": {
+        "zh": "罗马",
+        "en": "Rome"
+      }
+    },
+    {
+      "id": "America/Jamaica",
+      "country": "JM",
+      "name": {
+        "zh": "金斯敦",
+        "en": "Kingston"
+      }
+    },
+    {
+      "id": "Asia/Amman",
+      "country": "JO",
+      "name": {
+        "zh": "安曼",
+        "en": "Amman"
+      }
+    },
+    {
+      "id": "Asia/Tokyo",
+      "country": "JP",
+      "name": {
+        "zh": "东京",
+        "en": "Tokyo"
+      }
+    },
+    {
+      "id": "Africa/Nairobi",
+      "country": "KE",
+      "name": {
+        "zh": "内罗毕",
+        "en": "Nairobi"
+      }
+    },
+    {
+      "id": "Asia/Phnom_Penh",
+      "country": "KH",
+      "name": {
+        "zh": "金边",
+        "en": "Phnom Penh"
+      }
+    },
+    {
+      "id": "Asia/Seoul",
+      "country": "KR",
+      "name": {
+        "zh": "首尔",
+        "en": "Seoul"
+      }
+    },
+    {
+      "id": "Asia/Kuwait",
+      "country": "KW",
+      "name": {
+        "zh": "科威特城",
+        "en": "Kuwait City"
+      }
+    },
+    {
+      "id": "Asia/Almaty",
+      "country": "KZ",
+      "name": {
+        "zh": "阿拉木图",
+        "en": "Almaty"
+      }
+    },
+    {
+      "id": "Asia/Vientiane",
+      "country": "LA",
+      "name": {
+        "zh": "万象",
+        "en": "Vientiane"
+      }
+    },
+    {
+      "id": "Asia/Beirut",
+      "country": "LB",
+      "name": {
+        "zh": "贝鲁特",
+        "en": "Beirut"
+      }
+    },
+    {
+      "id": "Asia/Colombo",
+      "country": "LK",
+      "name": {
+        "zh": "科伦坡",
+        "en": "Colombo"
+      }
+    },
+    {
+      "id": "Europe/Vilnius",
+      "country": "LT",
+      "name": {
+        "zh": "维尔纽斯",
+        "en": "Vilnius"
+      }
+    },
+    {
+      "id": "Europe/Luxembourg",
+      "country": "LU",
+      "name": {
+        "zh": "卢森堡",
+        "en": "Luxembourg"
+      }
+    },
+    {
+      "id": "Europe/Riga",
+      "country": "LV",
+      "name": {
+        "zh": "里加",
+        "en": "Riga"
+      }
+    },
+    {
+      "id": "Africa/Casablanca",
+      "country": "MA",
+      "name": {
+        "zh": "卡萨布兰卡",
+        "en": "Casablanca"
+      }
+    },
+    {
+      "id": "Europe/Chisinau",
+      "country": "MD",
+      "name": {
+        "zh": "基希讷乌",
+        "en": "Chisinau"
+      }
+    },
+    {
+      "id": "Asia/Yangon",
+      "country": "MM",
+      "name": {
+        "zh": "仰光",
+        "en": "Yangon"
+      }
+    },
+    {
+      "id": "Asia/Ulaanbaatar",
+      "country": "MN",
+      "name": {
+        "zh": "乌兰巴托",
+        "en": "Ulaanbaatar"
+      }
+    },
+    {
+      "id": "Asia/Macau",
+      "country": "MO",
+      "name": {
+        "zh": "澳门",
+        "en": "Macao"
+      }
+    },
+    {
+      "id": "Europe/Malta",
+      "country": "MT",
+      "name": {
+        "zh": "瓦莱塔",
+        "en": "Valletta"
+      }
+    },
+    {
+      "id": "America/Mexico_City",
+      "country": "MX",
+      "name": {
+        "zh": "墨西哥城",
+        "en": "Mexico City"
+      }
+    },
+    {
+      "id": "America/Tijuana",
+      "country": "MX",
+      "name": {
+        "zh": "蒂华纳",
+        "en": "Tijuana"
+      }
+    },
+    {
+      "id": "Asia/Kuala_Lumpur",
+      "country": "MY",
+      "name": {
+        "zh": "吉隆坡",
+        "en": "Kuala Lumpur"
+      }
+    },
+    {
+      "id": "Africa/Lagos",
+      "country": "NG",
+      "name": {
+        "zh": "拉各斯",
+        "en": "Lagos"
+      }
+    },
+    {
+      "id": "Europe/Amsterdam",
+      "country": "NL",
+      "name": {
+        "zh": "阿姆斯特丹",
+        "en": "Amsterdam"
+      }
+    },
+    {
+      "id": "Europe/Oslo",
+      "country": "NO",
+      "name": {
+        "zh": "奥斯陆",
+        "en": "Oslo"
+      }
+    },
+    {
+      "id": "Asia/Kathmandu",
+      "country": "NP",
+      "name": {
+        "zh": "加德满都",
+        "en": "Kathmandu"
+      }
+    },
+    {
+      "id": "Pacific/Auckland",
+      "country": "NZ",
+      "name": {
+        "zh": "奥克兰",
+        "en": "Auckland"
+      }
+    },
+    {
+      "id": "Asia/Muscat",
+      "country": "OM",
+      "name": {
+        "zh": "马斯喀特",
+        "en": "Muscat"
+      }
+    },
+    {
+      "id": "America/Panama",
+      "country": "PA",
+      "name": {
+        "zh": "巴拿马城",
+        "en": "Panama City"
+      }
+    },
+    {
+      "id": "America/Lima",
+      "country": "PE",
+      "name": {
+        "zh": "利马",
+        "en": "Lima"
+      }
+    },
+    {
+      "id": "Pacific/Port_Moresby",
+      "country": "PG",
+      "name": {
+        "zh": "莫尔兹比港",
+        "en": "Port Moresby"
+      }
+    },
+    {
+      "id": "Asia/Manila",
+      "country": "PH",
+      "name": {
+        "zh": "马尼拉",
+        "en": "Manila"
+      }
+    },
+    {
+      "id": "Asia/Karachi",
+      "country": "PK",
+      "name": {
+        "zh": "卡拉奇",
+        "en": "Karachi"
+      }
+    },
+    {
+      "id": "Europe/Warsaw",
+      "country": "PL",
+      "name": {
+        "zh": "华沙",
+        "en": "Warsaw"
+      }
+    },
+    {
+      "id": "Europe/Lisbon",
+      "country": "PT",
+      "name": {
+        "zh": "里斯本",
+        "en": "Lisbon"
+      }
+    },
+    {
+      "id": "America/Asuncion",
+      "country": "PY",
+      "name": {
+        "zh": "亚松森",
+        "en": "Asuncion"
+      }
+    },
+    {
+      "id": "Asia/Qatar",
+      "country": "QA",
+      "name": {
+        "zh": "多哈",
+        "en": "Doha"
+      }
+    },
+    {
+      "id": "Europe/Bucharest",
+      "country": "RO",
+      "name": {
+        "zh": "布加勒斯特",
+        "en": "Bucharest"
+      }
+    },
+    {
+      "id": "Europe/Belgrade",
+      "country": "RS",
+      "name": {
+        "zh": "贝尔格莱德",
+        "en": "Belgrade"
+      }
+    },
+    {
+      "id": "Europe/Moscow",
+      "country": "RU",
+      "name": {
+        "zh": "莫斯科",
+        "en": "Moscow"
+      }
+    },
+    {
+      "id": "Asia/Riyadh",
+      "country": "SA",
+      "name": {
+        "zh": "利雅得",
+        "en": "Riyadh"
+      }
+    },
+    {
+      "id": "Europe/Stockholm",
+      "country": "SE",
+      "name": {
+        "zh": "斯德哥尔摩",
+        "en": "Stockholm"
+      }
+    },
+    {
+      "id": "Asia/Singapore",
+      "country": "SG",
+      "name": {
+        "zh": "新加坡",
+        "en": "Singapore"
+      }
+    },
+    {
+      "id": "Europe/Ljubljana",
+      "country": "SI",
+      "name": {
+        "zh": "卢布尔雅那",
+        "en": "Ljubljana"
+      }
+    },
+    {
+      "id": "Europe/Bratislava",
+      "country": "SK",
+      "name": {
+        "zh": "布拉迪斯拉发",
+        "en": "Bratislava"
+      }
+    },
+    {
+      "id": "Asia/Bangkok",
+      "country": "TH",
+      "name": {
+        "zh": "曼谷",
+        "en": "Bangkok"
+      }
+    },
+    {
+      "id": "Asia/Istanbul",
+      "country": "TR",
+      "name": {
+        "zh": "伊斯坦布尔",
+        "en": "Istanbul"
+      }
+    },
+    {
+      "id": "America/Port_of_Spain",
+      "country": "TT",
+      "name": {
+        "zh": "西班牙港",
+        "en": "Port of Spain"
+      }
+    },
+    {
+      "id": "Asia/Taipei",
+      "country": "TW",
+      "name": {
+        "zh": "台北",
+        "en": "Taipei"
+      }
+    },
+    {
+      "id": "Europe/Kiev",
+      "country": "UA",
+      "name": {
+        "zh": "基辅",
+        "en": "Kyiv"
+      }
+    },
+    {
+      "id": "America/Anchorage",
+      "country": "US",
+      "name": {
+        "zh": "安克雷奇",
+        "en": "Anchorage"
+      }
+    },
+    {
+      "id": "America/Chicago",
+      "country": "US",
+      "name": {
+        "zh": "芝加哥",
+        "en": "Chicago"
+      }
+    },
+    {
+      "id": "America/Denver",
+      "country": "US",
+      "name": {
+        "zh": "丹佛",
+        "en": "Denver"
+      }
+    },
+    {
+      "id": "Pacific/Honolulu",
+      "country": "US",
+      "name": {
+        "zh": "檀香山",
+        "en": "Honolulu"
+      }
+    },
+    {
+      "id": "America/New_York",
+      "country": "US",
+      "name": {
+        "zh": "纽约",
+        "en": "New York"
+      }
+    },
+    {
+      "id": "America/Phoenix",
+      "country": "US",
+      "name": {
+        "zh": "凤凰城",
+        "en": "Phoenix"
+      }
+    },
+    {
+      "id": "America/Los_Angeles",
+      "country": "US",
+      "name": {
+        "zh": "旧金山",
+        "en": "San Francisco"
+      }
+    },
+    {
+      "id": "America/Montevideo",
+      "country": "UY",
+      "name": {
+        "zh": "蒙得维的亚",
+        "en": "Montevideo"
+      }
+    },
+    {
+      "id": "Asia/Tashkent",
+      "country": "UZ",
+      "name": {
+        "zh": "塔什干",
+        "en": "Tashkent"
+      }
+    },
+    {
+      "id": "America/Caracas",
+      "country": "VE",
+      "name": {
+        "zh": "加拉加斯",
+        "en": "Caracas"
+      }
+    },
+    {
+      "id": "Asia/Ho_Chi_Minh",
+      "country": "VN",
+      "name": {
+        "zh": "胡志明市",
+        "en": "Ho Chi Minh City"
+      }
+    },
+    {
+      "id": "Africa/Johannesburg",
+      "country": "ZA",
+      "name": {
+        "zh": "约翰内斯堡",
+        "en": "Johannesburg"
+      }
+    }
+  ]
+}
