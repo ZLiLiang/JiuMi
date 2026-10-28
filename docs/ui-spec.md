@@ -11,13 +11,13 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ## 参考图
 
-四张 1200 × 760 截图是本规格的视觉基准，取自定稿原型 [`docs/prototypes/island-shell.html`](./prototypes/island-shell.html) 的**变体 B**（双岛 / 外距 14 / 缝 14 / 圆角 12 / 亚克力 + 轻投影）；该文件的 `?capture=1` 模式就是出图方式。原型这次进仓库，是因为岛屿式的取值（缝隙、圆角、半透明档位、收起态宽度）靠文字说不清；**截图仍是 primary source**，原型只作为复现与对照的依据，不参与构建。深色截图定案于「深色主题下主页与设置页的视觉是否成立？」；浅色截图按同一结构重出，两套主题只换颜色。
+四张 1200 × 760 截图是本规格的视觉基准，取自定稿原型 [`docs/prototypes/island-shell.html`](./prototypes/island-shell.html) 的**变体 B**（双岛 / 外距 14 / 缝 14 / 圆角 12 / 亚克力 + 轻投影）；该文件的 `?capture=1` 模式就是出图方式。原型这次进仓库，是因为岛屿式的取值（缝隙、圆角、半透明档位、收起态宽度）靠文字说不清；**截图仍是 primary source**，原型只作为复现与对照的依据，不参与构建。深色截图定案于「深色主题下主页与设置页的视觉是否成立？」；浅色截图按同一结构重出，两套主题只换颜色。工具页的七张参考图见「[工具页](#工具页)」。
 
 ### 浅色
 
 ![主页：Mica 窗口 + 左侧导航岛 + 右侧内容岛（hero 与两列工具卡）](./images/shell-home.png)
 
-![设置页：内容岛内的三个分组设置卡片](./images/shell-settings.png)
+![设置页：内容岛内的分组设置卡片](./images/shell-settings.png)
 
 ### 深色
 
@@ -57,7 +57,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 分隔线 | 1px `DividerStrokeColorDefaultBrush`，外边距 6 12 |
 
 - 自上而下：展开/收起按钮 → 主页 → 四个工具 → 弹性空白 → 分隔线 → 设置（贴底）。
-- 四个工具项本期**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
+- 世界工作时间**已启用**：可聚焦、可选中，选中态与主页、设置同款；其余三个工具项仍**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
 - **选中态**：整行填充；左侧 3 × 16、圆角 2 的 `AccentFillColorDefaultBrush` 指示条；图标改为强调色并使用填充变体，文字颜色不变。
 - **收起态**：导航岛宽 56，只剩图标、水平居中；项文案转为 `ToolTip`，可访问名仍取同一键。
 - **展开/收起过渡**：导航岛宽度 200ms `CubicEaseOut`，项文案同步 200ms 淡入淡出；内容岛随列宽连续重排。
@@ -111,8 +111,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 卡片描述 | 12px / Regular / `TextFillColorSecondaryBrush`，行高 1.5，与标题间距 5 |
 
 - 四张卡片按「微信视频下载、批量重命名、图标转换、世界工作时间」排列，标题取 `Tool.<工具>.Name`，描述取 `Tool.<工具>.Description`。
-- 每张卡片都带「即将推出」徽标（`Common.ComingSoon`）。
-- 卡片本期**不可交互**：无悬停高亮、无手型光标、不接收焦点；同排卡片等高。
+- 世界工作时间**已启用**：整张卡片可点击，进入工具页；卡片本身不带「即将推出」徽标，悬停不改变卡片外观（可点击由光标与可访问名提示）。其余三张卡片仍带「即将推出」徽标。
+- 其余三张卡片**不可交互**：无悬停高亮、无手型光标、不接收焦点；同排卡片等高。世界工作时间卡片可获取焦点，Enter / 空格与指针点击等价。
 - 内容岛宽度小于 760 时，网格降为单列、hero 改为纵向堆叠（媒体在上、文案在下，媒体仍按素材等比适配并水平居中，不撑满整行）。
 
 ## 设置页
@@ -133,11 +133,113 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
-3. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
+3. **数据与联网**（`Settings.Data.Section`）：一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
+4. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
 
 - 修改**即时生效并自动保存**：没有「保存」按钮、没有确认对话框、没有「已保存」提示。
 - 「导出诊断包」走系统保存对话框：默认文件名 `JiuMi-diagnostics-yyyyMMdd-HHmmss.zip`，默认目录为当前生效的 `logs\`。导出期间按钮禁用，结束后恢复；打包内容与失败处理见 [`docs/architecture.md`](./architecture.md) 的日志与诊断章节。
 - 日志初始化或写入失败时，关于区在路径下方显示一行「日志不可用」（`Settings.About.LoggingUnavailable`，11.5px / `SystemFillColorCautionBrush`），不弹提示、不放按钮；写入恢复后该行消失。
+
+## 工具页
+
+工具页共用同一套页头与内容骨架；本节的像素值以「世界工作时间」为准，后续工具沿用页头部分。
+
+### 页头
+
+| 项 | 值 |
+| --- | --- |
+| 结构 | 标题块 `*` + 动作区 `Auto`，列间距 16，顶对齐 |
+| 标题 | 28px / SemiBold / `TextFillColorPrimaryBrush` |
+| 副标题 | 13px / Regular / `TextFillColorSecondaryBrush`，与标题间距 6，可换行 |
+| 动作区 | 水平排列、间距 8；顺序为分段控件 → 管理地点 |
+| 分段控件 | 外层圆角 4、内边距 2、`SubtleFillColorSecondaryBrush`；段按钮高 28、横向内边距 12、圆角 3、13px；选中段 `CardBackgroundFillColorDefaultBrush` + 主文字色，未选中段透明 + 次文字色 |
+| 管理地点按钮 | 高 32、圆角 4、13px，左侧「+」图标；点击打开管理对话框 |
+
+- 窗口变窄时标题块先收缩、副标题换行；动作区不换行，保证两个入口始终可见。
+
+### 世界工作时间 · 看板
+
+- 卡片外边距上 22，内边距 20 18 20 20，圆角 8，`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`。
+- 首行摘要：14px / SemiBold / 主文字色，只写「处于工作时间：N」，不追加说明。
+- 每地点一行：
+  - 名称列宽 190：主行 14px + 国家区号 chip（10px、`SubtleFillColorSecondaryBrush`、圆角 3、内边距 5 0），次行 10.5px / `TextFillColorTertiaryBrush`。
+  - 中间列：当地时间 20px / SemiBold / 主文字色，星期 12px / 次文字色，间距 10。
+  - 右侧状态 chip：11px、高 18、圆角 4、内边距 7 0。工作中用 `JiuMiCellWorkingBrush` 底 + `JiuMiCellWorkingBorderBrush` 1px 描边 + 强调色文字；法定假日用 `JiuMiDayBreakBrush` 1px 描边 + 主文字色；其余用 `SubtleFillColorSecondaryBrush` 底 + 次文字色。
+  - 行内边距 10 0，行间 1px `DividerStrokeColorDefaultBrush`，最后一行不带分隔线。
+- 国家条目绑定代表时区；多时区国家的主行显示「国名 · 代表城市」（如「美国 · 纽约」），单时区国家只显示国名。
+- 看板卡片底部与规划一样承载降级说明：时区不可用时列出地点名，节假日不可用时给出提示与「重试」（联网开关打开时）。
+
+### 世界工作时间 · 规划
+
+- 摘要规则：
+  - 至少一个地点且全部可用地点都同时上班时：`Tool.WorldClock.Plan.Summary.All`（只有一个地点也算全员），格式「最佳时段 00:00–02:00：4 个地点同时上班」。
+  - 否则取同时上班地点数的最大值：`Tool.WorldClock.Plan.Summary.Max`，格式「最佳时段 00:00–02:00：4 个地点中 3 个同时上班」；范围文案由 `Tool.WorldClock.Plan.Range` 与 `RangeSeparator` 拼接。
+  - 没有任何两个地点同时上班、且并非全员（如单地点从未上班）：`Plan.Summary.None`，即「今天没有地点同时上班」。
+  - 总数取**可用地点数**；时区不可用的地点不计入分母，由下方降级说明列出。
+  - 不用「重叠」作为摘要文案；「同时上班」才是用户语言。计数与文案一律用「地点」。
+- 摘要与图例同处卡片首行：摘要 `*` 可换行，图例右对齐、可换行；图例四项依次为上班 / 下班 / 周末 / 法定假日，色块 10 × 10、圆角 2，文字 11px / `TextFillColorTertiaryBrush`。
+- 图例最右侧是一个 20 × 20 的圆形问号按钮（`SubtleFillColorSecondaryBrush` 底、1px `ControlStrokeColorDefaultBrush` 描边、三级文字色），鼠标悬停显示时间轴说明：横轴范围、工作窗口/工作周的判定方式、虚线含义与时区来源。按钮可聚焦，`AutomationProperties.Name` 取 `Tool.WorldClock.Footnote.Help`。
+- 时间轴：
+  - 标签列固定 176px，行高 50，网格列缝 2，24 列等宽。
+  - 轴刻度 10px / `TextFillColorTertiaryBrush`，只显示偶数小时；横轴为本机时区今天 00:00–24:00。
+  - 行上方是「同时上班」热度带，高 18，列缝同网格；每格 `JiuMiOverlapBandBrush`，不透明度 `0.14 + 工作地点数 / 可用地点数 × 0.6`；零重叠用 `JiuMiCellOffBrush`。
+  - 标签三行：13px 主名 + 区号 chip / 10.5px 另一语言 / 10.5px 当地时间 + 星期；英文超长 `CharacterEllipsis`；第三行在工作中用 `AccentFillColorDefaultBrush`。
+  - 单元格：圆角 2，高 50。基础 `JiuMiCellOffBrush`；深夜（本地 06:00 前或 22:00 后）`JiuMiCellNightBrush`；工作中 `JiuMiCellWorkingBrush` + 1px `JiuMiCellWorkingBorderBrush`；周末叠 45° 斜纹 `JiuMiWeekendHatchBrush`；法定假日叠 ±45° 交叉网纹 `JiuMiHolidayHatchBrush`；时区不可用透明底、行内文案说明。
+  - 每行在「该地点本地 00:00」所在列画 1px 虚线（`JiuMiDayBreakBrush`），含义写在页脚。
+  - 「现在」竖线 2px 强调色，贯穿轴、热度带与行区；右上角标签 10px 强调色、`CardBackgroundFillColorDefaultBrush` 底、圆角 3、内边距 4 0，靠近右缘时翻到竖线左侧。
+  - 游标带宽一小时（15 分钟吸附），`JiuMiCursorBandBrush` 填充 + 左右各 2px 强调色描边，贯穿行区；拖动下方 `Slider`（0–1425，步长 15）或点「回到现在」移动。
+  - 游标读数 12px / 次文字色，格式 `{0}（本机）`；「回到现在」为普通按钮。
+- 卡片底部只保留降级说明（11px / `TextFillColorTertiaryBrush`），且仅在有降级时显示：时区不可用时追加 `Footnote.ZoneUnavailable`（列出地点名）；节假日不可用时追加 `Footnote.HolidayUnavailable`，联网开关打开时附「重试」`HyperlinkButton`。横轴与时区来源两句不常驻，放在页头问号按钮的 ToolTip 里。
+- 窄窗：标签列固定 176px；网格最小宽度 382，触底后网格区横向滚动、标签列不滚动；摘要与图例允许换行。
+- 无地点时用空态卡片替代两块内容：标题 `Tool.WorldClock.Empty`、说明 `Tool.WorldClock.Empty.Hint`、一个「管理地点」按钮。
+
+### 世界工作时间 · 管理地点
+
+- 独立对话框窗口：`FAAppWindow`，初始 960 × 640，可缩放，最小 760 × 520，标题取 `Tool.WorldClock.Manage.Title`，`CenterOwner`，不显示在任务栏。
+- 标题栏高 40，背景透明、内容延伸进标题栏：左侧应用标记 18 × 18（缺素材时回退强调色渐变块）+ 应用名 12px / 次文字色；右侧是 `FAAppWindow` 绘制的窗口按钮。窗口使用与外壳一致的 `JiuMiWindowBackdropBrush` 渐变底 + `JiuMiWindowHighlightBrush` 高光，标题栏与内容之间没有色带。
+- 页头（外边距 4 2 4 12）：标题 20px / SemiBold，副标题 12px / 次文字色；不另放关闭按钮，关闭走标题栏按钮。
+- 主体两岛：左 `*`、右 360，岛间 14；两岛圆角 12，`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + `JiuMiIslandShadow`，与窗口岛同款；岛内边距 20 16 / 18 16。
+- 左侧：
+  - 「国家 / 城市」分段（默认城市），样式同页头分段；`国家` 搜索国家中英名 / ISO / 区号 / 代表城市，`城市` 搜索城市中英名 / IANA / 所属国家中英名 / 区号。
+  - 搜索框高 34、13px、`PlaceholderText` 随分段切换。
+  - 结果列表：城市模式无搜索词时按国家分组（组标题 11px / 三级文字色），有搜索词时平铺；国家模式平铺。行高由内容决定，内边距 5，左侧 16 × 16 勾选框（选中 `AccentFillColorDefaultBrush` 底 + 白色勾），主行 13px + 区号 chip，次行 10.5px / 三级文字色。
+- 右侧：
+  - 头部「已选地点」12px + 计数 chip；下方已选列表可滚动，行间距 4。
+  - 每行：拖动柄 10px（`SizeAll` 光标）/ 「国家 / 城市」徽标（9px）/ 名称 12px + 次行 10px / 区号 chip / 编辑、删除 22 × 22 图标按钮。
+  - 拖动柄按住后拖动可重排；顺序即时生效并写盘。
+- 底部（外边距 4 12 4 0，落在渐变底上，不画分隔线）：左侧「恢复默认」，右侧「取消」「完成」（完成用强调色按钮）；两者都关闭窗口，修改已即时生效。
+- 工作时间编辑器覆盖在对话框上，遮罩 `JiuMiScrimBrush`；卡片宽 420、内边距 22、圆角 12，`SolidBackgroundFillColorBaseBrush` + 1px 描边 + `JiuMiIslandShadow`：
+  - 标题 16px / SemiBold，地点名 12px / 次文字色。
+  - 上班 / 下班各一个 `ComboBox`，选项为 00:00–23:45 的 15 分钟步进；标签 11px / 次文字色。
+  - 工作日七个 `CheckBox`，可换行，12px。
+  - 校验：下班必须晚于上班、至少一个工作日；不满足时显示 11px / `SystemFillColorCautionBrush` 的 `Manage.Edit.Invalid`，保存按钮禁用。
+  - 底部「取消」「保存」，保存写回该地点并重新计算。
+
+### 配色与降级
+
+- 网格不新增语义色：下班、深夜、上班、周末、法定假日都复用强调色与中性色资源；周末/假日另用斜纹，不只靠颜色区分。
+- 高对比度下描边与斜纹仍在；下班与深夜可退回透明底。
+- 产品不做无障碍承诺；分段、按钮、下拉框与复选框沿用 Fluent 的键盘行为，网格与拖动排序不设无障碍验收项。文本缩放到 200% 时页面纵向滚动、规划网格横向滚动、标签列固定。
+
+### 参考图
+
+七张 1200 × 760 截图取自定稿原型 [`world-clock.html`](./prototypes/world-clock.html) 的 `?capture=1` 出图，是本节与 #53 的视觉基准；原型只作复现与对照，不参与构建。
+
+> 2026-10-28 文案收紧：摘要去掉「本机时间」与「没有全员重叠」，页脚两句移入问号 ToolTip；七张图仍保留原版式，文字以上文为准。管理地点图仍是单块内容版式与原生标题栏，岛式布局与 `FAAppWindow` 标题栏以本节为准。
+
+![看板：每地点一行，双语名 + 国家区号 + 当地时间与状态](./images/world-clock-board.png)
+
+![规划：24 小时网格 + 重叠热度带 + 现在竖线 + 可拖动游标](./images/world-clock-plan.png)
+
+![规划（深色）](./images/world-clock-plan-dark.png)
+
+![看板（深色）](./images/world-clock-board-dark.png)
+
+![规划 · 法定假日：假日覆盖工作窗口且不计入重叠，结论随之改变](./images/world-clock-plan-holiday.png)
+
+![看板 · 国家条目：国家区号 + 代表城市](./images/world-clock-board-country.png)
+
+![管理地点：国家 / 城市分段、跨层搜索与混排已选](./images/world-clock-manage.png)
 
 ## 主题
 
@@ -197,12 +299,18 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 分区标题与分组卡 | 8 |
 | 页面标题与副标题 | 6 |
 | 卡片标题与描述 | 5 |
+| 规划标签列 | 176 |
+| 规划行高 | 50 |
+| 热度带 / 轴刻度行高 | 18 |
+| 规划列缝、游标带描边 | 2 |
 
 ### 圆角
 
 | 用途 | 值 |
 | --- | --- |
 | 控件、导航项、ComboBox | 4 |
+| 规划单元格、游标带、图例色块 | 2 |
+| 区号 chip、类型徽标、勾选框、现在标签 | 3 |
 | 卡片、设置分组卡、工具徽标、窗口内圆角块 | 8 |
 | hero 媒体区 | 10 |
 | 岛、hero 卡 | 12 |
@@ -213,6 +321,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 用途 | 字号 | 字重 |
 | --- | --- | --- |
 | 「即将推出」徽标 | 10 | Regular |
+| 工具类型徽标 | 9 | Regular |
 | 行说明 | 11.5 | Regular |
 | 卡片描述 | 12 | Regular |
 | 超链接按钮 | 12.5 | Regular |
@@ -221,6 +330,9 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 导航项文字 | 14 | Regular |
 | hero 标题 | 24 | SemiBold |
 | 页面标题 | 28 | SemiBold |
+| 规划行次、区号 chip、管理结果次行 | 10.5 | Regular |
+| 图例、页脚、状态 chip | 11 | Regular |
+| 看板时刻 | 20 | SemiBold |
 
 - 字体取 Fluent 默认主题字体（`ContentControlThemeFontFamily`），中文按其回退链落到系统字体。
 

@@ -20,6 +20,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ISettingsStore _settingsStore;
     private readonly Serilog.ILogger _logger;
     private readonly ShellNavigationItem _settingsNavigationItem;
+    private readonly ShellNavigationItem _worldClockNavigationItem;
+    private readonly WorldClockViewModel _worldClockPage;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
@@ -32,6 +34,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="applicationInfo">Application name and version shown by the shell.</param>
     /// <param name="localization">The localization service that supplies interface text.</param>
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
+    /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
     /// <param name="logger">Receives navigation and window-lifecycle events.</param>
@@ -39,6 +42,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         IApplicationInfo applicationInfo,
         ILocalizationService localization,
         SettingsViewModel settingsPage,
+        WorldClockViewModel worldClockPage,
         InfoBarViewModel infoBar,
         ISettingsStore settingsStore,
         Serilog.ILogger logger)
@@ -46,6 +50,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsPage);
+        ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(logger);
@@ -55,20 +60,24 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _localization = localization;
         _settingsStore = settingsStore;
         _logger = logger;
+        _worldClockPage = worldClockPage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
+        HomePage.OpenWorldClockCommand = new RelayCommand(OpenWorldClock);
         SettingsPage = settingsPage;
         InfoBar = infoBar;
         _currentPage = HomePage;
 
+        _worldClockNavigationItem = CreateItem(
+            "world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", ShellPage.WorldClock, isEnabled: true);
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
             CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
             CreateItem("batch-rename", "Tool.BatchRename.Name", "Rename", "Rename", page: null, isEnabled: false),
             CreateItem("icon-convert", "Tool.IconConvert.Name", "Image", "ImageFilled", page: null, isEnabled: false),
-            CreateItem("world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", page: null, isEnabled: false),
+            _worldClockNavigationItem,
         ];
         _settingsNavigationItem = CreateItem(
             "settings", "Shell.Nav.Settings", "Settings", "SettingsFilled", ShellPage.Settings, isEnabled: true);
@@ -254,6 +263,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Recomputes the current page when the window is activated again.
+    /// </summary>
+    public void OnWindowActivated()
+    {
+        if (ReferenceEquals(CurrentPage, _worldClockPage))
+        {
+            _worldClockPage.Refresh();
+        }
+    }
+
+    /// <summary>
     /// Opens the settings page through the same navigation the rail uses; an already open page stays put.
     /// </summary>
     public void ShowSettings()
@@ -270,6 +290,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _localization.PropertyChanged -= OnLocalizationChanged;
+        _worldClockPage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
     }
@@ -299,8 +320,29 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void NavigateTo(ShellPage? page)
     {
-        CurrentPage = page == ShellPage.Settings ? SettingsPage : HomePage;
+        ViewModelBase target = page switch
+        {
+            ShellPage.Settings => SettingsPage,
+            ShellPage.WorldClock => _worldClockPage,
+            _ => HomePage,
+        };
+
+        if (ReferenceEquals(target, _worldClockPage))
+        {
+            _worldClockPage.Activate();
+        }
+        else
+        {
+            _worldClockPage.Deactivate();
+        }
+
+        CurrentPage = target;
         _logger.Debug("Navigated to {Page}", page);
+    }
+
+    private void OpenWorldClock()
+    {
+        SelectedPrimaryItem = _worldClockNavigationItem;
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

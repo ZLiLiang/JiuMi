@@ -225,6 +225,27 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public bool IsDarkTheme => _themeService.Current == AppTheme.Dark;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the tools may fetch data from the network.
+    /// </summary>
+    public bool IsOnlineDataEnabled
+    {
+        get => _settingsStore.Current.OnlineDataEnabled;
+        set
+        {
+            if (value == _settingsStore.Current.OnlineDataEnabled)
+            {
+                return;
+            }
+
+            SaveSettings(_settingsStore.Current with
+            {
+                OnlineDataEnabled = value,
+            });
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
     /// Gets the command that switches the appearance theme.
     /// </summary>
     public IRelayCommand<AppTheme> SelectThemeCommand

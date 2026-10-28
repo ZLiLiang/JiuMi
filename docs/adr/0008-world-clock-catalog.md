@@ -19,7 +19,7 @@
 3. **城市是一城一区**：城市条目绑定一个 IANA 时区，城市 `id` 即 IANA id；同一时区只收一个代表城市，内置城市表策展约 100–150 个主要商务城市。同一时区的其他城市不单列，因为时间、窗口与假日完全相同。国家表覆盖全量 ISO 3166，包含 HK、MO、TW 等有独立区号的地区条目，名称取 CLDR 对应语言短名；无 IANA 时区的无人区（如 BV、HM）跳过。
 4. **区号只取国家码**：国家与城市行都显示所属国家的电话区号（ITU / libphonenumber），如 `+86`、`+1`；不显示城市固话区号。NANP 只显示 `+1`，不展开 `+1 809` 之类的子码。
 5. **中英文始终同显**：主行跟随界面语言（中文界面中文在前，英文界面英文在前），次行是另一种语言。看板两行、规划三行（第三行当地时间与星期），规划标签列 176px、行高 50px；超长英文省略号。
-6. **内置快照**：`Assets/world-clock/{countries,cities,office-hours}.json`。`tools/generate-world-clock-data.ps1` 在开发期从 CLDR（中英短名）、IANA tzdb（代表时区）、libphonenumber（区号）生成；JSON 内记录源版本与链接。脚本不进构建、不接 CI，运行期不联网。
+6. **内置快照**：`Assets/world-clock/{countries,cities,office-hours}.json`。国家条目形如 `{ iso2, name, dialCode, representative: { zone, city? } }`，`city` 只在多时区国家出现；城市条目形如 `{ id(IANA), country, name }`。`tools/generate-world-clock-data.ps1` 在开发期从 CLDR（中英短名）、IANA tzdb（代表时区）、libphonenumber（区号）生成；JSON 内记录源版本与链接。脚本不进构建、不接 CI，运行期不联网。
 7. **设置契约**：`worldClock.places: [{ kind, id, start, end, days }]`。国家 `id` 为 ISO alpha-2，城市 `id` 为 IANA；时间粒度 15 分钟，`days` 为 ISO 1–7。默认仍为上海、伦敦、纽约、旧金山四个城市；旧 `cities` 键不保留（功能未发布）。
 8. **工时默认**：全球默认 09:00–18:00、周一至周五；只对已知例外做国家级覆盖（如中东周日至周四），城市级覆盖只给策展城市；`office-hours.json` 记录来源链接与更新日期。回退链：城市 → 国家 → 全球。
 9. **在线更新不在本 ADR**：另票实现 Release 资产 + manifest/哈希 + 24h 后台检查 + 缓存回退，并复用设置页「数据与联网」开关。本票只留 `IWorldClockCatalogProvider` 接缝与 bundled 实现，保证换在线源不返工。

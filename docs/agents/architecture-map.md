@@ -13,12 +13,13 @@
 
 | Topic | Read | Related |
 | --- | --- | --- |
-| 启动序列 | `启动序列` (lines 5–96): state machine, splash timing, degradation ladder, handoff, startup failures | [ADR-0002](../adr/0002-splash-startup-sequence.md) |
-| 单实例与窗口生命周期 | `单实例与窗口生命周期` (97–172): mutex/pipe, activation, tray, hidden-window errors | [#7](https://github.com/ZLiLiang/JiuMi/issues/7) |
-| 错误呈现与诊断 | `错误呈现与诊断` (173–269): levels, carriers, `ErrorRecord`, global hooks, notifications | [ADR-0003](../adr/0003-error-presentation.md) |
-| 日志与诊断 | `日志与诊断` (270–377): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
-| 配置与外置文件 | `配置与外置文件` (378–447): locations, startup probe, file contract, atomic write, visibility | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
-| 本地化 | `本地化` (448–546): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
+| 启动序列 | `启动序列` (lines 5–98): state machine, splash timing, degradation ladder, handoff, startup failures | [ADR-0002](../adr/0002-splash-startup-sequence.md) |
+| 单实例与窗口生命周期 | `单实例与窗口生命周期` (99–174): mutex/pipe, activation, tray, hidden-window errors | [#7](https://github.com/ZLiLiang/JiuMi/issues/7) |
+| 错误呈现与诊断 | `错误呈现与诊断` (175–273): levels, carriers, `ErrorRecord`, global hooks, notifications | [ADR-0003](../adr/0003-error-presentation.md) |
+| 日志与诊断 | `日志与诊断` (274–382): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
+| 配置与外置文件 | `配置与外置文件` (383–466): locations, startup probe, file contract, atomic write, world clock state | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
+| 本地化 | `本地化` (467–566): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
+| 工具模块 | `工具模块` (567–616): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
 
 ## Stop rules
 

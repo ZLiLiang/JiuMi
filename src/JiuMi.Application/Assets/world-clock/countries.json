@@ -1,0 +1,2769 @@
+{
+  "source": {
+    "cldrVersion": "49",
+    "unicodeVersion": "16.0.0",
+    "tzdbVersion": "2026e",
+    "libphonenumberCommit": "1ae0d623301b302f828628dfc368c983e8d27141",
+    "sources": {
+      "names": "https://github.com/unicode-org/cldr-json",
+      "zones": "https://github.com/eggert/tz",
+      "dialCodes": "https://github.com/google/libphonenumber"
+    }
+  },
+  "countries": [
+    {
+      "iso2": "AD",
+      "name": {
+        "zh": "安道尔",
+        "en": "Andorra"
+      },
+      "dialCode": "+376",
+      "representative": {
+        "zone": "Europe/Andorra"
+      }
+    },
+    {
+      "iso2": "AE",
+      "name": {
+        "zh": "阿拉伯联合酋长国",
+        "en": "United Arab Emirates"
+      },
+      "dialCode": "+971",
+      "representative": {
+        "zone": "Asia/Dubai"
+      }
+    },
+    {
+      "iso2": "AF",
+      "name": {
+        "zh": "阿富汗",
+        "en": "Afghanistan"
+      },
+      "dialCode": "+93",
+      "representative": {
+        "zone": "Asia/Kabul"
+      }
+    },
+    {
+      "iso2": "AG",
+      "name": {
+        "zh": "安提瓜和巴布达",
+        "en": "Antigua & Barbuda"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "AI",
+      "name": {
+        "zh": "安圭拉",
+        "en": "Anguilla"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "AL",
+      "name": {
+        "zh": "阿尔巴尼亚",
+        "en": "Albania"
+      },
+      "dialCode": "+355",
+      "representative": {
+        "zone": "Europe/Tirane"
+      }
+    },
+    {
+      "iso2": "AM",
+      "name": {
+        "zh": "亚美尼亚",
+        "en": "Armenia"
+      },
+      "dialCode": "+374",
+      "representative": {
+        "zone": "Asia/Yerevan"
+      }
+    },
+    {
+      "iso2": "AO",
+      "name": {
+        "zh": "安哥拉",
+        "en": "Angola"
+      },
+      "dialCode": "+244",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "AR",
+      "name": {
+        "zh": "阿根廷",
+        "en": "Argentina"
+      },
+      "dialCode": "+54",
+      "representative": {
+        "zone": "America/Argentina/Buenos_Aires",
+        "city": {
+          "zh": "布宜诺斯艾利斯",
+          "en": "Buenos Aires"
+        }
+      }
+    },
+    {
+      "iso2": "AS",
+      "name": {
+        "zh": "美属萨摩亚",
+        "en": "American Samoa"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "Pacific/Pago_Pago"
+      }
+    },
+    {
+      "iso2": "AT",
+      "name": {
+        "zh": "奥地利",
+        "en": "Austria"
+      },
+      "dialCode": "+43",
+      "representative": {
+        "zone": "Europe/Vienna"
+      }
+    },
+    {
+      "iso2": "AU",
+      "name": {
+        "zh": "澳大利亚",
+        "en": "Australia"
+      },
+      "dialCode": "+61",
+      "representative": {
+        "zone": "Australia/Sydney",
+        "city": {
+          "zh": "悉尼",
+          "en": "Sydney"
+        }
+      }
+    },
+    {
+      "iso2": "AW",
+      "name": {
+        "zh": "阿鲁巴",
+        "en": "Aruba"
+      },
+      "dialCode": "+297",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "AX",
+      "name": {
+        "zh": "奥兰群岛",
+        "en": "Åland Islands"
+      },
+      "dialCode": "+358",
+      "representative": {
+        "zone": "Europe/Helsinki"
+      }
+    },
+    {
+      "iso2": "AZ",
+      "name": {
+        "zh": "阿塞拜疆",
+        "en": "Azerbaijan"
+      },
+      "dialCode": "+994",
+      "representative": {
+        "zone": "Asia/Baku"
+      }
+    },
+    {
+      "iso2": "BA",
+      "name": {
+        "zh": "波斯尼亚和黑塞哥维那",
+        "en": "Bosnia"
+      },
+      "dialCode": "+387",
+      "representative": {
+        "zone": "Europe/Belgrade"
+      }
+    },
+    {
+      "iso2": "BB",
+      "name": {
+        "zh": "巴巴多斯",
+        "en": "Barbados"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Barbados"
+      }
+    },
+    {
+      "iso2": "BD",
+      "name": {
+        "zh": "孟加拉国",
+        "en": "Bangladesh"
+      },
+      "dialCode": "+880",
+      "representative": {
+        "zone": "Asia/Dhaka"
+      }
+    },
+    {
+      "iso2": "BE",
+      "name": {
+        "zh": "比利时",
+        "en": "Belgium"
+      },
+      "dialCode": "+32",
+      "representative": {
+        "zone": "Europe/Brussels"
+      }
+    },
+    {
+      "iso2": "BF",
+      "name": {
+        "zh": "布基纳法索",
+        "en": "Burkina Faso"
+      },
+      "dialCode": "+226",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "BG",
+      "name": {
+        "zh": "保加利亚",
+        "en": "Bulgaria"
+      },
+      "dialCode": "+359",
+      "representative": {
+        "zone": "Europe/Sofia"
+      }
+    },
+    {
+      "iso2": "BH",
+      "name": {
+        "zh": "巴林",
+        "en": "Bahrain"
+      },
+      "dialCode": "+973",
+      "representative": {
+        "zone": "Asia/Qatar"
+      }
+    },
+    {
+      "iso2": "BI",
+      "name": {
+        "zh": "布隆迪",
+        "en": "Burundi"
+      },
+      "dialCode": "+257",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    },
+    {
+      "iso2": "BJ",
+      "name": {
+        "zh": "贝宁",
+        "en": "Benin"
+      },
+      "dialCode": "+229",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "BL",
+      "name": {
+        "zh": "圣巴泰勒米",
+        "en": "St. Barthélemy"
+      },
+      "dialCode": "+590",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "BM",
+      "name": {
+        "zh": "百慕大",
+        "en": "Bermuda"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "Atlantic/Bermuda"
+      }
+    },
+    {
+      "iso2": "BN",
+      "name": {
+        "zh": "文莱",
+        "en": "Brunei"
+      },
+      "dialCode": "+673",
+      "representative": {
+        "zone": "Asia/Kuching"
+      }
+    },
+    {
+      "iso2": "BO",
+      "name": {
+        "zh": "玻利维亚",
+        "en": "Bolivia"
+      },
+      "dialCode": "+591",
+      "representative": {
+        "zone": "America/La_Paz"
+      }
+    },
+    {
+      "iso2": "BQ",
+      "name": {
+        "zh": "荷属加勒比区",
+        "en": "Caribbean Netherlands"
+      },
+      "dialCode": "+599",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "BR",
+      "name": {
+        "zh": "巴西",
+        "en": "Brazil"
+      },
+      "dialCode": "+55",
+      "representative": {
+        "zone": "America/Sao_Paulo",
+        "city": {
+          "zh": "圣保罗",
+          "en": "Sao Paulo"
+        }
+      }
+    },
+    {
+      "iso2": "BS",
+      "name": {
+        "zh": "巴哈马",
+        "en": "Bahamas"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Toronto"
+      }
+    },
+    {
+      "iso2": "BT",
+      "name": {
+        "zh": "不丹",
+        "en": "Bhutan"
+      },
+      "dialCode": "+975",
+      "representative": {
+        "zone": "Asia/Thimphu"
+      }
+    },
+    {
+      "iso2": "BW",
+      "name": {
+        "zh": "博茨瓦纳",
+        "en": "Botswana"
+      },
+      "dialCode": "+267",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    },
+    {
+      "iso2": "BY",
+      "name": {
+        "zh": "白俄罗斯",
+        "en": "Belarus"
+      },
+      "dialCode": "+375",
+      "representative": {
+        "zone": "Europe/Minsk"
+      }
+    },
+    {
+      "iso2": "BZ",
+      "name": {
+        "zh": "伯利兹",
+        "en": "Belize"
+      },
+      "dialCode": "+501",
+      "representative": {
+        "zone": "America/Belize"
+      }
+    },
+    {
+      "iso2": "CA",
+      "name": {
+        "zh": "加拿大",
+        "en": "Canada"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Toronto",
+        "city": {
+          "zh": "多伦多",
+          "en": "Toronto"
+        }
+      }
+    },
+    {
+      "iso2": "CC",
+      "name": {
+        "zh": "科科斯（基林）群岛",
+        "en": "Cocos Islands"
+      },
+      "dialCode": "+61",
+      "representative": {
+        "zone": "Asia/Yangon"
+      }
+    },
+    {
+      "iso2": "CD",
+      "name": {
+        "zh": "刚果（金）",
+        "en": "Congo - Kinshasa"
+      },
+      "dialCode": "+243",
+      "representative": {
+        "zone": "Africa/Kinshasa",
+        "city": {
+          "zh": "金沙萨",
+          "en": "Kinshasa"
+        }
+      }
+    },
+    {
+      "iso2": "CF",
+      "name": {
+        "zh": "中非共和国",
+        "en": "Central African Republic"
+      },
+      "dialCode": "+236",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "CG",
+      "name": {
+        "zh": "刚果（布）",
+        "en": "Congo - Brazzaville"
+      },
+      "dialCode": "+242",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "CH",
+      "name": {
+        "zh": "瑞士",
+        "en": "Switzerland"
+      },
+      "dialCode": "+41",
+      "representative": {
+        "zone": "Europe/Zurich"
+      }
+    },
+    {
+      "iso2": "CI",
+      "name": {
+        "zh": "科特迪瓦",
+        "en": "Côte d’Ivoire"
+      },
+      "dialCode": "+225",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "CK",
+      "name": {
+        "zh": "库克群岛",
+        "en": "Cook Islands"
+      },
+      "dialCode": "+682",
+      "representative": {
+        "zone": "Pacific/Rarotonga"
+      }
+    },
+    {
+      "iso2": "CL",
+      "name": {
+        "zh": "智利",
+        "en": "Chile"
+      },
+      "dialCode": "+56",
+      "representative": {
+        "zone": "America/Santiago",
+        "city": {
+          "zh": "圣地亚哥",
+          "en": "Santiago"
+        }
+      }
+    },
+    {
+      "iso2": "CM",
+      "name": {
+        "zh": "喀麦隆",
+        "en": "Cameroon"
+      },
+      "dialCode": "+237",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "CN",
+      "name": {
+        "zh": "中国",
+        "en": "China"
+      },
+      "dialCode": "+86",
+      "representative": {
+        "zone": "Asia/Shanghai"
+      }
+    },
+    {
+      "iso2": "CO",
+      "name": {
+        "zh": "哥伦比亚",
+        "en": "Colombia"
+      },
+      "dialCode": "+57",
+      "representative": {
+        "zone": "America/Bogota"
+      }
+    },
+    {
+      "iso2": "CR",
+      "name": {
+        "zh": "哥斯达黎加",
+        "en": "Costa Rica"
+      },
+      "dialCode": "+506",
+      "representative": {
+        "zone": "America/Costa_Rica"
+      }
+    },
+    {
+      "iso2": "CU",
+      "name": {
+        "zh": "古巴",
+        "en": "Cuba"
+      },
+      "dialCode": "+53",
+      "representative": {
+        "zone": "America/Havana"
+      }
+    },
+    {
+      "iso2": "CV",
+      "name": {
+        "zh": "佛得角",
+        "en": "Cape Verde"
+      },
+      "dialCode": "+238",
+      "representative": {
+        "zone": "Atlantic/Cape_Verde"
+      }
+    },
+    {
+      "iso2": "CW",
+      "name": {
+        "zh": "库拉索",
+        "en": "Curaçao"
+      },
+      "dialCode": "+599",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "CX",
+      "name": {
+        "zh": "圣诞岛",
+        "en": "Christmas Island"
+      },
+      "dialCode": "+61",
+      "representative": {
+        "zone": "Asia/Bangkok"
+      }
+    },
+    {
+      "iso2": "CY",
+      "name": {
+        "zh": "塞浦路斯",
+        "en": "Cyprus"
+      },
+      "dialCode": "+357",
+      "representative": {
+        "zone": "Asia/Nicosia"
+      }
+    },
+    {
+      "iso2": "CZ",
+      "name": {
+        "zh": "捷克",
+        "en": "Czechia"
+      },
+      "dialCode": "+420",
+      "representative": {
+        "zone": "Europe/Prague"
+      }
+    },
+    {
+      "iso2": "DE",
+      "name": {
+        "zh": "德国",
+        "en": "Germany"
+      },
+      "dialCode": "+49",
+      "representative": {
+        "zone": "Europe/Berlin"
+      }
+    },
+    {
+      "iso2": "DJ",
+      "name": {
+        "zh": "吉布提",
+        "en": "Djibouti"
+      },
+      "dialCode": "+253",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "DK",
+      "name": {
+        "zh": "丹麦",
+        "en": "Denmark"
+      },
+      "dialCode": "+45",
+      "representative": {
+        "zone": "Europe/Berlin"
+      }
+    },
+    {
+      "iso2": "DM",
+      "name": {
+        "zh": "多米尼克",
+        "en": "Dominica"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "DO",
+      "name": {
+        "zh": "多米尼加共和国",
+        "en": "Dominican Republic"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Santo_Domingo"
+      }
+    },
+    {
+      "iso2": "DZ",
+      "name": {
+        "zh": "阿尔及利亚",
+        "en": "Algeria"
+      },
+      "dialCode": "+213",
+      "representative": {
+        "zone": "Africa/Algiers"
+      }
+    },
+    {
+      "iso2": "EC",
+      "name": {
+        "zh": "厄瓜多尔",
+        "en": "Ecuador"
+      },
+      "dialCode": "+593",
+      "representative": {
+        "zone": "America/Guayaquil",
+        "city": {
+          "zh": "瓜亚基尔",
+          "en": "Guayaquil"
+        }
+      }
+    },
+    {
+      "iso2": "EE",
+      "name": {
+        "zh": "爱沙尼亚",
+        "en": "Estonia"
+      },
+      "dialCode": "+372",
+      "representative": {
+        "zone": "Europe/Tallinn"
+      }
+    },
+    {
+      "iso2": "EG",
+      "name": {
+        "zh": "埃及",
+        "en": "Egypt"
+      },
+      "dialCode": "+20",
+      "representative": {
+        "zone": "Africa/Cairo"
+      }
+    },
+    {
+      "iso2": "EH",
+      "name": {
+        "zh": "西撒哈拉",
+        "en": "Western Sahara"
+      },
+      "dialCode": "+212",
+      "representative": {
+        "zone": "Africa/El_Aaiun"
+      }
+    },
+    {
+      "iso2": "ER",
+      "name": {
+        "zh": "厄立特里亚",
+        "en": "Eritrea"
+      },
+      "dialCode": "+291",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "ES",
+      "name": {
+        "zh": "西班牙",
+        "en": "Spain"
+      },
+      "dialCode": "+34",
+      "representative": {
+        "zone": "Europe/Madrid",
+        "city": {
+          "zh": "马德里",
+          "en": "Madrid"
+        }
+      }
+    },
+    {
+      "iso2": "ET",
+      "name": {
+        "zh": "埃塞俄比亚",
+        "en": "Ethiopia"
+      },
+      "dialCode": "+251",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "FI",
+      "name": {
+        "zh": "芬兰",
+        "en": "Finland"
+      },
+      "dialCode": "+358",
+      "representative": {
+        "zone": "Europe/Helsinki"
+      }
+    },
+    {
+      "iso2": "FJ",
+      "name": {
+        "zh": "斐济",
+        "en": "Fiji"
+      },
+      "dialCode": "+679",
+      "representative": {
+        "zone": "Pacific/Fiji"
+      }
+    },
+    {
+      "iso2": "FK",
+      "name": {
+        "zh": "福克兰群岛",
+        "en": "Falkland Islands"
+      },
+      "dialCode": "+500",
+      "representative": {
+        "zone": "Atlantic/Stanley"
+      }
+    },
+    {
+      "iso2": "FM",
+      "name": {
+        "zh": "密克罗尼西亚",
+        "en": "Micronesia"
+      },
+      "dialCode": "+691",
+      "representative": {
+        "zone": "Pacific/Pohnpei",
+        "city": {
+          "zh": "帕利基尔",
+          "en": "Palikir"
+        }
+      }
+    },
+    {
+      "iso2": "FO",
+      "name": {
+        "zh": "法罗群岛",
+        "en": "Faroe Islands"
+      },
+      "dialCode": "+298",
+      "representative": {
+        "zone": "Atlantic/Faroe"
+      }
+    },
+    {
+      "iso2": "FR",
+      "name": {
+        "zh": "法国",
+        "en": "France"
+      },
+      "dialCode": "+33",
+      "representative": {
+        "zone": "Europe/Paris"
+      }
+    },
+    {
+      "iso2": "GA",
+      "name": {
+        "zh": "加蓬",
+        "en": "Gabon"
+      },
+      "dialCode": "+241",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "GB",
+      "name": {
+        "zh": "英国",
+        "en": "United Kingdom"
+      },
+      "dialCode": "+44",
+      "representative": {
+        "zone": "Europe/London"
+      }
+    },
+    {
+      "iso2": "GD",
+      "name": {
+        "zh": "格林纳达",
+        "en": "Grenada"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "GE",
+      "name": {
+        "zh": "格鲁吉亚",
+        "en": "Georgia"
+      },
+      "dialCode": "+995",
+      "representative": {
+        "zone": "Asia/Tbilisi"
+      }
+    },
+    {
+      "iso2": "GF",
+      "name": {
+        "zh": "法属圭亚那",
+        "en": "French Guiana"
+      },
+      "dialCode": "+594",
+      "representative": {
+        "zone": "America/Cayenne"
+      }
+    },
+    {
+      "iso2": "GG",
+      "name": {
+        "zh": "根西岛",
+        "en": "Guernsey"
+      },
+      "dialCode": "+44",
+      "representative": {
+        "zone": "Europe/London"
+      }
+    },
+    {
+      "iso2": "GH",
+      "name": {
+        "zh": "加纳",
+        "en": "Ghana"
+      },
+      "dialCode": "+233",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "GI",
+      "name": {
+        "zh": "直布罗陀",
+        "en": "Gibraltar"
+      },
+      "dialCode": "+350",
+      "representative": {
+        "zone": "Europe/Gibraltar"
+      }
+    },
+    {
+      "iso2": "GL",
+      "name": {
+        "zh": "格陵兰",
+        "en": "Greenland"
+      },
+      "dialCode": "+299",
+      "representative": {
+        "zone": "America/Nuuk",
+        "city": {
+          "zh": "努克",
+          "en": "Nuuk"
+        }
+      }
+    },
+    {
+      "iso2": "GM",
+      "name": {
+        "zh": "冈比亚",
+        "en": "Gambia"
+      },
+      "dialCode": "+220",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "GN",
+      "name": {
+        "zh": "几内亚",
+        "en": "Guinea"
+      },
+      "dialCode": "+224",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "GP",
+      "name": {
+        "zh": "瓜德罗普",
+        "en": "Guadeloupe"
+      },
+      "dialCode": "+590",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "GQ",
+      "name": {
+        "zh": "赤道几内亚",
+        "en": "Equatorial Guinea"
+      },
+      "dialCode": "+240",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "GR",
+      "name": {
+        "zh": "希腊",
+        "en": "Greece"
+      },
+      "dialCode": "+30",
+      "representative": {
+        "zone": "Europe/Athens"
+      }
+    },
+    {
+      "iso2": "GT",
+      "name": {
+        "zh": "危地马拉",
+        "en": "Guatemala"
+      },
+      "dialCode": "+502",
+      "representative": {
+        "zone": "America/Guatemala"
+      }
+    },
+    {
+      "iso2": "GU",
+      "name": {
+        "zh": "关岛",
+        "en": "Guam"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "Pacific/Guam"
+      }
+    },
+    {
+      "iso2": "GW",
+      "name": {
+        "zh": "几内亚比绍",
+        "en": "Guinea-Bissau"
+      },
+      "dialCode": "+245",
+      "representative": {
+        "zone": "Africa/Bissau"
+      }
+    },
+    {
+      "iso2": "GY",
+      "name": {
+        "zh": "圭亚那",
+        "en": "Guyana"
+      },
+      "dialCode": "+592",
+      "representative": {
+        "zone": "America/Guyana"
+      }
+    },
+    {
+      "iso2": "HK",
+      "name": {
+        "zh": "香港",
+        "en": "Hong Kong"
+      },
+      "dialCode": "+852",
+      "representative": {
+        "zone": "Asia/Hong_Kong"
+      }
+    },
+    {
+      "iso2": "HN",
+      "name": {
+        "zh": "洪都拉斯",
+        "en": "Honduras"
+      },
+      "dialCode": "+504",
+      "representative": {
+        "zone": "America/Tegucigalpa"
+      }
+    },
+    {
+      "iso2": "HR",
+      "name": {
+        "zh": "克罗地亚",
+        "en": "Croatia"
+      },
+      "dialCode": "+385",
+      "representative": {
+        "zone": "Europe/Belgrade"
+      }
+    },
+    {
+      "iso2": "HT",
+      "name": {
+        "zh": "海地",
+        "en": "Haiti"
+      },
+      "dialCode": "+509",
+      "representative": {
+        "zone": "America/Port-au-Prince"
+      }
+    },
+    {
+      "iso2": "HU",
+      "name": {
+        "zh": "匈牙利",
+        "en": "Hungary"
+      },
+      "dialCode": "+36",
+      "representative": {
+        "zone": "Europe/Budapest"
+      }
+    },
+    {
+      "iso2": "ID",
+      "name": {
+        "zh": "印度尼西亚",
+        "en": "Indonesia"
+      },
+      "dialCode": "+62",
+      "representative": {
+        "zone": "Asia/Jakarta",
+        "city": {
+          "zh": "雅加达",
+          "en": "Jakarta"
+        }
+      }
+    },
+    {
+      "iso2": "IE",
+      "name": {
+        "zh": "爱尔兰",
+        "en": "Ireland"
+      },
+      "dialCode": "+353",
+      "representative": {
+        "zone": "Europe/Dublin"
+      }
+    },
+    {
+      "iso2": "IL",
+      "name": {
+        "zh": "以色列",
+        "en": "Israel"
+      },
+      "dialCode": "+972",
+      "representative": {
+        "zone": "Asia/Jerusalem"
+      }
+    },
+    {
+      "iso2": "IM",
+      "name": {
+        "zh": "马恩岛",
+        "en": "Isle of Man"
+      },
+      "dialCode": "+44",
+      "representative": {
+        "zone": "Europe/London"
+      }
+    },
+    {
+      "iso2": "IN",
+      "name": {
+        "zh": "印度",
+        "en": "India"
+      },
+      "dialCode": "+91",
+      "representative": {
+        "zone": "Asia/Kolkata"
+      }
+    },
+    {
+      "iso2": "IO",
+      "name": {
+        "zh": "英属印度洋领地",
+        "en": "British Indian Ocean Territory"
+      },
+      "dialCode": "+246",
+      "representative": {
+        "zone": "Indian/Chagos"
+      }
+    },
+    {
+      "iso2": "IQ",
+      "name": {
+        "zh": "伊拉克",
+        "en": "Iraq"
+      },
+      "dialCode": "+964",
+      "representative": {
+        "zone": "Asia/Baghdad"
+      }
+    },
+    {
+      "iso2": "IR",
+      "name": {
+        "zh": "伊朗",
+        "en": "Iran"
+      },
+      "dialCode": "+98",
+      "representative": {
+        "zone": "Asia/Tehran"
+      }
+    },
+    {
+      "iso2": "IS",
+      "name": {
+        "zh": "冰岛",
+        "en": "Iceland"
+      },
+      "dialCode": "+354",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "IT",
+      "name": {
+        "zh": "意大利",
+        "en": "Italy"
+      },
+      "dialCode": "+39",
+      "representative": {
+        "zone": "Europe/Rome"
+      }
+    },
+    {
+      "iso2": "JE",
+      "name": {
+        "zh": "泽西岛",
+        "en": "Jersey"
+      },
+      "dialCode": "+44",
+      "representative": {
+        "zone": "Europe/London"
+      }
+    },
+    {
+      "iso2": "JM",
+      "name": {
+        "zh": "牙买加",
+        "en": "Jamaica"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Jamaica"
+      }
+    },
+    {
+      "iso2": "JO",
+      "name": {
+        "zh": "约旦",
+        "en": "Jordan"
+      },
+      "dialCode": "+962",
+      "representative": {
+        "zone": "Asia/Amman"
+      }
+    },
+    {
+      "iso2": "JP",
+      "name": {
+        "zh": "日本",
+        "en": "Japan"
+      },
+      "dialCode": "+81",
+      "representative": {
+        "zone": "Asia/Tokyo"
+      }
+    },
+    {
+      "iso2": "KE",
+      "name": {
+        "zh": "肯尼亚",
+        "en": "Kenya"
+      },
+      "dialCode": "+254",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "KG",
+      "name": {
+        "zh": "吉尔吉斯斯坦",
+        "en": "Kyrgyzstan"
+      },
+      "dialCode": "+996",
+      "representative": {
+        "zone": "Asia/Bishkek"
+      }
+    },
+    {
+      "iso2": "KH",
+      "name": {
+        "zh": "柬埔寨",
+        "en": "Cambodia"
+      },
+      "dialCode": "+855",
+      "representative": {
+        "zone": "Asia/Bangkok"
+      }
+    },
+    {
+      "iso2": "KI",
+      "name": {
+        "zh": "基里巴斯",
+        "en": "Kiribati"
+      },
+      "dialCode": "+686",
+      "representative": {
+        "zone": "Pacific/Tarawa",
+        "city": {
+          "zh": "塔拉瓦",
+          "en": "Tarawa"
+        }
+      }
+    },
+    {
+      "iso2": "KM",
+      "name": {
+        "zh": "科摩罗",
+        "en": "Comoros"
+      },
+      "dialCode": "+269",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "KN",
+      "name": {
+        "zh": "圣基茨和尼维斯",
+        "en": "St. Kitts & Nevis"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "KP",
+      "name": {
+        "zh": "朝鲜",
+        "en": "North Korea"
+      },
+      "dialCode": "+850",
+      "representative": {
+        "zone": "Asia/Pyongyang"
+      }
+    },
+    {
+      "iso2": "KR",
+      "name": {
+        "zh": "韩国",
+        "en": "South Korea"
+      },
+      "dialCode": "+82",
+      "representative": {
+        "zone": "Asia/Seoul"
+      }
+    },
+    {
+      "iso2": "KW",
+      "name": {
+        "zh": "科威特",
+        "en": "Kuwait"
+      },
+      "dialCode": "+965",
+      "representative": {
+        "zone": "Asia/Riyadh"
+      }
+    },
+    {
+      "iso2": "KY",
+      "name": {
+        "zh": "开曼群岛",
+        "en": "Cayman Islands"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Panama"
+      }
+    },
+    {
+      "iso2": "KZ",
+      "name": {
+        "zh": "哈萨克斯坦",
+        "en": "Kazakhstan"
+      },
+      "dialCode": "+7",
+      "representative": {
+        "zone": "Asia/Almaty",
+        "city": {
+          "zh": "阿拉木图",
+          "en": "Almaty"
+        }
+      }
+    },
+    {
+      "iso2": "LA",
+      "name": {
+        "zh": "老挝",
+        "en": "Laos"
+      },
+      "dialCode": "+856",
+      "representative": {
+        "zone": "Asia/Bangkok"
+      }
+    },
+    {
+      "iso2": "LB",
+      "name": {
+        "zh": "黎巴嫩",
+        "en": "Lebanon"
+      },
+      "dialCode": "+961",
+      "representative": {
+        "zone": "Asia/Beirut"
+      }
+    },
+    {
+      "iso2": "LC",
+      "name": {
+        "zh": "圣卢西亚",
+        "en": "St. Lucia"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "LI",
+      "name": {
+        "zh": "列支敦士登",
+        "en": "Liechtenstein"
+      },
+      "dialCode": "+423",
+      "representative": {
+        "zone": "Europe/Zurich"
+      }
+    },
+    {
+      "iso2": "LK",
+      "name": {
+        "zh": "斯里兰卡",
+        "en": "Sri Lanka"
+      },
+      "dialCode": "+94",
+      "representative": {
+        "zone": "Asia/Colombo"
+      }
+    },
+    {
+      "iso2": "LR",
+      "name": {
+        "zh": "利比里亚",
+        "en": "Liberia"
+      },
+      "dialCode": "+231",
+      "representative": {
+        "zone": "Africa/Monrovia"
+      }
+    },
+    {
+      "iso2": "LS",
+      "name": {
+        "zh": "莱索托",
+        "en": "Lesotho"
+      },
+      "dialCode": "+266",
+      "representative": {
+        "zone": "Africa/Johannesburg"
+      }
+    },
+    {
+      "iso2": "LT",
+      "name": {
+        "zh": "立陶宛",
+        "en": "Lithuania"
+      },
+      "dialCode": "+370",
+      "representative": {
+        "zone": "Europe/Vilnius"
+      }
+    },
+    {
+      "iso2": "LU",
+      "name": {
+        "zh": "卢森堡",
+        "en": "Luxembourg"
+      },
+      "dialCode": "+352",
+      "representative": {
+        "zone": "Europe/Brussels"
+      }
+    },
+    {
+      "iso2": "LV",
+      "name": {
+        "zh": "拉脱维亚",
+        "en": "Latvia"
+      },
+      "dialCode": "+371",
+      "representative": {
+        "zone": "Europe/Riga"
+      }
+    },
+    {
+      "iso2": "LY",
+      "name": {
+        "zh": "利比亚",
+        "en": "Libya"
+      },
+      "dialCode": "+218",
+      "representative": {
+        "zone": "Africa/Tripoli"
+      }
+    },
+    {
+      "iso2": "MA",
+      "name": {
+        "zh": "摩洛哥",
+        "en": "Morocco"
+      },
+      "dialCode": "+212",
+      "representative": {
+        "zone": "Africa/Casablanca"
+      }
+    },
+    {
+      "iso2": "MC",
+      "name": {
+        "zh": "摩纳哥",
+        "en": "Monaco"
+      },
+      "dialCode": "+377",
+      "representative": {
+        "zone": "Europe/Paris"
+      }
+    },
+    {
+      "iso2": "MD",
+      "name": {
+        "zh": "摩尔多瓦",
+        "en": "Moldova"
+      },
+      "dialCode": "+373",
+      "representative": {
+        "zone": "Europe/Chisinau"
+      }
+    },
+    {
+      "iso2": "ME",
+      "name": {
+        "zh": "黑山",
+        "en": "Montenegro"
+      },
+      "dialCode": "+382",
+      "representative": {
+        "zone": "Europe/Belgrade"
+      }
+    },
+    {
+      "iso2": "MF",
+      "name": {
+        "zh": "法属圣马丁",
+        "en": "St. Martin"
+      },
+      "dialCode": "+590",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "MG",
+      "name": {
+        "zh": "马达加斯加",
+        "en": "Madagascar"
+      },
+      "dialCode": "+261",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "MH",
+      "name": {
+        "zh": "马绍尔群岛",
+        "en": "Marshall Islands"
+      },
+      "dialCode": "+692",
+      "representative": {
+        "zone": "Pacific/Majuro",
+        "city": {
+          "zh": "马朱罗",
+          "en": "Majuro"
+        }
+      }
+    },
+    {
+      "iso2": "MK",
+      "name": {
+        "zh": "北马其顿",
+        "en": "North Macedonia"
+      },
+      "dialCode": "+389",
+      "representative": {
+        "zone": "Europe/Belgrade"
+      }
+    },
+    {
+      "iso2": "ML",
+      "name": {
+        "zh": "马里",
+        "en": "Mali"
+      },
+      "dialCode": "+223",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "MM",
+      "name": {
+        "zh": "缅甸",
+        "en": "Myanmar"
+      },
+      "dialCode": "+95",
+      "representative": {
+        "zone": "Asia/Yangon"
+      }
+    },
+    {
+      "iso2": "MN",
+      "name": {
+        "zh": "蒙古",
+        "en": "Mongolia"
+      },
+      "dialCode": "+976",
+      "representative": {
+        "zone": "Asia/Ulaanbaatar",
+        "city": {
+          "zh": "乌兰巴托",
+          "en": "Ulaanbaatar"
+        }
+      }
+    },
+    {
+      "iso2": "MO",
+      "name": {
+        "zh": "澳门",
+        "en": "Macao"
+      },
+      "dialCode": "+853",
+      "representative": {
+        "zone": "Asia/Macau"
+      }
+    },
+    {
+      "iso2": "MP",
+      "name": {
+        "zh": "北马里亚纳群岛",
+        "en": "Northern Mariana Islands"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "Pacific/Guam"
+      }
+    },
+    {
+      "iso2": "MQ",
+      "name": {
+        "zh": "马提尼克",
+        "en": "Martinique"
+      },
+      "dialCode": "+596",
+      "representative": {
+        "zone": "America/Martinique"
+      }
+    },
+    {
+      "iso2": "MR",
+      "name": {
+        "zh": "毛里塔尼亚",
+        "en": "Mauritania"
+      },
+      "dialCode": "+222",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "MS",
+      "name": {
+        "zh": "蒙特塞拉特",
+        "en": "Montserrat"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "MT",
+      "name": {
+        "zh": "马耳他",
+        "en": "Malta"
+      },
+      "dialCode": "+356",
+      "representative": {
+        "zone": "Europe/Malta"
+      }
+    },
+    {
+      "iso2": "MU",
+      "name": {
+        "zh": "毛里求斯",
+        "en": "Mauritius"
+      },
+      "dialCode": "+230",
+      "representative": {
+        "zone": "Indian/Mauritius"
+      }
+    },
+    {
+      "iso2": "MV",
+      "name": {
+        "zh": "马尔代夫",
+        "en": "Maldives"
+      },
+      "dialCode": "+960",
+      "representative": {
+        "zone": "Indian/Maldives"
+      }
+    },
+    {
+      "iso2": "MW",
+      "name": {
+        "zh": "马拉维",
+        "en": "Malawi"
+      },
+      "dialCode": "+265",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    },
+    {
+      "iso2": "MX",
+      "name": {
+        "zh": "墨西哥",
+        "en": "Mexico"
+      },
+      "dialCode": "+52",
+      "representative": {
+        "zone": "America/Mexico_City",
+        "city": {
+          "zh": "墨西哥城",
+          "en": "Mexico City"
+        }
+      }
+    },
+    {
+      "iso2": "MY",
+      "name": {
+        "zh": "马来西亚",
+        "en": "Malaysia"
+      },
+      "dialCode": "+60",
+      "representative": {
+        "zone": "Asia/Kuala_Lumpur"
+      }
+    },
+    {
+      "iso2": "MZ",
+      "name": {
+        "zh": "莫桑比克",
+        "en": "Mozambique"
+      },
+      "dialCode": "+258",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    },
+    {
+      "iso2": "NA",
+      "name": {
+        "zh": "纳米比亚",
+        "en": "Namibia"
+      },
+      "dialCode": "+264",
+      "representative": {
+        "zone": "Africa/Windhoek"
+      }
+    },
+    {
+      "iso2": "NC",
+      "name": {
+        "zh": "新喀里多尼亚",
+        "en": "New Caledonia"
+      },
+      "dialCode": "+687",
+      "representative": {
+        "zone": "Pacific/Noumea"
+      }
+    },
+    {
+      "iso2": "NE",
+      "name": {
+        "zh": "尼日尔",
+        "en": "Niger"
+      },
+      "dialCode": "+227",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "NF",
+      "name": {
+        "zh": "诺福克岛",
+        "en": "Norfolk Island"
+      },
+      "dialCode": "+672",
+      "representative": {
+        "zone": "Pacific/Norfolk"
+      }
+    },
+    {
+      "iso2": "NG",
+      "name": {
+        "zh": "尼日利亚",
+        "en": "Nigeria"
+      },
+      "dialCode": "+234",
+      "representative": {
+        "zone": "Africa/Lagos"
+      }
+    },
+    {
+      "iso2": "NI",
+      "name": {
+        "zh": "尼加拉瓜",
+        "en": "Nicaragua"
+      },
+      "dialCode": "+505",
+      "representative": {
+        "zone": "America/Managua"
+      }
+    },
+    {
+      "iso2": "NL",
+      "name": {
+        "zh": "荷兰",
+        "en": "Netherlands"
+      },
+      "dialCode": "+31",
+      "representative": {
+        "zone": "Europe/Brussels"
+      }
+    },
+    {
+      "iso2": "NO",
+      "name": {
+        "zh": "挪威",
+        "en": "Norway"
+      },
+      "dialCode": "+47",
+      "representative": {
+        "zone": "Europe/Berlin"
+      }
+    },
+    {
+      "iso2": "NP",
+      "name": {
+        "zh": "尼泊尔",
+        "en": "Nepal"
+      },
+      "dialCode": "+977",
+      "representative": {
+        "zone": "Asia/Kathmandu"
+      }
+    },
+    {
+      "iso2": "NR",
+      "name": {
+        "zh": "瑙鲁",
+        "en": "Nauru"
+      },
+      "dialCode": "+674",
+      "representative": {
+        "zone": "Pacific/Nauru"
+      }
+    },
+    {
+      "iso2": "NU",
+      "name": {
+        "zh": "纽埃",
+        "en": "Niue"
+      },
+      "dialCode": "+683",
+      "representative": {
+        "zone": "Pacific/Niue"
+      }
+    },
+    {
+      "iso2": "NZ",
+      "name": {
+        "zh": "新西兰",
+        "en": "New Zealand"
+      },
+      "dialCode": "+64",
+      "representative": {
+        "zone": "Pacific/Auckland",
+        "city": {
+          "zh": "奥克兰",
+          "en": "Auckland"
+        }
+      }
+    },
+    {
+      "iso2": "OM",
+      "name": {
+        "zh": "阿曼",
+        "en": "Oman"
+      },
+      "dialCode": "+968",
+      "representative": {
+        "zone": "Asia/Dubai"
+      }
+    },
+    {
+      "iso2": "PA",
+      "name": {
+        "zh": "巴拿马",
+        "en": "Panama"
+      },
+      "dialCode": "+507",
+      "representative": {
+        "zone": "America/Panama"
+      }
+    },
+    {
+      "iso2": "PE",
+      "name": {
+        "zh": "秘鲁",
+        "en": "Peru"
+      },
+      "dialCode": "+51",
+      "representative": {
+        "zone": "America/Lima"
+      }
+    },
+    {
+      "iso2": "PF",
+      "name": {
+        "zh": "法属波利尼西亚",
+        "en": "French Polynesia"
+      },
+      "dialCode": "+689",
+      "representative": {
+        "zone": "Pacific/Tahiti",
+        "city": {
+          "zh": "帕皮提",
+          "en": "Papeete"
+        }
+      }
+    },
+    {
+      "iso2": "PG",
+      "name": {
+        "zh": "巴布亚新几内亚",
+        "en": "Papua New Guinea"
+      },
+      "dialCode": "+675",
+      "representative": {
+        "zone": "Pacific/Port_Moresby",
+        "city": {
+          "zh": "莫尔兹比港",
+          "en": "Port Moresby"
+        }
+      }
+    },
+    {
+      "iso2": "PH",
+      "name": {
+        "zh": "菲律宾",
+        "en": "Philippines"
+      },
+      "dialCode": "+63",
+      "representative": {
+        "zone": "Asia/Manila"
+      }
+    },
+    {
+      "iso2": "PK",
+      "name": {
+        "zh": "巴基斯坦",
+        "en": "Pakistan"
+      },
+      "dialCode": "+92",
+      "representative": {
+        "zone": "Asia/Karachi"
+      }
+    },
+    {
+      "iso2": "PL",
+      "name": {
+        "zh": "波兰",
+        "en": "Poland"
+      },
+      "dialCode": "+48",
+      "representative": {
+        "zone": "Europe/Warsaw"
+      }
+    },
+    {
+      "iso2": "PM",
+      "name": {
+        "zh": "圣皮埃尔和密克隆群岛",
+        "en": "St. Pierre & Miquelon"
+      },
+      "dialCode": "+508",
+      "representative": {
+        "zone": "America/Miquelon"
+      }
+    },
+    {
+      "iso2": "PR",
+      "name": {
+        "zh": "波多黎各",
+        "en": "Puerto Rico"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "PS",
+      "name": {
+        "zh": "巴勒斯坦",
+        "en": "Palestine"
+      },
+      "dialCode": "+970",
+      "representative": {
+        "zone": "Asia/Gaza"
+      }
+    },
+    {
+      "iso2": "PT",
+      "name": {
+        "zh": "葡萄牙",
+        "en": "Portugal"
+      },
+      "dialCode": "+351",
+      "representative": {
+        "zone": "Europe/Lisbon",
+        "city": {
+          "zh": "里斯本",
+          "en": "Lisbon"
+        }
+      }
+    },
+    {
+      "iso2": "PW",
+      "name": {
+        "zh": "帕劳",
+        "en": "Palau"
+      },
+      "dialCode": "+680",
+      "representative": {
+        "zone": "Pacific/Palau"
+      }
+    },
+    {
+      "iso2": "PY",
+      "name": {
+        "zh": "巴拉圭",
+        "en": "Paraguay"
+      },
+      "dialCode": "+595",
+      "representative": {
+        "zone": "America/Asuncion"
+      }
+    },
+    {
+      "iso2": "QA",
+      "name": {
+        "zh": "卡塔尔",
+        "en": "Qatar"
+      },
+      "dialCode": "+974",
+      "representative": {
+        "zone": "Asia/Qatar"
+      }
+    },
+    {
+      "iso2": "RE",
+      "name": {
+        "zh": "留尼汪",
+        "en": "Réunion"
+      },
+      "dialCode": "+262",
+      "representative": {
+        "zone": "Asia/Dubai"
+      }
+    },
+    {
+      "iso2": "RO",
+      "name": {
+        "zh": "罗马尼亚",
+        "en": "Romania"
+      },
+      "dialCode": "+40",
+      "representative": {
+        "zone": "Europe/Bucharest"
+      }
+    },
+    {
+      "iso2": "RS",
+      "name": {
+        "zh": "塞尔维亚",
+        "en": "Serbia"
+      },
+      "dialCode": "+381",
+      "representative": {
+        "zone": "Europe/Belgrade"
+      }
+    },
+    {
+      "iso2": "RU",
+      "name": {
+        "zh": "俄罗斯",
+        "en": "Russia"
+      },
+      "dialCode": "+7",
+      "representative": {
+        "zone": "Europe/Moscow",
+        "city": {
+          "zh": "莫斯科",
+          "en": "Moscow"
+        }
+      }
+    },
+    {
+      "iso2": "RW",
+      "name": {
+        "zh": "卢旺达",
+        "en": "Rwanda"
+      },
+      "dialCode": "+250",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    },
+    {
+      "iso2": "SA",
+      "name": {
+        "zh": "沙特阿拉伯",
+        "en": "Saudi Arabia"
+      },
+      "dialCode": "+966",
+      "representative": {
+        "zone": "Asia/Riyadh"
+      }
+    },
+    {
+      "iso2": "SB",
+      "name": {
+        "zh": "所罗门群岛",
+        "en": "Solomon Islands"
+      },
+      "dialCode": "+677",
+      "representative": {
+        "zone": "Pacific/Guadalcanal"
+      }
+    },
+    {
+      "iso2": "SC",
+      "name": {
+        "zh": "塞舌尔",
+        "en": "Seychelles"
+      },
+      "dialCode": "+248",
+      "representative": {
+        "zone": "Asia/Dubai"
+      }
+    },
+    {
+      "iso2": "SD",
+      "name": {
+        "zh": "苏丹",
+        "en": "Sudan"
+      },
+      "dialCode": "+249",
+      "representative": {
+        "zone": "Africa/Khartoum"
+      }
+    },
+    {
+      "iso2": "SE",
+      "name": {
+        "zh": "瑞典",
+        "en": "Sweden"
+      },
+      "dialCode": "+46",
+      "representative": {
+        "zone": "Europe/Berlin"
+      }
+    },
+    {
+      "iso2": "SG",
+      "name": {
+        "zh": "新加坡",
+        "en": "Singapore"
+      },
+      "dialCode": "+65",
+      "representative": {
+        "zone": "Asia/Singapore"
+      }
+    },
+    {
+      "iso2": "SH",
+      "name": {
+        "zh": "圣赫勒拿",
+        "en": "St. Helena"
+      },
+      "dialCode": "+290",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "SI",
+      "name": {
+        "zh": "斯洛文尼亚",
+        "en": "Slovenia"
+      },
+      "dialCode": "+386",
+      "representative": {
+        "zone": "Europe/Belgrade"
+      }
+    },
+    {
+      "iso2": "SJ",
+      "name": {
+        "zh": "斯瓦尔巴和扬马延",
+        "en": "Svalbard & Jan Mayen"
+      },
+      "dialCode": "+47",
+      "representative": {
+        "zone": "Europe/Berlin"
+      }
+    },
+    {
+      "iso2": "SK",
+      "name": {
+        "zh": "斯洛伐克",
+        "en": "Slovakia"
+      },
+      "dialCode": "+421",
+      "representative": {
+        "zone": "Europe/Prague"
+      }
+    },
+    {
+      "iso2": "SL",
+      "name": {
+        "zh": "塞拉利昂",
+        "en": "Sierra Leone"
+      },
+      "dialCode": "+232",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "SM",
+      "name": {
+        "zh": "圣马力诺",
+        "en": "San Marino"
+      },
+      "dialCode": "+378",
+      "representative": {
+        "zone": "Europe/Rome"
+      }
+    },
+    {
+      "iso2": "SN",
+      "name": {
+        "zh": "塞内加尔",
+        "en": "Senegal"
+      },
+      "dialCode": "+221",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "SO",
+      "name": {
+        "zh": "索马里",
+        "en": "Somalia"
+      },
+      "dialCode": "+252",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "SR",
+      "name": {
+        "zh": "苏里南",
+        "en": "Suriname"
+      },
+      "dialCode": "+597",
+      "representative": {
+        "zone": "America/Paramaribo"
+      }
+    },
+    {
+      "iso2": "SS",
+      "name": {
+        "zh": "南苏丹",
+        "en": "South Sudan"
+      },
+      "dialCode": "+211",
+      "representative": {
+        "zone": "Africa/Juba"
+      }
+    },
+    {
+      "iso2": "ST",
+      "name": {
+        "zh": "圣多美和普林西比",
+        "en": "São Tomé & Príncipe"
+      },
+      "dialCode": "+239",
+      "representative": {
+        "zone": "Africa/Sao_Tome"
+      }
+    },
+    {
+      "iso2": "SV",
+      "name": {
+        "zh": "萨尔瓦多",
+        "en": "El Salvador"
+      },
+      "dialCode": "+503",
+      "representative": {
+        "zone": "America/El_Salvador"
+      }
+    },
+    {
+      "iso2": "SX",
+      "name": {
+        "zh": "荷属圣马丁",
+        "en": "Sint Maarten"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "SY",
+      "name": {
+        "zh": "叙利亚",
+        "en": "Syria"
+      },
+      "dialCode": "+963",
+      "representative": {
+        "zone": "Asia/Damascus"
+      }
+    },
+    {
+      "iso2": "SZ",
+      "name": {
+        "zh": "斯威士兰",
+        "en": "Eswatini"
+      },
+      "dialCode": "+268",
+      "representative": {
+        "zone": "Africa/Johannesburg"
+      }
+    },
+    {
+      "iso2": "TC",
+      "name": {
+        "zh": "特克斯和凯科斯群岛",
+        "en": "Turks & Caicos Islands"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Grand_Turk"
+      }
+    },
+    {
+      "iso2": "TD",
+      "name": {
+        "zh": "乍得",
+        "en": "Chad"
+      },
+      "dialCode": "+235",
+      "representative": {
+        "zone": "Africa/Ndjamena"
+      }
+    },
+    {
+      "iso2": "TG",
+      "name": {
+        "zh": "多哥",
+        "en": "Togo"
+      },
+      "dialCode": "+228",
+      "representative": {
+        "zone": "Africa/Abidjan"
+      }
+    },
+    {
+      "iso2": "TH",
+      "name": {
+        "zh": "泰国",
+        "en": "Thailand"
+      },
+      "dialCode": "+66",
+      "representative": {
+        "zone": "Asia/Bangkok"
+      }
+    },
+    {
+      "iso2": "TJ",
+      "name": {
+        "zh": "塔吉克斯坦",
+        "en": "Tajikistan"
+      },
+      "dialCode": "+992",
+      "representative": {
+        "zone": "Asia/Dushanbe"
+      }
+    },
+    {
+      "iso2": "TK",
+      "name": {
+        "zh": "托克劳",
+        "en": "Tokelau"
+      },
+      "dialCode": "+690",
+      "representative": {
+        "zone": "Pacific/Fakaofo"
+      }
+    },
+    {
+      "iso2": "TL",
+      "name": {
+        "zh": "东帝汶",
+        "en": "Timor-Leste"
+      },
+      "dialCode": "+670",
+      "representative": {
+        "zone": "Asia/Dili"
+      }
+    },
+    {
+      "iso2": "TM",
+      "name": {
+        "zh": "土库曼斯坦",
+        "en": "Turkmenistan"
+      },
+      "dialCode": "+993",
+      "representative": {
+        "zone": "Asia/Ashgabat"
+      }
+    },
+    {
+      "iso2": "TN",
+      "name": {
+        "zh": "突尼斯",
+        "en": "Tunisia"
+      },
+      "dialCode": "+216",
+      "representative": {
+        "zone": "Africa/Tunis"
+      }
+    },
+    {
+      "iso2": "TO",
+      "name": {
+        "zh": "汤加",
+        "en": "Tonga"
+      },
+      "dialCode": "+676",
+      "representative": {
+        "zone": "Pacific/Tongatapu"
+      }
+    },
+    {
+      "iso2": "TR",
+      "name": {
+        "zh": "土耳其",
+        "en": "Türkiye"
+      },
+      "dialCode": "+90",
+      "representative": {
+        "zone": "Europe/Istanbul"
+      }
+    },
+    {
+      "iso2": "TT",
+      "name": {
+        "zh": "特立尼达和多巴哥",
+        "en": "Trinidad & Tobago"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "TV",
+      "name": {
+        "zh": "图瓦卢",
+        "en": "Tuvalu"
+      },
+      "dialCode": "+688",
+      "representative": {
+        "zone": "Pacific/Tarawa"
+      }
+    },
+    {
+      "iso2": "TW",
+      "name": {
+        "zh": "台湾",
+        "en": "Taiwan"
+      },
+      "dialCode": "+886",
+      "representative": {
+        "zone": "Asia/Taipei"
+      }
+    },
+    {
+      "iso2": "TZ",
+      "name": {
+        "zh": "坦桑尼亚",
+        "en": "Tanzania"
+      },
+      "dialCode": "+255",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "UA",
+      "name": {
+        "zh": "乌克兰",
+        "en": "Ukraine"
+      },
+      "dialCode": "+380",
+      "representative": {
+        "zone": "Europe/Kiev",
+        "city": {
+          "zh": "基辅",
+          "en": "Kyiv"
+        }
+      }
+    },
+    {
+      "iso2": "UG",
+      "name": {
+        "zh": "乌干达",
+        "en": "Uganda"
+      },
+      "dialCode": "+256",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "US",
+      "name": {
+        "zh": "美国",
+        "en": "United States"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/New_York",
+        "city": {
+          "zh": "纽约",
+          "en": "New York"
+        }
+      }
+    },
+    {
+      "iso2": "UY",
+      "name": {
+        "zh": "乌拉圭",
+        "en": "Uruguay"
+      },
+      "dialCode": "+598",
+      "representative": {
+        "zone": "America/Montevideo"
+      }
+    },
+    {
+      "iso2": "UZ",
+      "name": {
+        "zh": "乌兹别克斯坦",
+        "en": "Uzbekistan"
+      },
+      "dialCode": "+998",
+      "representative": {
+        "zone": "Asia/Tashkent"
+      }
+    },
+    {
+      "iso2": "VA",
+      "name": {
+        "zh": "梵蒂冈",
+        "en": "Vatican City"
+      },
+      "dialCode": "+39",
+      "representative": {
+        "zone": "Europe/Rome"
+      }
+    },
+    {
+      "iso2": "VC",
+      "name": {
+        "zh": "圣文森特和格林纳丁斯",
+        "en": "St. Vincent & Grenadines"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "VE",
+      "name": {
+        "zh": "委内瑞拉",
+        "en": "Venezuela"
+      },
+      "dialCode": "+58",
+      "representative": {
+        "zone": "America/Caracas"
+      }
+    },
+    {
+      "iso2": "VG",
+      "name": {
+        "zh": "英属维尔京群岛",
+        "en": "British Virgin Islands"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "VI",
+      "name": {
+        "zh": "美属维尔京群岛",
+        "en": "U.S. Virgin Islands"
+      },
+      "dialCode": "+1",
+      "representative": {
+        "zone": "America/Puerto_Rico"
+      }
+    },
+    {
+      "iso2": "VN",
+      "name": {
+        "zh": "越南",
+        "en": "Vietnam"
+      },
+      "dialCode": "+84",
+      "representative": {
+        "zone": "Asia/Ho_Chi_Minh"
+      }
+    },
+    {
+      "iso2": "VU",
+      "name": {
+        "zh": "瓦努阿图",
+        "en": "Vanuatu"
+      },
+      "dialCode": "+678",
+      "representative": {
+        "zone": "Pacific/Efate"
+      }
+    },
+    {
+      "iso2": "WF",
+      "name": {
+        "zh": "瓦利斯和富图纳",
+        "en": "Wallis & Futuna"
+      },
+      "dialCode": "+681",
+      "representative": {
+        "zone": "Pacific/Tarawa"
+      }
+    },
+    {
+      "iso2": "WS",
+      "name": {
+        "zh": "萨摩亚",
+        "en": "Samoa"
+      },
+      "dialCode": "+685",
+      "representative": {
+        "zone": "Pacific/Apia"
+      }
+    },
+    {
+      "iso2": "YE",
+      "name": {
+        "zh": "也门",
+        "en": "Yemen"
+      },
+      "dialCode": "+967",
+      "representative": {
+        "zone": "Asia/Riyadh"
+      }
+    },
+    {
+      "iso2": "YT",
+      "name": {
+        "zh": "马约特",
+        "en": "Mayotte"
+      },
+      "dialCode": "+262",
+      "representative": {
+        "zone": "Africa/Nairobi"
+      }
+    },
+    {
+      "iso2": "ZA",
+      "name": {
+        "zh": "南非",
+        "en": "South Africa"
+      },
+      "dialCode": "+27",
+      "representative": {
+        "zone": "Africa/Johannesburg"
+      }
+    },
+    {
+      "iso2": "ZM",
+      "name": {
+        "zh": "赞比亚",
+        "en": "Zambia"
+      },
+      "dialCode": "+260",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    },
+    {
+      "iso2": "ZW",
+      "name": {
+        "zh": "津巴布韦",
+        "en": "Zimbabwe"
+      },
+      "dialCode": "+263",
+      "representative": {
+        "zone": "Africa/Maputo"
+      }
+    }
+  ]
+}

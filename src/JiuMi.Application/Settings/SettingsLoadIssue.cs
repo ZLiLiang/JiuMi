@@ -17,4 +17,7 @@ public enum SettingsLoadIssue
 
     /// <summary>Neither directory was writable, so settings live in memory for this session.</summary>
     MemoryOnly = 1 << 2,
+
+    /// <summary>One or more world clock places were invalid and were dropped.</summary>
+    InvalidWorldClockPlaces = 1 << 3,
 }

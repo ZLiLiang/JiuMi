@@ -1,8 +1,10 @@
-﻿using System.Security;
+﻿using System.Globalization;
+using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JiuMi.Application.Settings;
+using JiuMi.Application.WorldClock;
 
 namespace JiuMi.Infrastructure.Settings;
 
@@ -102,7 +104,11 @@ public sealed class JsonSettingsStore : ISettingsStore
 
         try
         {
-            settings = ReadSettings(settingsPath);
+            settings = ReadSettings(settingsPath, out bool invalidWorldClockPlaces);
+            if (invalidWorldClockPlaces)
+            {
+                issues |= SettingsLoadIssue.InvalidWorldClockPlaces;
+            }
         }
         catch (Exception exception) when (IsFileFailure(exception) || exception is JsonException)
         {
@@ -126,7 +132,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         };
     }
 
-    private static AppSettings ReadSettings(string settingsPath)
+    private static AppSettings ReadSettings(string settingsPath, out bool invalidWorldClockPlaces)
     {
         using FileStream stream = new(settingsPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using JsonDocument document = JsonDocument.Parse(stream);
@@ -137,12 +143,15 @@ public sealed class JsonSettingsStore : ISettingsStore
             throw new JsonException("The settings file root is not a JSON object.");
         }
 
+        WorldClockSettings worldClock = ReadWorldClock(root, out invalidWorldClockPlaces);
         return new AppSettings
         {
             SchemaVersion = ReadSchemaVersion(root),
             Language = ReadLanguage(root),
             Theme = ReadTheme(root),
             NavExpanded = ReadNavExpanded(root),
+            OnlineDataEnabled = ReadOnlineDataEnabled(root),
+            WorldClock = worldClock,
         };
     }
 
@@ -199,6 +208,91 @@ public sealed class JsonSettingsStore : ISettingsStore
             element.ValueKind != JsonValueKind.False;
     }
 
+    private static bool ReadOnlineDataEnabled(JsonElement root)
+    {
+        return !root.TryGetProperty("onlineDataEnabled", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.False;
+    }
+
+    private static WorldClockSettings ReadWorldClock(JsonElement root, out bool invalidPlaces)
+    {
+        invalidPlaces = false;
+        if (!root.TryGetProperty("worldClock", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return WorldClockSettings.CreateDefault();
+        }
+
+        WorldClockViewMode view =
+            string.Equals(ReadString(element, "view"), "plan", StringComparison.OrdinalIgnoreCase)
+                ? WorldClockViewMode.Plan
+                : WorldClockViewMode.Board;
+
+        if (!element.TryGetProperty("places", out JsonElement array) ||
+            array.ValueKind != JsonValueKind.Array)
+        {
+            invalidPlaces = true;
+            return WorldClockSettings.CreateDefault();
+        }
+
+        var places = new List<Place>();
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (JsonElement item in array.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object ||
+                !Place.TryCreate(
+                    ReadString(item, "kind"),
+                    ReadString(item, "id"),
+                    ReadString(item, "start"),
+                    ReadString(item, "end"),
+                    ReadDays(item),
+                    out Place? place,
+                    out _) ||
+                place is null)
+            {
+                invalidPlaces = true;
+                continue;
+            }
+
+            if (keys.Add(place.Key))
+            {
+                places.Add(place);
+            }
+        }
+
+        return new WorldClockSettings(view, places);
+    }
+
+    private static List<int>? ReadDays(JsonElement element)
+    {
+        if (!element.TryGetProperty("days", out JsonElement array) ||
+            array.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var days = new List<int>();
+        foreach (JsonElement value in array.EnumerateArray())
+        {
+            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int day))
+            {
+                return null;
+            }
+
+            days.Add(day);
+        }
+
+        return days;
+    }
+
+    private static string? ReadString(JsonElement element, string property)
+    {
+        return element.TryGetProperty(property, out JsonElement value) &&
+            value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+    }
+
     private static void WriteTempFile(string tempPath, string json)
     {
         using var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -223,6 +317,22 @@ public sealed class JsonSettingsStore : ISettingsStore
             Language = settings.Language,
             Theme = ToStorageValue(settings.Theme),
             NavExpanded = settings.NavExpanded,
+            OnlineDataEnabled = settings.OnlineDataEnabled,
+            WorldClock = new WorldClockDocument
+            {
+                View = settings.WorldClock.View == WorldClockViewMode.Plan ? "plan" : "board",
+                Places =
+                [
+                    .. settings.WorldClock.Places.Select(place => new PlaceDocument
+                    {
+                        Kind = place.Kind == PlaceKind.Country ? "country" : "city",
+                        Id = place.Id,
+                        Start = place.Hours.Start.ToString("HH:mm", CultureInfo.InvariantCulture),
+                        End = place.Hours.End.ToString("HH:mm", CultureInfo.InvariantCulture),
+                        Days = [.. place.Hours.Days],
+                    }),
+                ],
+            },
         };
     }
 
@@ -294,6 +404,66 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public bool NavExpanded
+        {
+            get;
+            init;
+        }
+
+        public bool OnlineDataEnabled
+        {
+            get;
+            init;
+        }
+
+        public WorldClockDocument? WorldClock
+        {
+            get;
+            init;
+        }
+    }
+
+    private sealed class WorldClockDocument
+    {
+        public string? View
+        {
+            get;
+            init;
+        }
+
+        public List<PlaceDocument>? Places
+        {
+            get;
+            init;
+        }
+    }
+
+    private sealed class PlaceDocument
+    {
+        public string? Kind
+        {
+            get;
+            init;
+        }
+
+        public string? Id
+        {
+            get;
+            init;
+        }
+
+        public string? Start
+        {
+            get;
+            init;
+        }
+
+        public string? End
+        {
+            get;
+            init;
+        }
+
+        public List<int>? Days
         {
             get;
             init;
