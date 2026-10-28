@@ -133,7 +133,10 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
-3. **数据与联网**（`Settings.Data.Section`）：一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
+3. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
+   - 第一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
+   - 第二行「世界时钟目录」（`Settings.Data.Catalog.Title` / `Settings.Data.Catalog.Hint`），说明下方依次是「上次检查」与目录版本两行（11.5px / `TextFillColorSecondaryBrush`，行距 2）；右侧是 `Button`「立即检查」（`Settings.Data.Catalog.Check`，高 32、圆角 4、13px，最小宽 96）。检查进行中按钮禁用，检查行显示「正在检查…」（`Settings.Data.Catalog.Checking`）；从未检查显示「上次检查：无」（`Settings.Data.Catalog.NeverChecked`），否则「上次检查：yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.LastChecked`，本地时间）；版本行在已下载时显示「目录更新于 yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.Updated`），内置时显示「目录为内置版本」（`Settings.Data.Catalog.Bundled`）。
+   - 「立即检查」忽略每日一次的限制，但仍受「允许在线获取数据」开关约束：开关关闭时按钮禁用。检查失败不弹提示、不显示错误，只记 Warning 日志；结果由上述两行状态文字体现。
 4. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
 
 - 修改**即时生效并自动保存**：没有「保存」按钮、没有确认对话框、没有「已保存」提示。

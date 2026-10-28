@@ -1,16 +1,19 @@
 # Generates the bundled world clock catalog from CLDR, IANA tzdb and libphonenumber.
 #
-# Development only: the script is not part of the build, is not run by CI, and the
-# application never reaches the network for catalog data. The generated JSON files
-# are committed under src/JiuMi.Application/Assets/world-clock.
+# Development only: the script is not part of the build and is not run by CI. The generated
+# JSON files and manifest.json are committed under src/JiuMi.Application/Assets/world-clock;
+# the application ships them as its fallback and checks the published release for a newer
+# version. See tools/publish-world-clock-catalog.ps1.
 #
 #   pwsh ./tools/generate-world-clock-data.ps1
 #   pwsh ./tools/generate-world-clock-data.ps1 -Refresh   # ignore the cached downloads
+#   pwsh ./tools/generate-world-clock-data.ps1 -ManifestVersion 2026102802
 
 [CmdletBinding()]
 param(
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\src\JiuMi.Application\Assets\world-clock'),
-    [switch]$Refresh
+    [switch]$Refresh,
+    [string]$ManifestVersion = ''
 )
 
 Set-StrictMode -Version Latest
@@ -449,17 +452,59 @@ function ConvertTo-ReadableJson {
 
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
+$countriesPath = Join-Path $OutputDirectory 'countries.json'
+$citiesPath = Join-Path $OutputDirectory 'cities.json'
+$officeHoursPath = Join-Path $OutputDirectory 'office-hours.json'
+
 [System.IO.File]::WriteAllText(
-    (Join-Path $OutputDirectory 'countries.json'),
+    $countriesPath,
     (ConvertTo-ReadableJson -Value ([ordered]@{ source = $source; countries = $countries })),
     $utf8)
 [System.IO.File]::WriteAllText(
-    (Join-Path $OutputDirectory 'cities.json'),
+    $citiesPath,
     (ConvertTo-ReadableJson -Value ([ordered]@{ source = $source; cities = $cities })),
     $utf8)
 [System.IO.File]::WriteAllText(
-    (Join-Path $OutputDirectory 'office-hours.json'),
+    $officeHoursPath,
     (ConvertTo-ReadableJson -Value ([ordered]@{ source = $source; global = $officeHours.global; overrides = $officeHours.overrides })),
     $utf8)
 
+# Catalog manifest -----------------------------------------------------------------
+# The application checks this manifest once a day; a higher version replaces the installed
+# catalog. The default is the UTC date, so publishing twice in one day needs a higher
+# explicit value such as 2026102802.
+
+if ([string]::IsNullOrWhiteSpace($ManifestVersion)) {
+    $version = [int][DateTimeOffset]::UtcNow.ToString('yyyyMMdd')
+}
+else {
+    $parsed = 0
+    if (-not [int]::TryParse($ManifestVersion, [ref]$parsed) -or $parsed -lt 1) {
+        throw "ManifestVersion must be a positive integer."
+    }
+
+    $version = $parsed
+}
+
+$manifestFiles = foreach ($path in @($countriesPath, $citiesPath, $officeHoursPath)) {
+    [ordered]@{
+        name = [System.IO.Path]::GetFileName($path)
+        sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+        size = (Get-Item -LiteralPath $path).Length
+    }
+}
+
+$manifest = [ordered]@{
+    schemaVersion = 1
+    version = $version
+    updatedAt = [DateTimeOffset]::UtcNow.ToString('O')
+    files = @($manifestFiles)
+}
+
+[System.IO.File]::WriteAllText(
+    (Join-Path $OutputDirectory 'manifest.json'),
+    (ConvertTo-ReadableJson -Value $manifest),
+    $utf8)
+
 Write-Host "Wrote $($countries.Count) countries, $($cities.Count) cities and $($officeHours.overrides.Count) office-hours overrides to $OutputDirectory."
+Write-Host "Wrote catalog manifest version $version."

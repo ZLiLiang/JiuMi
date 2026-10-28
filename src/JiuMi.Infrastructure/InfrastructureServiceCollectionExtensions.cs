@@ -47,8 +47,21 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
         services.AddSingleton<ISingleInstanceCoordinator, SingleInstanceCoordinator>();
-        services.AddSingleton<IWorldClockCatalogProvider>(provider => new BundledWorldClockCatalogProvider(
+        services.AddSingleton(provider => new WorldClockCatalogCache(
+            provider.GetRequiredService<ISettingsStore>().Location.DirectoryPath,
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton(provider => new BundledWorldClockCatalogProvider(
             Path.Combine(AppContext.BaseDirectory, "Assets", "world-clock"),
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton<IWorldClockCatalogProvider>(provider => new WorldClockCatalogProvider(
+            provider.GetRequiredService<BundledWorldClockCatalogProvider>(),
+            provider.GetRequiredService<WorldClockCatalogCache>(),
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton<IWorldClockCatalogUpdater>(provider => new WorldClockCatalogUpdater(
+            provider.GetRequiredService<ISettingsStore>(),
+            provider.GetRequiredService<WorldClockCatalogCache>(),
+            provider.GetRequiredService<IApplicationInfo>(),
+            provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<Serilog.ILogger>()));
         services.AddSingleton<IHolidayProvider, NagerDateHolidayProvider>();
 

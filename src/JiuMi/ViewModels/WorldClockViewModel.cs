@@ -374,6 +374,10 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         _isActive = true;
         _activationCancellation?.Dispose();
         _activationCancellation = new CancellationTokenSource();
+
+        // Let the provider pick up a catalog downloaded since the last visit; it returns the same
+        // instance when the version did not change.
+        _catalog = null;
         _timer.Start();
         Refresh();
     }

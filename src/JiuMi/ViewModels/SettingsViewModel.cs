@@ -1,5 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Globalization;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using JiuMi.Application;
 using JiuMi.Application.Diagnostics;
@@ -7,6 +9,7 @@ using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Logging;
 using JiuMi.Application.Settings;
+using JiuMi.Application.WorldClock;
 using JiuMi.Diagnostics;
 using JiuMi.Threading;
 
@@ -18,6 +21,7 @@ namespace JiuMi.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly IApplicationInfo _applicationInfo;
+    private readonly IWorldClockCatalogUpdater _catalogUpdater;
     private readonly IDiagnosticsExporter _diagnosticsExporter;
     private readonly IErrorReporter _errorReporter;
     private readonly DiagnosticsExportController _exportController;
@@ -46,6 +50,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="diagnosticsExporter">Supplies the default bundle name and directory.</param>
     /// <param name="exportController">Runs the export and reports its failures.</param>
     /// <param name="loggingStatus">Reports whether file logging is working.</param>
+    /// <param name="catalogUpdater">Checks the published world clock catalog and reports its state.</param>
     /// <param name="logger">Receives settings saves from this page.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -59,6 +64,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IDiagnosticsExporter diagnosticsExporter,
         DiagnosticsExportController exportController,
         ILoggingStatus loggingStatus,
+        IWorldClockCatalogUpdater catalogUpdater,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -72,9 +78,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(diagnosticsExporter);
         ArgumentNullException.ThrowIfNull(exportController);
         ArgumentNullException.ThrowIfNull(loggingStatus);
+        ArgumentNullException.ThrowIfNull(catalogUpdater);
         ArgumentNullException.ThrowIfNull(logger);
 
         _applicationInfo = applicationInfo;
+        _catalogUpdater = catalogUpdater;
         _diagnosticsExporter = diagnosticsExporter;
         _errorReporter = errorReporter;
         _exportController = exportController;
@@ -95,10 +103,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OpenConfigFolderCommand = new RelayCommand(OpenConfigFolder, () => CanOpenConfigFolder);
         OpenRepositoryCommand = new RelayCommand(OpenRepository);
         SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
+        CheckCatalogCommand = new AsyncRelayCommand(CheckCatalogAsync, () => CanCheckCatalog);
         _localization.PropertyChanged += OnLocalizationChanged;
         _themeService.PropertyChanged += OnThemeServiceChanged;
         _loggingStatus.PropertyChanged += OnLoggingStatusChanged;
         _exportController.ExportingChanged += OnExportingChanged;
+        _catalogUpdater.StatusChanged += OnCatalogStatusChanged;
     }
 
     /// <summary>
@@ -242,7 +252,63 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                 OnlineDataEnabled = value,
             });
             OnPropertyChanged();
+            NotifyCatalogStateChanged();
         }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a catalog check is running.
+    /// </summary>
+    public bool IsCheckingCatalog => _catalogUpdater.Status.IsChecking;
+
+    /// <summary>
+    /// Gets a value indicating whether the catalog can be checked now.
+    /// </summary>
+    public bool CanCheckCatalog => IsOnlineDataEnabled && !IsCheckingCatalog;
+
+    /// <summary>
+    /// Gets the line that says when the catalog was checked last.
+    /// </summary>
+    public string CatalogStatusText
+    {
+        get
+        {
+            WorldClockCatalogUpdateStatus status = _catalogUpdater.Status;
+            if (status.IsChecking)
+            {
+                return _localization["Settings.Data.Catalog.Checking"];
+            }
+
+            return status.LastCheckedAt is { } lastCheckedAt
+                ? _localization.Format(
+                    "Settings.Data.Catalog.LastChecked",
+                    FormatInstant(lastCheckedAt))
+                : _localization["Settings.Data.Catalog.NeverChecked"];
+        }
+    }
+
+    /// <summary>
+    /// Gets the line that says which catalog is in use and when it changed.
+    /// </summary>
+    public string CatalogVersionText
+    {
+        get
+        {
+            WorldClockCatalogUpdateStatus status = _catalogUpdater.Status;
+            return status.HasInstalledUpdate && status.InstalledUpdatedAt is { } updatedAt
+                ? _localization.Format(
+                    "Settings.Data.Catalog.Updated",
+                    FormatInstant(updatedAt))
+                : _localization["Settings.Data.Catalog.Bundled"];
+        }
+    }
+
+    /// <summary>
+    /// Gets the command that checks the published catalog now, ignoring the daily interval.
+    /// </summary>
+    public IAsyncRelayCommand CheckCatalogCommand
+    {
+        get;
     }
 
     /// <summary>
@@ -276,6 +342,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _themeService.PropertyChanged -= OnThemeServiceChanged;
         _loggingStatus.PropertyChanged -= OnLoggingStatusChanged;
         _exportController.ExportingChanged -= OnExportingChanged;
+        _catalogUpdater.StatusChanged -= OnCatalogStatusChanged;
     }
 
     private void SelectTheme(AppTheme theme)
@@ -379,6 +446,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
 
         OnPropertyChanged(nameof(VersionText));
+        OnPropertyChanged(nameof(CatalogStatusText));
+        OnPropertyChanged(nameof(CatalogVersionText));
 
         LanguageOption? current = FindLanguage(_localization.CurrentLanguage);
         if (current is not null && !ReferenceEquals(current, _selectedLanguage))
@@ -417,4 +486,35 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsExporting));
         OnPropertyChanged(nameof(CanExportDiagnostics));
     }
+
+    // The updater runs its check on the thread pool; every bound property has to be re-read here.
+    private void OnCatalogStatusChanged(object? sender, EventArgs e) =>
+        _uiThreadDispatcher.Post(NotifyCatalogStateChanged);
+
+    private void NotifyCatalogStateChanged()
+    {
+        OnPropertyChanged(nameof(IsCheckingCatalog));
+        OnPropertyChanged(nameof(CanCheckCatalog));
+        OnPropertyChanged(nameof(CatalogStatusText));
+        OnPropertyChanged(nameof(CatalogVersionText));
+        CheckCatalogCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task CheckCatalogAsync()
+    {
+        // The updater keeps its own state and logs its own failures; the command only starts it.
+        try
+        {
+            await _catalogUpdater.CheckAsync(force: true);
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "World clock catalog check failed");
+        }
+    }
+
+    private static string FormatInstant(DateTimeOffset value) =>
+        TimeZoneInfo
+            .ConvertTime(value, TimeZoneInfo.Local)
+            .ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 }
