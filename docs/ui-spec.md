@@ -195,9 +195,9 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 世界工作时间 · 管理地点
 
-- 独立对话框窗口：初始 960 × 640，可缩放，最小 760 × 520，标题取 `Tool.WorldClock.Manage.Title`，`CenterOwner`，不显示在任务栏。
-- 窗口采用与外壳一致的岛屿式底：`JiuMiWindowBackdropBrush` 渐变底 + `JiuMiWindowHighlightBrush` 高光，外层内边距 14；页头与页脚直接落在底上，中间是可滚动的两块岛。
-- 页头（外边距 4 2 4 12）：标题 20px / SemiBold，副标题 12px / 次文字色；右上角 22 × 22 关闭按钮。
+- 独立对话框窗口：`FAAppWindow`，初始 960 × 640，可缩放，最小 760 × 520，标题取 `Tool.WorldClock.Manage.Title`，`CenterOwner`，不显示在任务栏。
+- 标题栏高 40，背景透明、内容延伸进标题栏：左侧应用标记 18 × 18（缺素材时回退强调色渐变块）+ 应用名 12px / 次文字色；右侧是 `FAAppWindow` 绘制的窗口按钮。窗口使用与外壳一致的 `JiuMiWindowBackdropBrush` 渐变底 + `JiuMiWindowHighlightBrush` 高光，标题栏与内容之间没有色带。
+- 页头（外边距 4 2 4 12）：标题 20px / SemiBold，副标题 12px / 次文字色；不另放关闭按钮，关闭走标题栏按钮。
 - 主体两岛：左 `*`、右 360，岛间 14；两岛圆角 12，`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + `JiuMiIslandShadow`，与窗口岛同款；岛内边距 20 16 / 18 16。
 - 左侧：
   - 「国家 / 城市」分段（默认城市），样式同页头分段；`国家` 搜索国家中英名 / ISO / 区号 / 代表城市，`城市` 搜索城市中英名 / IANA / 所属国家中英名 / 区号。
@@ -225,7 +225,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 七张 1200 × 760 截图取自定稿原型 [`world-clock.html`](./prototypes/world-clock.html) 的 `?capture=1` 出图，是本节与 #53 的视觉基准；原型只作复现与对照，不参与构建。
 
-> 2026-10-28 文案收紧：摘要去掉「本机时间」与「没有全员重叠」，页脚两句移入问号 ToolTip；七张图仍保留原版式，文字以上文为准。管理地点图仍是单块内容版式，岛式布局以本节为准。
+> 2026-10-28 文案收紧：摘要去掉「本机时间」与「没有全员重叠」，页脚两句移入问号 ToolTip；七张图仍保留原版式，文字以上文为准。管理地点图仍是单块内容版式与原生标题栏，岛式布局与 `FAAppWindow` 标题栏以本节为准。
 
 ![看板：每地点一行，双语名 + 国家区号 + 当地时间与状态](./images/world-clock-board.png)
 

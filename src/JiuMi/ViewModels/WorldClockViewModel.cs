@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
+using JiuMi.Application;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
@@ -65,6 +66,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
     /// <param name="holidayProvider">Fetches public holidays for the selected countries.</param>
     /// <param name="settingsStore">Holds the selected places, the view and the network switch.</param>
     /// <param name="localization">Supplies the interface text.</param>
+    /// <param name="applicationInfo">Supplies the product name shown by the dialog title bar.</param>
     /// <param name="errorReporter">Reports settings save failures.</param>
     /// <param name="recordFactory">Creates the records reported by this page.</param>
     /// <param name="logger">Receives refresh and holiday diagnostics.</param>
@@ -74,6 +76,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         IHolidayProvider holidayProvider,
         ISettingsStore settingsStore,
         ILocalizationService localization,
+        IApplicationInfo applicationInfo,
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
         Serilog.ILogger logger,
@@ -83,6 +86,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(holidayProvider);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(localization);
+        ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(logger);
@@ -100,7 +104,7 @@ public sealed class WorldClockViewModel : ViewModelBase, IDisposable
         WorldClockSettings settings = settingsStore.Current.WorldClock;
         _places = settings.Places;
         _viewMode = settings.View;
-        Manage = new WorldClockManageViewModel(this, localization);
+        Manage = new WorldClockManageViewModel(this, localization, applicationInfo.Name);
         SetViewCommand = new RelayCommand<WorldClockViewMode>(SetView);
         BackToNowCommand = new RelayCommand(BackToNow);
         RetryHolidaysCommand = new RelayCommand(RetryHolidays);

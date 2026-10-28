@@ -1,20 +1,21 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:fac="using:FluentAvalonia.UI.Controls"
-        xmlns:loc="using:JiuMi.Localization"
-        xmlns:vm="using:JiuMi.ViewModels"
-        xmlns:wc="using:JiuMi.Application.WorldClock"
-        x:Class="JiuMi.Views.WorldClockManageWindow"
-        x:DataType="vm:WorldClockManageViewModel"
-        Title="{Binding WindowTitle}"
-        Width="960"
-        Height="640"
-        MinWidth="760"
-        MinHeight="520"
-        CanResize="True"
-        ShowInTaskbar="False"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource JiuMiWindowBackdropBrush}">
+<fa:FAAppWindow xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:fa="using:FluentAvalonia.UI.Windowing"
+               xmlns:fac="using:FluentAvalonia.UI.Controls"
+               xmlns:loc="using:JiuMi.Localization"
+               xmlns:vm="using:JiuMi.ViewModels"
+               xmlns:wc="using:JiuMi.Application.WorldClock"
+               x:Class="JiuMi.Views.WorldClockManageWindow"
+               x:DataType="vm:WorldClockManageViewModel"
+               Title="{Binding WindowTitle}"
+               Width="960"
+               Height="640"
+               MinWidth="760"
+               MinHeight="520"
+               CanResize="True"
+               ShowInTaskbar="False"
+               WindowStartupLocation="CenterOwner"
+               Background="{DynamicResource JiuMiWindowBackdropBrush}">
   <Window.Styles>
     <Style Selector="Button.segment">
       <Setter Property="Height" Value="28" />
@@ -96,29 +97,47 @@
     </Style>
   </Window.Styles>
 
-  <Grid>
-    <Border Background="{DynamicResource JiuMiWindowHighlightBrush}" IsHitTestVisible="False" />
+  <Grid RowDefinitions="40,*">
+    <Border Grid.RowSpan="2"
+            Background="{DynamicResource JiuMiWindowHighlightBrush}"
+            IsHitTestVisible="False" />
 
-    <Grid Margin="14" RowDefinitions="Auto,*,Auto">
-      <Grid Grid.Row="0" Margin="4,2,4,12" ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock FontSize="20"
-                     FontWeight="SemiBold"
-                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                     Text="{loc:Localize Tool.WorldClock.Manage.Title}" />
-          <TextBlock Margin="0,5,0,0"
-                     FontSize="12"
-                     TextWrapping="Wrap"
-                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                     Text="{loc:Localize Tool.WorldClock.Manage.Subtitle}" />
-        </StackPanel>
-        <Button Grid.Column="1"
-                Classes="icon"
-                Click="OnCloseClick"
-                AutomationProperties.Name="{loc:Localize Common.Close}">
-          <fac:FASymbolIcon Symbol="Dismiss" FontSize="14" />
-        </Button>
-      </Grid>
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
+      <Border x:Name="TitleBarMark"
+              Width="18"
+              Height="18"
+              CornerRadius="4"
+              VerticalAlignment="Center">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="{DynamicResource SystemAccentColorLight1}" />
+            <GradientStop Offset="1" Color="{DynamicResource SystemAccentColorDark1}" />
+          </LinearGradientBrush>
+        </Border.Background>
+        <Image x:Name="TitleBarIcon"
+               Stretch="UniformToFill"
+               RenderOptions.BitmapInterpolationMode="HighQuality" />
+      </Border>
+      <TextBlock Grid.Column="1"
+                 Margin="8,0,0,0"
+                 VerticalAlignment="Center"
+                 FontSize="12"
+                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                 Text="{Binding AppName}" />
+    </Grid>
+
+    <Grid Grid.Row="1" Margin="14" RowDefinitions="Auto,*,Auto">
+      <StackPanel Grid.Row="0" Margin="4,2,4,12">
+        <TextBlock FontSize="20"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   Text="{loc:Localize Tool.WorldClock.Manage.Title}" />
+        <TextBlock Margin="0,5,0,0"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="{loc:Localize Tool.WorldClock.Manage.Subtitle}" />
+      </StackPanel>
 
       <Grid Grid.Row="1" ColumnDefinitions="*,14,360">
         <Border Grid.Column="0" Classes="island">
@@ -319,7 +338,8 @@
       </Grid>
     </Grid>
 
-    <Grid IsVisible="{Binding IsEditing}"
+    <Grid Grid.RowSpan="2"
+          IsVisible="{Binding IsEditing}"
           Background="{DynamicResource JiuMiScrimBrush}">
         <Border Width="420"
                 Padding="22"
@@ -400,4 +420,4 @@
         </Border>
       </Grid>
   </Grid>
-</Window>
+</fa:FAAppWindow>

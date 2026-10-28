@@ -1,6 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using FluentAvalonia.UI.Windowing;
 using JiuMi.ViewModels;
 
 namespace JiuMi.Views;
@@ -8,7 +9,7 @@ namespace JiuMi.Views;
 /// <summary>
 /// The manage-places dialog: search, select, reorder and edit working hours.
 /// </summary>
-public partial class WorldClockManageWindow : Window
+public partial class WorldClockManageWindow : FAAppWindow
 {
     private static readonly DataFormat<WorldClockSelectedPlaceViewModel> _placeFormat =
         DataFormat.CreateInProcessFormat<WorldClockSelectedPlaceViewModel>("JiuMi.Place");
@@ -19,7 +20,15 @@ public partial class WorldClockManageWindow : Window
     public WorldClockManageWindow()
     {
         InitializeComponent();
-        Icon = AppIcon.CreateWindowIcon();
+        TitleBar.Height = 40;
+        TitleBar.ExtendsContentIntoTitleBar = true;
+
+        if (AppIcon.Mark is { } mark)
+        {
+            Icon = mark;
+            TitleBarIcon.Source = mark;
+            TitleBarMark.Background = null;
+        }
     }
 
     /// <inheritdoc />

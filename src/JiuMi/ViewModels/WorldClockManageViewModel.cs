@@ -18,6 +18,7 @@ public sealed class WorldClockManageViewModel : ObservableObject, IDisposable
 
     private readonly WorldClockViewModel _page;
     private readonly ILocalizationService _localization;
+    private readonly string _appName;
     private readonly IReadOnlyList<string> _timeOptions;
     private readonly IRelayCommand<WorldClockCatalogItemViewModel> _toggleCommand;
     private readonly IRelayCommand<WorldClockSelectedPlaceViewModel> _removeCommand;
@@ -41,12 +42,15 @@ public sealed class WorldClockManageViewModel : ObservableObject, IDisposable
     /// </summary>
     /// <param name="page">The page whose places the dialog edits.</param>
     /// <param name="localization">Supplies the interface text.</param>
-    public WorldClockManageViewModel(WorldClockViewModel page, ILocalizationService localization)
+    /// <param name="appName">The product name shown by the dialog title bar.</param>
+    public WorldClockManageViewModel(WorldClockViewModel page, ILocalizationService localization, string appName)
     {
         ArgumentNullException.ThrowIfNull(page);
         ArgumentNullException.ThrowIfNull(localization);
+        ArgumentException.ThrowIfNullOrWhiteSpace(appName);
         _page = page;
         _localization = localization;
+        _appName = appName;
         _timeOptions = BuildTimeOptions();
         _toggleCommand = new RelayCommand<WorldClockCatalogItemViewModel>(TogglePlace);
         _removeCommand = new RelayCommand<WorldClockSelectedPlaceViewModel>(RemovePlace);
@@ -67,6 +71,11 @@ public sealed class WorldClockManageViewModel : ObservableObject, IDisposable
     /// Gets the window title in the current language.
     /// </summary>
     public string WindowTitle => _localization["Tool.WorldClock.Manage.Title"];
+
+    /// <summary>
+    /// Gets the product name shown by the title bar.
+    /// </summary>
+    public string AppName => _appName;
 
     /// <summary>
     /// Gets the segmented control command.
