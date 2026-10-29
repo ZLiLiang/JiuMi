@@ -20,4 +20,13 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
   </ItemGroup>
 
+  <!-- SkiaSharp and HarfBuzzSharp ship native .pdb files that the DebugType
+       and DebugSymbols publish properties do not filter. -->
+  <Target Name="RemovePdbFromPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                             Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
 </Project>
