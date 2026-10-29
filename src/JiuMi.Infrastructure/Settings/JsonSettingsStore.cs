@@ -3,6 +3,7 @@ using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Settings;
 using JiuMi.Application.WorldClock;
 
@@ -152,6 +153,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             NavExpanded = ReadNavExpanded(root),
             OnlineDataEnabled = ReadOnlineDataEnabled(root),
             WorldClock = worldClock,
+            ImageConvert = ReadImageConvert(root),
         };
     }
 
@@ -212,6 +214,33 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         return !root.TryGetProperty("onlineDataEnabled", out JsonElement element) ||
             element.ValueKind != JsonValueKind.False;
+    }
+
+    private static ImageConvertSettings ReadImageConvert(JsonElement root)
+    {
+        if (!root.TryGetProperty("imageConvert", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return ImageConvertSettings.CreateDefault();
+        }
+
+        string? outputDirectory = ReadString(element, "outputDirectory")?.Trim();
+        if (string.IsNullOrEmpty(outputDirectory))
+        {
+            outputDirectory = null;
+        }
+
+        ImageRgbColor background = ImageRgbColor.White;
+        if (ImageRgbColor.TryParse(ReadString(element, "jpegBackgroundColor"), out ImageRgbColor parsed))
+        {
+            background = parsed;
+        }
+
+        return new ImageConvertSettings
+        {
+            OutputDirectory = outputDirectory,
+            JpegBackgroundColor = background,
+        };
     }
 
     private static WorldClockSettings ReadWorldClock(JsonElement root, out bool invalidPlaces)
@@ -318,6 +347,11 @@ public sealed class JsonSettingsStore : ISettingsStore
             Theme = ToStorageValue(settings.Theme),
             NavExpanded = settings.NavExpanded,
             OnlineDataEnabled = settings.OnlineDataEnabled,
+            ImageConvert = new ImageConvertDocument
+            {
+                OutputDirectory = settings.ImageConvert.OutputDirectory,
+                JpegBackgroundColor = settings.ImageConvert.JpegBackgroundColor.ToHex(),
+            },
             WorldClock = new WorldClockDocument
             {
                 View = settings.WorldClock.View == WorldClockViewMode.Plan ? "plan" : "board",
@@ -415,7 +449,28 @@ public sealed class JsonSettingsStore : ISettingsStore
             init;
         }
 
+        public ImageConvertDocument? ImageConvert
+        {
+            get;
+            init;
+        }
+
         public WorldClockDocument? WorldClock
+        {
+            get;
+            init;
+        }
+    }
+
+    private sealed class ImageConvertDocument
+    {
+        public string? OutputDirectory
+        {
+            get;
+            init;
+        }
+
+        public string? JpegBackgroundColor
         {
             get;
             init;

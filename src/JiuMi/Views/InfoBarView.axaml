@@ -19,6 +19,9 @@
     <Style Selector="Border.bar.warning">
       <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
     </Style>
+    <Style Selector="Border.bar.success">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
+    </Style>
     <Style Selector="Button.action">
       <Setter Property="Height" Value="32" />
       <Setter Property="Padding" Value="12,0" />
@@ -46,6 +49,7 @@
   <Border Classes="bar"
           Classes.error="{Binding IsError}"
           Classes.warning="{Binding IsWarning}"
+          Classes.success="{Binding IsSuccess}"
           IsVisible="{Binding IsOpen}"
           AutomationProperties.LiveSetting="Polite">
     <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
@@ -77,6 +81,19 @@
                 StrokeThickness="1.5"
                 StrokeLineCap="Round" />
         </Canvas>
+        <Canvas Width="16" Height="16" IsVisible="{Binding IsSuccess}">
+          <Ellipse Canvas.Left="1"
+                   Canvas.Top="1"
+                   Width="14"
+                   Height="14"
+                   Stroke="{DynamicResource SystemFillColorSuccessBrush}"
+                   StrokeThickness="1.5" />
+          <Path Data="M4.6,8.2 L7.1,10.7 L11.4,5.6"
+                Stroke="{DynamicResource SystemFillColorSuccessBrush}"
+                StrokeThickness="1.5"
+                StrokeLineCap="Round"
+                StrokeJoin="Round" />
+        </Canvas>
       </Grid>
 
       <WrapPanel Grid.Row="0"
@@ -90,6 +107,7 @@
                    AutomationProperties.Name="{Binding AccessibleName}"
                    Text="{Binding Message}" />
         <HyperlinkButton Classes="copy"
+                         IsVisible="{Binding CanCopyDetails}"
                          Content="{Binding CopyText}"
                          Click="OnCopyDetailsClick" />
       </WrapPanel>

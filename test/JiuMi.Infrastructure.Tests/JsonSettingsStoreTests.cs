@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Settings;
 using JiuMi.Infrastructure.Settings;
 
@@ -164,6 +165,58 @@ public sealed class JsonSettingsStoreTests : IDisposable
         string json = File.ReadAllText(_settingsPath);
         Assert.DoesNotContain("custom", json);
         Assert.Contains("\"theme\": \"light\"", json);
+    }
+
+    [Fact]
+    public void Save_GivenImageConvertSettings_RoundTrips()
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+
+        SettingsSaveResult result = store.Save(new AppSettings
+        {
+            ImageConvert = new ImageConvertSettings
+            {
+                OutputDirectory = @"D:\exports",
+                JpegBackgroundColor = new ImageRgbColor(0x12, 0xA0, 0x40),
+            },
+        });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        JsonElement imageConvert = document.RootElement.GetProperty("imageConvert");
+        Assert.Equal(@"D:\exports", imageConvert.GetProperty("outputDirectory").GetString());
+        Assert.Equal("#12A040", imageConvert.GetProperty("jpegBackgroundColor").GetString());
+
+        ImageConvertSettings reloaded = CreateStore().Load().Settings.ImageConvert;
+        Assert.Equal(@"D:\exports", reloaded.OutputDirectory);
+        Assert.Equal(new ImageRgbColor(0x12, 0xA0, 0x40), reloaded.JpegBackgroundColor);
+    }
+
+    [Fact]
+    public void Load_GivenMissingImageConvert_UsesSourceDirectoryAndWhite()
+    {
+        WriteSettings("""{ "language": "en-US" }""");
+
+        ImageConvertSettings settings = CreateStore().Load().Settings.ImageConvert;
+
+        Assert.Null(settings.OutputDirectory);
+        Assert.Equal(ImageRgbColor.White, settings.JpegBackgroundColor);
+    }
+
+    [Theory]
+    [InlineData("""{ "imageConvert": { "jpegBackgroundColor": "red" } }""")]
+    [InlineData("""{ "imageConvert": { "jpegBackgroundColor": 5 } }""")]
+    [InlineData("""{ "imageConvert": { "outputDirectory": "   ", "jpegBackgroundColor": "" } }""")]
+    [InlineData("""{ "imageConvert": "not an object" }""")]
+    public void Load_GivenInvalidImageConvert_FallsBackToDefaults(string json)
+    {
+        WriteSettings(json);
+
+        ImageConvertSettings settings = CreateStore().Load().Settings.ImageConvert;
+
+        Assert.Null(settings.OutputDirectory);
+        Assert.Equal(ImageRgbColor.White, settings.JpegBackgroundColor);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
-﻿using JiuMi.Application.WorldClock;
+﻿using JiuMi.Application.ImageConversion;
+using JiuMi.Application.WorldClock;
 
 namespace JiuMi.Application.Settings;
 
@@ -60,6 +61,15 @@ public sealed record AppSettings
         get;
         init;
     } = WorldClockSettings.CreateDefault();
+
+    /// <summary>
+    /// Gets the persisted image conversion parameters.
+    /// </summary>
+    public ImageConvertSettings ImageConvert
+    {
+        get;
+        init;
+    } = ImageConvertSettings.CreateDefault();
 
     /// <summary>
     /// Creates the settings used when the file is missing or unusable.

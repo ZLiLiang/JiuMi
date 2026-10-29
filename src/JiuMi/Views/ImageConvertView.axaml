@@ -1,0 +1,498 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fac="using:FluentAvalonia.UI.Controls"
+             xmlns:loc="using:JiuMi.Localization"
+             xmlns:vm="using:JiuMi.ViewModels"
+             x:Class="JiuMi.Views.ImageConvertView"
+             x:DataType="vm:ImageConvertViewModel"
+             DragDrop.AllowDrop="True"
+             DragDrop.DragEnter="OnDragEnter"
+             DragDrop.DragOver="OnDragOver"
+             DragDrop.DragLeave="OnDragLeave"
+             DragDrop.Drop="OnDrop">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.param-label">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Border.row-status">
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="7,0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Border.row-status TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.row-status.done">
+      <Setter Property="Background" Value="{DynamicResource JiuMiCellWorkingBrush}" />
+    </Style>
+    <Style Selector="Border.row-status.done TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    </Style>
+    <Style Selector="Border.row-status.failed">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.row-status.failed TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+    <Style Selector="Button.icon-small">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.icon-small:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.preset">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+    </Style>
+    <Style Selector="Button.advanced-toggle">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.help">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+    <Style Selector="Button.help:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Border Padding="44,32,44,36">
+      <Grid RowDefinitions="Auto,Auto">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <StackPanel>
+            <TextBlock FontSize="28"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Tool.ImageConvert.Name}" />
+            <TextBlock Margin="0,6,0,0"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{loc:Localize Tool.ImageConvert.Subtitle}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1"
+                      Orientation="Horizontal"
+                      Spacing="8"
+                      VerticalAlignment="Top">
+            <Button Height="32"
+                    Padding="12,0"
+                    Content="{loc:Localize Tool.ImageConvert.AddFiles}"
+                    IsEnabled="{Binding CanAddFiles}"
+                    Click="OnAddFilesClick"
+                    AutomationProperties.AutomationId="ImageConvert.AddFiles" />
+            <Button Height="32"
+                    Padding="12,0"
+                    Classes="accent"
+                    Content="{loc:Localize Tool.ImageConvert.Start}"
+                    Command="{Binding StartCommand}"
+                    AutomationProperties.AutomationId="ImageConvert.Start" />
+            <Button Classes="help"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="{loc:Localize Tool.ImageConvert.Output.Help}"
+                    AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Output.Help}">
+              <TextBlock FontSize="11"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         Text="?" />
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1">
+          <Border Margin="0,22,0,0"
+                  Padding="12,10"
+                  CornerRadius="4"
+                  Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                  BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                  BorderThickness="1"
+                  IsVisible="{Binding IsEngineUnavailable}">
+            <TextBlock FontSize="12"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{Binding EngineUnavailableText}" />
+          </Border>
+
+          <Border Margin="0,22,0,0"
+                  Padding="20"
+                  CornerRadius="8"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  IsVisible="{Binding HasRows}">
+            <StackPanel>
+              <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,18,12">
+                  <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.TargetFormat}" />
+                  <ComboBox Width="120"
+                            Height="32"
+                            Margin="0,4,0,0"
+                            IsEnabled="{Binding IsIdle}"
+                            ItemsSource="{Binding TargetFormatNames}"
+                            SelectedIndex="{Binding SelectedTargetFormatIndex, Mode=TwoWay}"
+                            AutomationProperties.AutomationId="ImageConvert.TargetFormat" />
+                </StackPanel>
+
+                <StackPanel Margin="0,0,18,12">
+                  <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Quality}" />
+                  <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="8">
+                    <Slider Width="160"
+                            Minimum="1"
+                            Maximum="100"
+                            VerticalAlignment="Center"
+                            IsEnabled="{Binding CanEditQuality}"
+                            Value="{Binding Quality, Mode=TwoWay}" />
+                    <TextBlock Width="40"
+                               FontSize="12"
+                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding QualityText}" />
+                  </StackPanel>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,18,12">
+                  <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.MaxEdge}" />
+                  <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="4">
+                    <TextBox Width="88"
+                             Height="32"
+                             IsEnabled="{Binding IsIdle}"
+                             Text="{Binding MaxEdgeText, Mode=TwoWay}" />
+                    <TextBlock FontSize="11"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{loc:Localize Tool.ImageConvert.MaxEdge.Unit}" />
+                  </StackPanel>
+                  <TextBlock Margin="0,2,0,0"
+                             FontSize="11"
+                             IsVisible="{Binding HasMaxEdgeError}"
+                             Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                             Text="{Binding MaxEdgeErrorText}" />
+                </StackPanel>
+
+                <StackPanel Margin="0,0,18,12" IsEnabled="{Binding CanEditJpegBackground}">
+                  <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Background}" />
+                  <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="6">
+                    <Button Width="20"
+                            Height="20"
+                            Padding="0"
+                            CornerRadius="4"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            Background="{Binding JpegBackgroundBrush}"
+                            AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Background}">
+                      <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                          <StackPanel Width="220" Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <Button Classes="preset"
+                                      Background="#FFFFFF"
+                                      Command="{Binding SetBackgroundColorCommand}"
+                                      CommandParameter="#FFFFFF" />
+                              <Button Classes="preset"
+                                      Background="#F2F2F2"
+                                      Command="{Binding SetBackgroundColorCommand}"
+                                      CommandParameter="#F2F2F2" />
+                              <Button Classes="preset"
+                                      Background="#808080"
+                                      Command="{Binding SetBackgroundColorCommand}"
+                                      CommandParameter="#808080" />
+                              <Button Classes="preset"
+                                      Background="#1E1E1E"
+                                      Command="{Binding SetBackgroundColorCommand}"
+                                      CommandParameter="#1E1E1E" />
+                              <Button Classes="preset"
+                                      Background="#000000"
+                                      Command="{Binding SetBackgroundColorCommand}"
+                                      CommandParameter="#000000" />
+                            </StackPanel>
+                            <TextBox Height="32"
+                                     PlaceholderText="#FFFFFF"
+                                     Text="{Binding CustomColorText, Mode=TwoWay}" />
+                            <TextBlock FontSize="11"
+                                       IsVisible="{Binding HasCustomColorError}"
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                       Text="{Binding CustomColorErrorText}" />
+                            <Button Height="28"
+                                    HorizontalAlignment="Right"
+                                    Content="{loc:Localize Tool.ImageConvert.Background.Apply}"
+                                    Command="{Binding ApplyCustomColorCommand}" />
+                          </StackPanel>
+                        </Flyout>
+                      </Button.Flyout>
+                    </Button>
+                    <TextBlock FontSize="11"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding JpegBackgroundHex}" />
+                  </StackPanel>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,18,12">
+                  <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Output}" />
+                  <HyperlinkButton Height="32"
+                                   Padding="0"
+                                   MaxWidth="240"
+                                   IsEnabled="{Binding IsIdle}"
+                                   Content="{Binding OutputDirectoryLabel}"
+                                   ToolTip.Tip="{Binding OutputDirectoryToolTip}">
+                    <HyperlinkButton.Flyout>
+                      <MenuFlyout>
+                        <MenuItem Header="{loc:Localize Tool.ImageConvert.Output.UseSource}"
+                                  Command="{Binding UseSourceDirectoryCommand}" />
+                        <MenuItem Header="{loc:Localize Tool.ImageConvert.Output.Choose}"
+                                  Click="OnChooseOutputDirectoryClick" />
+                      </MenuFlyout>
+                    </HyperlinkButton.Flyout>
+                  </HyperlinkButton>
+                </StackPanel>
+
+                <Button Classes="advanced-toggle"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Command="{Binding ToggleAdvancedCommand}"
+                        AutomationProperties.AutomationId="ImageConvert.Advanced">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fac:FASymbolIcon FontSize="10" Symbol="ChevronDown" IsVisible="{Binding !IsAdvancedExpanded}" />
+                    <fac:FASymbolIcon FontSize="10" Symbol="ChevronUp" IsVisible="{Binding IsAdvancedExpanded}" />
+                    <TextBlock FontSize="12" Text="{loc:Localize Tool.ImageConvert.Advanced}" />
+                  </StackPanel>
+                </Button>
+              </WrapPanel>
+
+              <Grid Margin="0,0,0,6"
+                    ColumnDefinitions="110,*"
+                    RowDefinitions="28,28,28"
+                    IsVisible="{Binding IsAdvancedExpanded}">
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontSize="11.5"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
+                <CheckBox Grid.Row="0"
+                          Grid.Column="1"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding CanEditWebPLossy}"
+                          IsChecked="{Binding IsWebPLossy, Mode=TwoWay}" />
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontSize="11.5"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.ImageConvert.Advanced.PngCompression}" />
+                <StackPanel Grid.Row="1"
+                            Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                  <Slider Width="160"
+                          Minimum="0"
+                          Maximum="9"
+                          IsEnabled="{Binding CanEditPngCompression}"
+                          Value="{Binding PngCompressionLevel, Mode=TwoWay}" />
+                  <TextBlock Width="20"
+                             FontSize="11.5"
+                             VerticalAlignment="Center"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{Binding PngCompressionText}" />
+                </StackPanel>
+                <TextBlock Grid.Row="2"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontSize="11.5"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
+                <CheckBox Grid.Row="2"
+                          Grid.Column="1"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding IsIdle}"
+                          IsChecked="{Binding KeepSourceMetadata, Mode=TwoWay}" />
+              </Grid>
+
+              <Border Height="1" Margin="0,4,0,0" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+
+              <ScrollViewer x:Name="FileListScroll" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                  <Grid Margin="8,8,8,6" ColumnDefinitions="40,*,Auto,22" ColumnSpacing="10">
+                    <TextBlock Grid.Column="1"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               Text="{loc:Localize Tool.ImageConvert.Row.FileName}" />
+                    <TextBlock Grid.Column="2"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               Text="{loc:Localize Tool.ImageConvert.Row.Status}" />
+                  </Grid>
+
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ImageConvertRowViewModel">
+                      <Border BorderThickness="0,0,0,1"
+                              BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}">
+                        <Grid Margin="8,0" Height="56" ColumnDefinitions="40,*,Auto,22" ColumnSpacing="10">
+                          <Border Width="40"
+                                  Height="40"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="4"
+                                  Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                                  BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                  BorderThickness="1"
+                                  ClipToBounds="True">
+                            <Panel>
+                              <Image Stretch="Uniform"
+                                     IsVisible="{Binding HasThumbnail}"
+                                     Source="{Binding Thumbnail}" />
+                              <TextBlock FontSize="10"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         IsVisible="{Binding !HasThumbnail}"
+                                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                         Text="{Binding ThumbnailLabel}" />
+                            </Panel>
+                          </Border>
+
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock FontSize="13"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                       Text="{Binding FileName}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="10.5"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                       Text="{Binding MetaText}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasFailure}"
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                       Text="{Binding FailureText}" />
+                          </StackPanel>
+
+                          <Border Grid.Column="2"
+                                  Classes="row-status"
+                                  Classes.pending="{Binding IsPending}"
+                                  Classes.done="{Binding IsDone}"
+                                  Classes.failed="{Binding IsFailed}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                              <fac:FAProgressRing Width="12"
+                                                  Height="12"
+                                                  IsIndeterminate="True"
+                                                  IsVisible="{Binding IsConverting}" />
+                              <TextBlock Text="{Binding StatusText}" />
+                            </StackPanel>
+                          </Border>
+
+                          <Button Grid.Column="3"
+                                  Classes="icon-small"
+                                  VerticalAlignment="Center"
+                                  Command="{Binding RemoveCommand}"
+                                  IsEnabled="{Binding CanRemove}"
+                                  AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Row.Remove}">
+                            <fac:FASymbolIcon FontSize="10" Symbol="Dismiss" />
+                          </Button>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+
+              <Grid Margin="8,10,8,4" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <ProgressBar Width="240"
+                               Height="4"
+                               CornerRadius="2"
+                               Minimum="0"
+                               Maximum="{Binding ProgressMaximum}"
+                               Value="{Binding ProgressValue}" />
+                  <TextBlock FontSize="12"
+                             VerticalAlignment="Center"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{Binding ProgressText}" />
+                </StackPanel>
+                <Button Grid.Column="2"
+                        Height="32"
+                        Padding="12,0"
+                        Content="{loc:Localize Common.Cancel}"
+                        Command="{Binding CancelCommand}"
+                        IsVisible="{Binding IsRunning}"
+                        AutomationProperties.AutomationId="ImageConvert.Cancel" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Margin="0,22,0,0"
+                  Padding="20"
+                  CornerRadius="8"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  IsVisible="{Binding ShowEmptyState}">
+            <StackPanel Margin="0,24" HorizontalAlignment="Center" Spacing="8">
+              <TextBlock FontSize="14"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                         Text="{loc:Localize Tool.ImageConvert.Empty}" />
+              <TextBlock MaxWidth="420"
+                         FontSize="12"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                         Text="{loc:Localize Tool.ImageConvert.Empty.Hint}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border x:Name="DropOverlay"
+            Margin="28"
+            CornerRadius="10"
+            IsVisible="False"
+            IsHitTestVisible="False"
+            BorderThickness="2"
+            BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+            Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+      <TextBlock FontSize="12"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                 Text="{loc:Localize Tool.ImageConvert.DropHint}" />
+    </Border>
+  </Grid>
+</UserControl>
