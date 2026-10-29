@@ -502,7 +502,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
-| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `BatchRename` / `IconConvert` / `WorldClock` |
+| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `BatchRename` / `ImageConvert` / `WorldClock` |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
 | `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |
@@ -660,7 +660,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 质量 1–100，默认 90，只对 JPEG 与 WebP 有损生效；PNG 忽略该值。
 - 最大边等比缩放：目标最大边大于原图时**保持原始尺寸，不放大**。
 - JPG 底色：默认白、可选自定义颜色、跨会话记住；仅当输出 JPEG 且源带透明通道时生效。
-- 进阶折叠区：WebP 有损/无损、PNG 压缩级别、保留源元数据。默认收起，不记忆展开状态。
+- 进阶折叠区（默认收起，不记忆展开状态）：质量、JPG 底色（仅 JPEG）、WebP 有损/无损、PNG 压缩级别、保留源元数据；随目标格式只显示相关项。
 - 同格式转换允许（如 JPG→JPG），行内提示「将重新压缩」。
 
 ### 色彩与元数据

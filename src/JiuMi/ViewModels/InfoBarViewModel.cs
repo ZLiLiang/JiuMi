@@ -34,6 +34,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     private bool _isDisposed;
     private string? _displayedCode;
     private string? _copiedCode;
+    private InfoBarSummary? _summary;
     private string _message = string.Empty;
     private string _copyText = string.Empty;
 
@@ -94,28 +95,40 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets a value indicating whether a notice is visible.
     /// </summary>
-    public bool IsOpen => _isActive && _notices.Current is not null;
+    public bool IsOpen => _isActive && (_notices.Current is not null || _summary is not null);
 
     /// <summary>
     /// Gets a value indicating whether the current notice is an error.
     /// </summary>
-    public bool IsError => _notices.Current?.Level == ErrorLevel.Error;
+    public bool IsError => IsOpen && _notices.Current?.Level == ErrorLevel.Error;
 
     /// <summary>
     /// Gets a value indicating whether the current notice is a warning.
     /// </summary>
-    public bool IsWarning => _notices.Current?.Level == ErrorLevel.Warning;
+    public bool IsWarning =>
+        IsOpen && (_notices.Current?.Level == ErrorLevel.Warning || ActiveSummary is { IsWarning: true });
+
+    /// <summary>
+    /// Gets a value indicating whether the current notice reports a completed operation.
+    /// </summary>
+    public bool IsSuccess => IsOpen && ActiveSummary is { IsWarning: false };
 
     /// <summary>
     /// Gets a value indicating whether the current notice offers an action button.
     /// </summary>
     public bool HasAction =>
-        IsOpen && _notices.Current?.Action != ErrorNoticeAction.None;
+        IsOpen && (_notices.Current?.Action != ErrorNoticeAction.None || ActiveSummary?.FolderPath is not null);
 
     /// <summary>
     /// Gets a value indicating whether the current notice can be closed.
     /// </summary>
-    public bool CanClose => IsOpen && _notices.Current is { IsPersistent: false };
+    public bool CanClose => IsOpen &&
+        (_notices.Current is { IsPersistent: false } || ActiveSummary is not null);
+
+    /// <summary>
+    /// Gets a value indicating whether the current notice has error details to copy.
+    /// </summary>
+    public bool CanCopyDetails => IsOpen && _notices.Current is not null;
 
     /// <summary>
     /// Gets the localized message of the current notice.
@@ -160,6 +173,8 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private InfoBarSummary? ActiveSummary => _notices.Current is null ? _summary : null;
+
     /// <summary>
     /// Gets the label of the single primary action.
     /// </summary>
@@ -167,7 +182,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     {
         ErrorNoticeAction.Retry => _localization["Common.Retry"],
         ErrorNoticeAction.OpenFolder => _localization["Common.OpenFolder"],
-        _ => string.Empty,
+        _ => ActiveSummary?.FolderPath is not null ? _localization["Common.OpenOutputFolder"] : string.Empty,
     };
 
     /// <summary>
@@ -222,10 +237,37 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         {
             _dismissTimer.Stop();
         }
-        else if (_notices.Current is { Level: ErrorLevel.Warning, IsPersistent: false })
+        else if (_notices.Current is { Level: ErrorLevel.Warning, IsPersistent: false } || ActiveSummary is not null)
         {
             RestartDismissTimer();
         }
+    }
+
+    /// <summary>
+    /// Shows a completed-operation summary in the global bar. It replaces any previous summary and
+    /// waits behind error notices.
+    /// </summary>
+    /// <param name="summary">The summary to show.</param>
+    public void ShowSummary(InfoBarSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+        _summary = summary;
+        _dismissTimer.Stop();
+        Refresh();
+    }
+
+    /// <summary>
+    /// Hides the completed-operation summary, when one is shown.
+    /// </summary>
+    public void ClearSummary()
+    {
+        if (_summary is null)
+        {
+            return;
+        }
+
+        _summary = null;
+        Refresh();
     }
 
     /// <summary>
@@ -282,6 +324,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        _summary = null;
         if (!_notices.Offer(record))
         {
             if (string.Equals(_notices.Current?.Code, record.Code, StringComparison.Ordinal))
@@ -302,6 +345,19 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
 
     private void Dismiss()
     {
+        if (_notices.Current is null)
+        {
+            if (_summary is null)
+            {
+                return;
+            }
+
+            _summary = null;
+            _dismissTimer.Stop();
+            Refresh();
+            return;
+        }
+
         if (!_notices.DismissCurrent())
         {
             return;
@@ -315,6 +371,17 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
 
     private async Task ExecuteActionAsync()
     {
+        InfoBarSummary? summary = ActiveSummary;
+        if (summary is not null)
+        {
+            if (summary.FolderPath is { } summaryFolder)
+            {
+                _systemLauncher.OpenFolder(summaryFolder);
+            }
+
+            return;
+        }
+
         ErrorNotice? notice = _notices.Current;
         if (notice is null)
         {
@@ -363,6 +430,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     private void Refresh()
     {
         string message = string.Empty;
+        InfoBarSummary? summary = ActiveSummary;
         if (_isActive && _notices.Current is { } notice)
         {
             ErrorRecord? record = _errorReporter.Details.Find(notice.Code);
@@ -389,7 +457,19 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            _dismissTimer.Stop();
+            if (_isActive && summary is not null)
+            {
+                message = summary.Message;
+                if (!_isInteractionPaused && !_dismissTimer.IsEnabled)
+                {
+                    RestartDismissTimer();
+                }
+            }
+            else
+            {
+                _dismissTimer.Stop();
+            }
+
             _displayedCode = null;
         }
 
@@ -407,8 +487,10 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsOpen));
         OnPropertyChanged(nameof(IsError));
         OnPropertyChanged(nameof(IsWarning));
+        OnPropertyChanged(nameof(IsSuccess));
         OnPropertyChanged(nameof(HasAction));
         OnPropertyChanged(nameof(CanClose));
+        OnPropertyChanged(nameof(CanCopyDetails));
         OnPropertyChanged(nameof(ActionText));
         OnPropertyChanged(nameof(AccessibleName));
         OnPropertyChanged(nameof(CloseAccessibleName));
@@ -427,6 +509,12 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         if (_notices.Current is { Level: ErrorLevel.Warning, IsPersistent: false })
         {
             Dismiss();
+            return;
+        }
+
+        if (ActiveSummary is not null)
+        {
+            ClearSummary();
         }
     }
 

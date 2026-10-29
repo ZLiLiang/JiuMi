@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
+using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
@@ -160,6 +161,8 @@ internal static class Program
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<WorldClockViewModel>();
+        services.AddSingleton(new OutputPathPlanner(File.Exists));
+        services.AddSingleton<ImageConvertViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();

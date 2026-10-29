@@ -11,6 +11,9 @@ public enum ShellPage
     /// <summary>The world working hours page.</summary>
     WorldClock,
 
+    /// <summary>The image conversion page.</summary>
+    ImageConvert,
+
     /// <summary>The settings page.</summary>
     Settings,
 }
