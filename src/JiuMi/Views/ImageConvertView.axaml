@@ -343,7 +343,7 @@
                       Background="{DynamicResource SubtleFillColorSecondaryBrush}"
                       IsVisible="{Binding IsAdvancedExpanded}">
                 <StackPanel>
-                  <Grid Height="32"
+                  <Grid MinHeight="34"
                         Margin="0,0,0,8"
                         ColumnDefinitions="*,Auto"
                         IsVisible="{Binding IsWebPTarget}">
@@ -361,7 +361,7 @@
                                   AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
                   </Grid>
 
-                  <Grid Height="32"
+                  <Grid MinHeight="34"
                         Margin="0,0,0,8"
                         ColumnDefinitions="*,Auto"
                         IsVisible="{Binding IsPngTarget}">
@@ -387,7 +387,7 @@
                     </StackPanel>
                   </Grid>
 
-                  <Grid Height="32" ColumnDefinitions="*,Auto">
+                  <Grid MinHeight="34" ColumnDefinitions="*,Auto">
                     <TextBlock VerticalAlignment="Center"
                                FontSize="12"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
