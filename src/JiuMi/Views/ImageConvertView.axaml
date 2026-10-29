@@ -168,8 +168,9 @@
                   IsVisible="{Binding HasRows}">
             <Grid RowDefinitions="Auto,Auto,*,Auto">
               <StackPanel Grid.Row="0">
-                <WrapPanel Orientation="Horizontal">
-                <StackPanel Margin="0,0,14,12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <WrapPanel Grid.Column="0" Orientation="Horizontal">
+                <StackPanel Margin="0,0,10,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.TargetFormat}" />
                   <ComboBox Width="120"
                             Height="32"
@@ -180,10 +181,10 @@
                             AutomationProperties.AutomationId="ImageConvert.TargetFormat" />
                 </StackPanel>
 
-                <StackPanel Margin="0,0,14,12">
+                <StackPanel Margin="0,0,10,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Quality}" />
                   <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="8">
-                    <Slider Width="160"
+                    <Slider Width="140"
                             Minimum="1"
                             Maximum="100"
                             VerticalAlignment="Center"
@@ -198,7 +199,7 @@
                   </StackPanel>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,14,12">
+                <StackPanel Margin="0,0,10,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.MaxEdge}" />
                   <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="4">
                     <TextBox Width="88"
@@ -217,12 +218,12 @@
                              Text="{Binding MaxEdgeErrorText}" />
                 </StackPanel>
 
-                <StackPanel Margin="0,0,14,12"
+                <StackPanel Margin="0,0,10,12"
                             IsVisible="{Binding IsJpegTarget}"
                             IsEnabled="{Binding IsIdle}">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Background}" />
                   <Button Classes="param"
-                          Width="110"
+                          Width="100"
                           Margin="0,4,0,0"
                           HorizontalAlignment="Left"
                           ToolTip.Tip="{Binding JpegBackgroundHex}"
@@ -285,10 +286,10 @@
                   </Button>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,14,12">
+                <StackPanel Margin="0,0,10,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Output}" />
                   <Button Classes="param"
-                          MinWidth="110"
+                          MinWidth="100"
                           MaxWidth="240"
                           Margin="0,4,0,0"
                           HorizontalAlignment="Left"
@@ -319,82 +320,89 @@
                     </StackPanel>
                   </Button>
                 </StackPanel>
-                </WrapPanel>
+                  </WrapPanel>
 
-                <Button Classes="advanced-toggle"
-                        Margin="0,0,0,4"
-                        HorizontalAlignment="Right"
-                        Command="{Binding ToggleAdvancedCommand}"
-                        AutomationProperties.AutomationId="ImageConvert.Advanced">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <fac:FASymbolIcon FontSize="10" Symbol="ChevronDown" IsVisible="{Binding !IsAdvancedExpanded}" />
-                    <fac:FASymbolIcon FontSize="10" Symbol="ChevronUp" IsVisible="{Binding IsAdvancedExpanded}" />
-                    <TextBlock FontSize="12" Text="{loc:Localize Tool.ImageConvert.Advanced}" />
-                  </StackPanel>
-                </Button>
+                  <Button Grid.Column="1"
+                          Classes="advanced-toggle"
+                          Margin="0,0,0,10"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Bottom"
+                          Command="{Binding ToggleAdvancedCommand}"
+                          AutomationProperties.AutomationId="ImageConvert.Advanced">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <fac:FASymbolIcon FontSize="10" Symbol="ChevronDown" IsVisible="{Binding !IsAdvancedExpanded}" />
+                      <fac:FASymbolIcon FontSize="10" Symbol="ChevronUp" IsVisible="{Binding IsAdvancedExpanded}" />
+                      <TextBlock FontSize="12" Text="{loc:Localize Tool.ImageConvert.Advanced}" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
 
               <Border Margin="0,2,0,6"
                       Padding="14,10"
                       CornerRadius="8"
                       Background="{DynamicResource SubtleFillColorSecondaryBrush}"
                       IsVisible="{Binding IsAdvancedExpanded}">
-                <Grid ColumnDefinitions="*,Auto"
-                      RowDefinitions="32,32,32"
-                      RowSpacing="8">
-                  <TextBlock Grid.Row="0"
-                             VerticalAlignment="Center"
-                             FontSize="12"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             Text="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
-                  <ToggleSwitch Grid.Row="0"
-                                Grid.Column="1"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                OnContent=""
-                                OffContent=""
-                                IsEnabled="{Binding CanEditWebPLossy}"
-                                IsChecked="{Binding IsWebPLossy, Mode=TwoWay}"
-                                AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
-
-                  <TextBlock Grid.Row="1"
-                             VerticalAlignment="Center"
-                             FontSize="12"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             Text="{loc:Localize Tool.ImageConvert.Advanced.PngCompression}" />
-                  <StackPanel Grid.Row="1"
-                              Grid.Column="1"
-                              HorizontalAlignment="Right"
-                              Orientation="Horizontal"
-                              Spacing="8"
-                              VerticalAlignment="Center">
-                    <Slider Width="160"
-                            Minimum="0"
-                            Maximum="9"
-                            IsEnabled="{Binding CanEditPngCompression}"
-                            Value="{Binding PngCompressionLevel, Mode=TwoWay}" />
-                    <TextBlock Width="20"
+                <StackPanel>
+                  <Grid Height="32"
+                        Margin="0,0,0,8"
+                        ColumnDefinitions="*,Auto"
+                        IsVisible="{Binding IsWebPTarget}">
+                    <TextBlock VerticalAlignment="Center"
                                FontSize="12"
-                               TextAlignment="Right"
-                               VerticalAlignment="Center"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                               Text="{Binding PngCompressionText}" />
-                  </StackPanel>
+                               Text="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
+                    <ToggleSwitch Grid.Column="1"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  OnContent=""
+                                  OffContent=""
+                                  IsEnabled="{Binding CanEditWebPLossy}"
+                                  IsChecked="{Binding IsWebPLossy, Mode=TwoWay}"
+                                  AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
+                  </Grid>
 
-                  <TextBlock Grid.Row="2"
-                             VerticalAlignment="Center"
-                             FontSize="12"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             Text="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
-                  <ToggleSwitch Grid.Row="2"
-                                Grid.Column="1"
+                  <Grid Height="32"
+                        Margin="0,0,0,8"
+                        ColumnDefinitions="*,Auto"
+                        IsVisible="{Binding IsPngTarget}">
+                    <TextBlock VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{loc:Localize Tool.ImageConvert.Advanced.PngCompression}" />
+                    <StackPanel Grid.Column="1"
                                 HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                OnContent=""
-                                OffContent=""
-                                IsEnabled="{Binding IsIdle}"
-                                IsChecked="{Binding KeepSourceMetadata, Mode=TwoWay}"
-                                AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
-                </Grid>
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                VerticalAlignment="Center">
+                      <Slider Width="160"
+                              Minimum="0"
+                              Maximum="9"
+                              IsEnabled="{Binding CanEditPngCompression}"
+                              Value="{Binding PngCompressionLevel, Mode=TwoWay}" />
+                      <TextBlock Width="20"
+                                 FontSize="12"
+                                 TextAlignment="Right"
+                                 VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                 Text="{Binding PngCompressionText}" />
+                    </StackPanel>
+                  </Grid>
+
+                  <Grid Height="32" ColumnDefinitions="*,Auto">
+                    <TextBlock VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
+                    <ToggleSwitch Grid.Column="1"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  OnContent=""
+                                  OffContent=""
+                                  IsEnabled="{Binding IsIdle}"
+                                  IsChecked="{Binding KeepSourceMetadata, Mode=TwoWay}"
+                                  AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
+                  </Grid>
+                </StackPanel>
               </Border>
               </StackPanel>
 
