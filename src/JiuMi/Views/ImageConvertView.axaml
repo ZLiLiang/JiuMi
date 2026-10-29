@@ -352,6 +352,7 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                Text="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
                     <ToggleSwitch Grid.Column="1"
+                                  Margin="0,0,8,0"
                                   HorizontalAlignment="Right"
                                   VerticalAlignment="Center"
                                   OnContent=""
@@ -361,30 +362,28 @@
                                   AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
                   </Grid>
 
-                  <Grid Height="32"
-                        Margin="0,0,0,8"
+                  <Grid Margin="0,0,0,8"
                         ColumnDefinitions="*,Auto"
+                        RowDefinitions="Auto,Auto"
                         IsVisible="{Binding IsPngTarget}">
                     <TextBlock VerticalAlignment="Center"
                                FontSize="12"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                Text="{loc:Localize Tool.ImageConvert.Advanced.PngCompression}" />
-                    <StackPanel Grid.Column="1"
-                                HorizontalAlignment="Right"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center">
-                      <Slider Width="160"
-                              Minimum="0"
-                              Maximum="9"
-                              IsEnabled="{Binding CanEditPngCompression}"
-                              Value="{Binding PngCompressionLevel, Mode=TwoWay}" />
-                      <TextBlock Width="24"
-                                 FontSize="12"
-                                 TextAlignment="Right"
-                                 VerticalAlignment="Center"
-                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                 Text="{Binding PngCompressionText}" />
-                    </StackPanel>
+                    <TextBlock Grid.Column="1"
+                               Width="24"
+                               FontSize="12"
+                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding PngCompressionText}" />
+                    <Slider Grid.Row="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,4,0,0"
+                            Minimum="0"
+                            Maximum="9"
+                            IsEnabled="{Binding CanEditPngCompression}"
+                            Value="{Binding PngCompressionLevel, Mode=TwoWay}" />
                   </Grid>
 
                   <Grid Height="32" ColumnDefinitions="*,Auto">
@@ -393,6 +392,7 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                Text="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
                     <ToggleSwitch Grid.Column="1"
+                                  Margin="0,0,8,0"
                                   HorizontalAlignment="Right"
                                   VerticalAlignment="Center"
                                   OnContent=""
