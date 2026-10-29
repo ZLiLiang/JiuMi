@@ -100,8 +100,8 @@
   </UserControl.Styles>
 
   <Grid>
-    <Border Padding="44,32,44,36">
-      <Grid RowDefinitions="Auto,Auto">
+    <Border x:Name="PageBorder" Padding="44,32,44,36">
+      <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="16">
           <StackPanel>
             <TextBlock FontSize="28"
@@ -142,8 +142,9 @@
           </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="1">
-          <Border Margin="0,22,0,0"
+        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+          <Border Grid.Row="0"
+                  Margin="0,22,0,0"
                   Padding="12,10"
                   CornerRadius="4"
                   Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
@@ -156,16 +157,19 @@
                        Text="{Binding EngineUnavailableText}" />
           </Border>
 
-          <Border Margin="0,22,0,0"
+          <Border Grid.Row="1"
+                  Margin="0,22,0,0"
                   Padding="20"
                   CornerRadius="8"
+                  VerticalAlignment="Stretch"
                   Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
                   IsVisible="{Binding HasRows}">
-            <StackPanel>
-              <WrapPanel Orientation="Horizontal">
-                <StackPanel Margin="0,0,18,12">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+              <StackPanel Grid.Row="0">
+                <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.TargetFormat}" />
                   <ComboBox Width="120"
                             Height="32"
@@ -176,7 +180,7 @@
                             AutomationProperties.AutomationId="ImageConvert.TargetFormat" />
                 </StackPanel>
 
-                <StackPanel Margin="0,0,18,12">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Quality}" />
                   <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="8">
                     <Slider Width="160"
@@ -194,7 +198,7 @@
                   </StackPanel>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,18,12">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.MaxEdge}" />
                   <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="4">
                     <TextBox Width="88"
@@ -213,12 +217,12 @@
                              Text="{Binding MaxEdgeErrorText}" />
                 </StackPanel>
 
-                <StackPanel Margin="0,0,18,12"
+                <StackPanel Margin="0,0,14,12"
                             IsVisible="{Binding IsJpegTarget}"
                             IsEnabled="{Binding IsIdle}">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Background}" />
                   <Button Classes="param"
-                          Width="120"
+                          Width="110"
                           Margin="0,4,0,0"
                           HorizontalAlignment="Left"
                           ToolTip.Tip="{Binding JpegBackgroundHex}"
@@ -281,10 +285,10 @@
                   </Button>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,18,12">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Output}" />
                   <Button Classes="param"
-                          MinWidth="120"
+                          MinWidth="110"
                           MaxWidth="240"
                           Margin="0,4,0,0"
                           HorizontalAlignment="Left"
@@ -315,11 +319,11 @@
                     </StackPanel>
                   </Button>
                 </StackPanel>
+                </WrapPanel>
 
                 <Button Classes="advanced-toggle"
-                        Margin="0,0,0,10"
+                        Margin="0,0,0,4"
                         HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
                         Command="{Binding ToggleAdvancedCommand}"
                         AutomationProperties.AutomationId="ImageConvert.Advanced">
                   <StackPanel Orientation="Horizontal" Spacing="6">
@@ -328,7 +332,6 @@
                     <TextBlock FontSize="12" Text="{loc:Localize Tool.ImageConvert.Advanced}" />
                   </StackPanel>
                 </Button>
-              </WrapPanel>
 
               <Border Margin="0,2,0,6"
                       Padding="14,10"
@@ -393,10 +396,11 @@
                                 AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.KeepMetadata}" />
                 </Grid>
               </Border>
+              </StackPanel>
 
-              <Border Height="1" Margin="0,4,0,0" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+              <Border Grid.Row="1" Height="1" Margin="0,4,0,0" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
 
-              <ScrollViewer x:Name="FileListScroll" VerticalScrollBarVisibility="Auto">
+              <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                   <Grid Margin="8,8,8,6" ColumnDefinitions="40,*,Auto,22" ColumnSpacing="10">
                     <TextBlock Grid.Column="1"
@@ -484,7 +488,7 @@
                 </StackPanel>
               </ScrollViewer>
 
-              <Grid Margin="8,10,8,4" ColumnDefinitions="Auto,*,Auto">
+              <Grid Grid.Row="3" Margin="8,10,8,4" ColumnDefinitions="Auto,*,Auto">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                   <ProgressBar Width="240"
                                Height="4"
@@ -505,13 +509,14 @@
                         IsVisible="{Binding IsRunning}"
                         AutomationProperties.AutomationId="ImageConvert.Cancel" />
               </Grid>
-            </StackPanel>
+            </Grid>
           </Border>
 
-          <Border Margin="0,22,0,0"
+          <Border Grid.Row="1"
+                  Margin="0,22,0,0"
                   Padding="20"
-                  MinHeight="420"
                   CornerRadius="8"
+                  VerticalAlignment="Stretch"
                   Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
@@ -534,7 +539,7 @@
                          Text="{loc:Localize Tool.ImageConvert.Empty.Hint}" />
             </StackPanel>
           </Border>
-        </StackPanel>
+        </Grid>
       </Grid>
     </Border>
 
