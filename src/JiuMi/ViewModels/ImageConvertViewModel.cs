@@ -150,6 +150,7 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
 
             OnPropertyChanged(nameof(TargetFormat));
             OnPropertyChanged(nameof(IsQualityEnabled));
+            OnPropertyChanged(nameof(ShowQuality));
             OnPropertyChanged(nameof(IsJpegTarget));
             OnPropertyChanged(nameof(IsPngTarget));
             OnPropertyChanged(nameof(IsWebPTarget));
@@ -174,6 +175,11 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     public bool IsQualityEnabled => ImageFormatCatalog.IsLossy(TargetFormat);
 
     /// <summary>
+    /// Gets a value indicating whether the quality control applies to the current target and is shown.
+    /// </summary>
+    public bool ShowQuality => IsQualityEnabled && !(IsWebPTarget && _webPLossless);
+
+    /// <summary>
     /// Gets a value indicating whether the target is JPEG.
     /// </summary>
     public bool IsJpegTarget => TargetFormat == ImageFormat.Jpeg;
@@ -191,7 +197,7 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets a value indicating whether the quality slider may be edited. It does not apply to lossless WebP.
     /// </summary>
-    public bool CanEditQuality => IsIdle && IsQualityEnabled && !(IsWebPTarget && _webPLossless);
+    public bool CanEditQuality => IsIdle && ShowQuality;
 
     /// <summary>
     /// Gets a value indicating whether the WebP lossy switch may be edited.
@@ -348,6 +354,7 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
             }
 
             OnPropertyChanged(nameof(IsWebPLossy));
+            OnPropertyChanged(nameof(ShowQuality));
             OnPropertyChanged(nameof(CanEditQuality));
         }
     }

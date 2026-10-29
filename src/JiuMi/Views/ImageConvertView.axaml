@@ -170,7 +170,7 @@
               <StackPanel Grid.Row="0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                   <WrapPanel Grid.Column="0" Orientation="Horizontal">
-                <StackPanel Margin="0,0,10,12">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.TargetFormat}" />
                   <ComboBox Width="120"
                             Height="32"
@@ -181,10 +181,11 @@
                             AutomationProperties.AutomationId="ImageConvert.TargetFormat" />
                 </StackPanel>
 
-                <StackPanel Margin="0,0,10,12">
+                <StackPanel Margin="0,0,14,12" IsVisible="{Binding ShowQuality}">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Quality}" />
                   <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                     <Slider Width="160"
+                            Height="32"
                             Minimum="1"
                             Maximum="100"
                             VerticalAlignment="Center"
@@ -199,7 +200,7 @@
                   </StackPanel>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,10,12">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.MaxEdge}" />
                   <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="4">
                     <TextBox Width="88"
@@ -218,7 +219,7 @@
                              Text="{Binding MaxEdgeErrorText}" />
                 </StackPanel>
 
-                <StackPanel Margin="0,0,10,12"
+                <StackPanel Margin="0,0,14,12"
                             IsVisible="{Binding IsJpegTarget}"
                             IsEnabled="{Binding IsIdle}">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Background}" />
@@ -286,7 +287,7 @@
                   </Button>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,10,12">
+                <StackPanel Margin="0,0,14,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Output}" />
                   <Button Classes="param"
                           MinWidth="100"
@@ -358,6 +359,7 @@
                                   OffContent=""
                                   IsEnabled="{Binding CanEditWebPLossy}"
                                   IsChecked="{Binding IsWebPLossy, Mode=TwoWay}"
+                                  AutomationProperties.AutomationId="ImageConvert.Advanced.WebPLossy"
                                   AutomationProperties.Name="{loc:Localize Tool.ImageConvert.Advanced.WebPLossy}" />
                   </Grid>
 
@@ -374,6 +376,7 @@
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
                       <Slider Width="160"
+                              Height="32"
                               Minimum="0"
                               Maximum="9"
                               IsEnabled="{Binding CanEditPngCompression}"
