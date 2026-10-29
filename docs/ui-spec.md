@@ -227,11 +227,11 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 主体是一张卡片（外边距上 22、内边距 20、圆角 8、`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`），自上而下为参数区、分隔线、文件列表、底栏。卡片高度铺满内容区剩余空间：列表占 `*` 行并在内部纵向滚动，文件少时卡片不收缩，底栏始终贴底。
 - 参数区（12px 标签 + 控件，行间距 12，可换行）：
   - 目标格式：`ComboBox`，宽 120，选项 PNG / JPEG / WebP。
-  - 质量：`Slider` 宽 140 + 右侧数值 40px 右对齐；仅目标格式为 JPEG/WebP 时可用，PNG 时置灰并保留数值。
+  - 质量：`Slider` 宽 160 + 紧邻的 24px 数值（12px 次文字色，右对齐）；仅目标格式为 JPEG/WebP 时可用，PNG 时置灰并保留数值。
   - 最大边：`TextBox` 宽 88 + 「px」后缀 11px 次文字色；空值表示原始尺寸，非法值用 11px `SystemFillColorCriticalBrush` 提示且禁用「开始转换」。
   - JPG 底色：仅目标格式为 JPEG 时显示；32px 高、100 宽的下拉按钮，内容为 14 × 14 色块 + 当前色值 12px + Chevron，点击打开预设色与自定义色值。
   - 输出：32px 高的下拉按钮（与 JPG 底色同款描边和底），内容为文件夹图标 + 「同目录」或目录名（`CharacterEllipsis`，文字最大宽 170）+ Chevron；最小宽 100，点击打开「使用源目录 / 选择文件夹」。
-  - 进阶：与参数同一行、右对齐（Chevron 图标 +「进阶」12px），不单独占行。展开后在参数区下方追加一个内嵌面板（`SubtleFillColorSecondaryBrush` 底、圆角 8、内边距 14 10、行高 32、行距 8）：左侧 12px 次文字色标签，右侧控件右对齐。内容按目标格式选择显示：WebP 有损仅目标为 WebP、PNG 压缩级别仅目标为 PNG，保留源元数据始终显示；不适用的行直接隐藏。折叠状态不记忆。
+  - 进阶：与参数同一行、右对齐（Chevron 图标 +「进阶」12px），不单独占行。展开后在参数区下方追加一个左对齐的内嵌面板（最大宽 440、`SubtleFillColorSecondaryBrush` 底、圆角 8、内边距 14 10、行高 32、行距 8）：左侧 12px 次文字色标签，右侧控件右对齐。内容按目标格式选择显示：WebP 有损仅目标为 WebP、PNG 压缩级别仅目标为 PNG，保留源元数据始终显示；不适用的行直接隐藏。PNG 压缩级别为宽 160 的 `Slider`（0–9）+ 紧邻的 24px 数值。折叠状态不记忆。
 - 文件列表：行高 56，行内边距 8 0，行间 1px `DividerStrokeColorDefaultBrush`。
   - 缩略图 40 × 40、圆角 4、1px `ControlStrokeColorDefaultBrush`；未出图时显示格式文字 10px 次文字色。仅等比缩小，不放大，不裁剪。
   - 主行文件名 13px，超长 `CharacterEllipsis`；次行 10.5px `TextFillColorTertiaryBrush`，格式「宽 × 高 · 源格式 → 目标格式」。
