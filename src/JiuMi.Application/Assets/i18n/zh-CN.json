@@ -59,7 +59,6 @@
   "Tool.ImageConvert.Background.Invalid": "请输入 #RRGGBB 格式的颜色",
   "Tool.ImageConvert.Output": "输出",
   "Tool.ImageConvert.Output.Source": "同目录",
-  "Tool.ImageConvert.Output.SourceHint": "输出到每个源文件所在目录",
   "Tool.ImageConvert.Output.UseSource": "使用源目录",
   "Tool.ImageConvert.Output.Choose": "选择文件夹…",
   "Tool.ImageConvert.Output.Help": "默认写在每个源文件旁边；可在「输出」里切换并记住。同名文件会加序号，绝不覆盖已有文件。",

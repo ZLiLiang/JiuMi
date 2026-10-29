@@ -59,7 +59,6 @@
   "Tool.ImageConvert.Background.Invalid": "Enter a colour as #RRGGBB.",
   "Tool.ImageConvert.Output": "Output",
   "Tool.ImageConvert.Output.Source": "Same folder",
-  "Tool.ImageConvert.Output.SourceHint": "Write beside each source file",
   "Tool.ImageConvert.Output.UseSource": "Use source folder",
   "Tool.ImageConvert.Output.Choose": "Choose folder…",
   "Tool.ImageConvert.Output.Help": "Files go beside each source by default. Choose another folder under Output; it is remembered. Existing files are never overwritten — a number is added instead.",

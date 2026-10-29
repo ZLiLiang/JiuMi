@@ -227,11 +227,16 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 主体是一张卡片（外边距上 22、内边距 20、圆角 8、`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`），自上而下为参数区、分隔线、文件列表、底栏。卡片高度铺满内容区剩余空间：列表占 `*` 行并在内部纵向滚动，文件少时卡片不收缩，底栏始终贴底。
 - 参数区（12px 标签 + 控件，参数项右间距 14、下间距 12，可换行）：
   - 目标格式：`ComboBox`，宽 120，选项 PNG / JPEG / WebP。
-  - 质量：`Slider` 宽 160、高 32 + 紧邻的 24px 数值（12px 次文字色，右对齐），滑块与输入框中心轴对齐；仅在目标格式为 JPEG 或有损 WebP 时显示，PNG 与无损 WebP 时隐藏。
   - 最大边：`TextBox` 宽 88 + 「px」后缀 11px 次文字色；空值表示原始尺寸，非法值用 11px `SystemFillColorCriticalBrush` 提示且禁用「开始转换」。
-  - JPG 底色：仅目标格式为 JPEG 时显示；32px 高、100 宽的下拉按钮，内容为 14 × 14 色块 + 当前色值 12px + Chevron，点击打开预设色与自定义色值。
-  - 输出：32px 高的下拉按钮（与 JPG 底色同款描边和底），内容为文件夹图标 + 「同目录」或目录名（`CharacterEllipsis`，文字最大宽 170）+ Chevron；最小宽 100，点击打开「使用源目录 / 选择文件夹」。
-  - 进阶：与参数同一行、右对齐（Chevron 图标 +「进阶」12px），不单独占行。展开后在参数区下方追加一个内嵌面板（`SubtleFillColorSecondaryBrush` 底、圆角 8、内边距 14 10 20 10、行最小高 34、行距 8）：左侧 12px 次文字色标签，右侧控件右对齐并留出 20px 右内边距。内容按目标格式选择显示：WebP 有损仅目标为 WebP、PNG 压缩级别仅目标为 PNG，保留源元数据始终显示；不适用的行直接隐藏。PNG 压缩级别为宽 160 的 `Slider`（0–9）+ 紧邻的 24px 数值。折叠状态不记忆。
+  - 输出：32px 高按钮（与 JPG 底色同款描边和底），内容为文件夹图标 + 「同目录」或目录名（`CharacterEllipsis`，文字最大宽 170）+ 铅笔图标；最小宽 100，点击直接打开目录选择。选择自定义目录后右侧出现 22 × 22 的 × 按钮，点击恢复「同目录」。不再使用下拉菜单。
+  - 进阶：与参数同一行、右对齐（Chevron 图标 +「进阶」12px），不单独占行。
+- 进阶面板（默认收起，`SubtleFillColorSecondaryBrush` 底、圆角 8、内边距 14 10 20 10、行最小高 34、行距 8）：左侧 12px 次文字色标签，右侧控件右对齐并留出 20px 右内边距。质量、JPG 底色等随目标格式变化的参数都在这里按需显示：
+  - 质量：`Slider` 宽 160、高 32 + 紧邻的 24px 数值；仅目标格式为 JPEG 或有损 WebP 时显示。
+  - JPG 底色：仅 JPEG 时显示；100 宽的色块按钮（14 × 14 色块 + 色值 + Chevron），点击打开预设色与自定义色值。
+  - WebP 有损：仅 WebP 时显示，`ToggleSwitch`。
+  - PNG 压缩级别：仅 PNG 时显示，`Slider` 0–9 + 紧邻的 24px 数值。
+  - 保留源元数据：始终显示，`ToggleSwitch`。
+  - 不适用的行直接隐藏；折叠状态不记忆。
 - 文件列表：行高 56，行内边距 8 0，行间 1px `DividerStrokeColorDefaultBrush`。
   - 缩略图 40 × 40、圆角 4、1px `ControlStrokeColorDefaultBrush`；未出图时显示格式文字 10px 次文字色。仅等比缩小，不放大，不裁剪。
   - 主行文件名 13px，超长 `CharacterEllipsis`；次行 10.5px `TextFillColorTertiaryBrush`，格式「宽 × 高 · 源格式 → 目标格式」。

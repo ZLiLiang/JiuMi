@@ -325,11 +325,9 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Gets the full output directory, or the source-directory wording when no folder is chosen.
+    /// Gets a value indicating whether a custom output folder is chosen.
     /// </summary>
-    public string OutputDirectoryToolTip => string.IsNullOrWhiteSpace(_outputDirectory)
-        ? _localization["Tool.ImageConvert.Output.SourceHint"]
-        : _outputDirectory;
+    public bool HasCustomOutputDirectory => !string.IsNullOrWhiteSpace(_outputDirectory);
 
     /// <summary>
     /// Gets a value indicating whether the advanced section is expanded.
@@ -649,7 +647,7 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
 
         _outputDirectory = normalized;
         OnPropertyChanged(nameof(OutputDirectoryLabel));
-        OnPropertyChanged(nameof(OutputDirectoryToolTip));
+        OnPropertyChanged(nameof(HasCustomOutputDirectory));
         PersistSettings();
     }
 
@@ -1096,7 +1094,6 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(MaxEdgeErrorText));
         OnPropertyChanged(nameof(CustomColorErrorText));
         OnPropertyChanged(nameof(OutputDirectoryLabel));
-        OnPropertyChanged(nameof(OutputDirectoryToolTip));
         OnPropertyChanged(nameof(EngineUnavailableText));
         OnPropertyChanged(nameof(ProgressText));
     }
