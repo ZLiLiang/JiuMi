@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using JiuMi.ViewModels;
 
 namespace JiuMi.Views;
@@ -15,6 +18,7 @@ namespace JiuMi.Views;
 public partial class ImageConvertView : UserControl
 {
     private const double ListChromeHeight = 420;
+    private const double AdvancedPanelHeight = 132;
     private const double MinListHeight = 120;
 
     private static readonly FilePickerFileType _imageFileType = new("Images")
@@ -32,6 +36,8 @@ public partial class ImageConvertView : UserControl
     };
 
     private TopLevel? _topLevel;
+    private ImageConvertViewModel? _viewModel;
+    private bool _advancedExpanded;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ImageConvertView"/> class.
@@ -51,6 +57,13 @@ public partial class ImageConvertView : UserControl
             _topLevel.SizeChanged += OnTopLevelSizeChanged;
             UpdateListHeight(_topLevel.ClientSize.Height);
         }
+
+        if (DataContext is ImageConvertViewModel viewModel)
+        {
+            _viewModel = viewModel;
+            _advancedExpanded = viewModel.IsAdvancedExpanded;
+            viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        }
     }
 
     /// <inheritdoc />
@@ -62,14 +75,38 @@ public partial class ImageConvertView : UserControl
             _topLevel = null;
         }
 
+        if (_viewModel is not null)
+        {
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _viewModel = null;
+        }
+
         base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ImageConvertViewModel.IsAdvancedExpanded) ||
+            _viewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        _advancedExpanded = viewModel.IsAdvancedExpanded;
+        if (_topLevel is not null)
+        {
+            UpdateListHeight(_topLevel.ClientSize.Height);
+        }
     }
 
     private void OnTopLevelSizeChanged(object? sender, SizeChangedEventArgs e) =>
         UpdateListHeight(e.NewSize.Height);
 
-    private void UpdateListHeight(double windowHeight) =>
-        FileListScroll.MaxHeight = Math.Max(MinListHeight, windowHeight - ListChromeHeight);
+    private void UpdateListHeight(double windowHeight)
+    {
+        double reserved = ListChromeHeight + (_advancedExpanded ? AdvancedPanelHeight : 0);
+        FileListScroll.MaxHeight = Math.Max(MinListHeight, windowHeight - reserved);
+    }
 
     private void OnDragEnter(object? sender, DragEventArgs e) => UpdateDragState(e);
 
@@ -81,7 +118,7 @@ public partial class ImageConvertView : UserControl
         e.Handled = true;
     }
 
-    private async void OnDrop(object? sender, DragEventArgs e)
+    private void OnDrop(object? sender, DragEventArgs e)
     {
         DropOverlay.IsVisible = false;
         e.Handled = true;
@@ -107,6 +144,27 @@ public partial class ImageConvertView : UserControl
                 }
             }
 
+            // The drag source can still hold the files while the OLE drag loop is unwinding.
+            // Queueing after input lets it release them before the probes read the files.
+            Dispatcher.UIThread.Post(
+                () => QueueDroppedFiles(viewModel, paths),
+                DispatcherPriority.ApplicationIdle);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPickerFailure(exception);
+        }
+    }
+
+    private static void QueueDroppedFiles(ImageConvertViewModel viewModel, IReadOnlyList<string> paths) =>
+        _ = AddDroppedFilesAsync(viewModel, paths);
+
+    private static async Task AddDroppedFilesAsync(
+        ImageConvertViewModel viewModel,
+        IReadOnlyList<string> paths)
+    {
+        try
+        {
             await viewModel.AddFilesAsync(paths);
         }
         catch (Exception exception)

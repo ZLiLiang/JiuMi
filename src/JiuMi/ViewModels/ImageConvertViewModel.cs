@@ -154,7 +154,6 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsPngTarget));
             OnPropertyChanged(nameof(IsWebPTarget));
             OnPropertyChanged(nameof(CanEditQuality));
-            OnPropertyChanged(nameof(CanEditJpegBackground));
             OnPropertyChanged(nameof(CanEditWebPLossy));
             OnPropertyChanged(nameof(CanEditPngCompression));
             foreach (ImageConvertRowViewModel row in Rows)
@@ -193,11 +192,6 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     /// Gets a value indicating whether the quality slider may be edited. It does not apply to lossless WebP.
     /// </summary>
     public bool CanEditQuality => IsIdle && IsQualityEnabled && !(IsWebPTarget && _webPLossless);
-
-    /// <summary>
-    /// Gets a value indicating whether the JPEG background may be edited.
-    /// </summary>
-    public bool CanEditJpegBackground => IsIdle && IsJpegTarget;
 
     /// <summary>
     /// Gets a value indicating whether the WebP lossy switch may be edited.
@@ -428,7 +422,6 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsIdle));
             OnPropertyChanged(nameof(CanAddFiles));
             OnPropertyChanged(nameof(CanEditQuality));
-            OnPropertyChanged(nameof(CanEditJpegBackground));
             OnPropertyChanged(nameof(CanEditWebPLossy));
             OnPropertyChanged(nameof(CanEditPngCompression));
             CancelCommand.NotifyCanExecuteChanged();
@@ -588,14 +581,29 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
         }
 
         var added = new List<ImageConvertRowViewModel>();
-        foreach (string path in paths)
+        foreach (string rawPath in paths)
         {
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            string path = rawPath.Trim().Trim('"');
+            if (path.Length == 0)
             {
                 continue;
             }
 
-            string fullPath = Path.GetFullPath(path);
+            string fullPath;
+            try
+            {
+                fullPath = Path.GetFullPath(path);
+            }
+            catch (ArgumentException)
+            {
+                continue;
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                continue;
+            }
+
             if (Rows.Any(row => string.Equals(row.SourcePath, fullPath, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
@@ -704,6 +712,14 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
                 }
 
                 row.ApplyProbe(probe);
+                if (probe.Failure is { } failure)
+                {
+                    _logger.Debug(
+                        "Probe {SourcePath} ended with {Failure}",
+                        row.SourcePath,
+                        failure);
+                }
+
                 if (probe.Error is { } error)
                 {
                     _logger.Debug(error, "Probing {SourcePath} failed", row.SourcePath);

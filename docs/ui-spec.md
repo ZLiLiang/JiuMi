@@ -229,9 +229,9 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
   - 目标格式：`ComboBox`，宽 120，选项 PNG / JPEG / WebP。
   - 质量：`Slider` 宽 160 + 右侧数值 40px 右对齐；仅目标格式为 JPEG/WebP 时可用，PNG 时置灰并保留数值。
   - 最大边：`TextBox` 宽 88 + 「px」后缀 11px 次文字色；空值表示原始尺寸，非法值用 11px `SystemFillColorCriticalBrush` 提示且禁用「开始转换」。
-  - JPG 底色：20 × 20 圆角色块按钮 + 当前色值 11px 次文字色；仅目标格式为 JPEG 时可用。
-  - 输出：`HyperlinkButton`，显示「同目录」或目录名（`CharacterEllipsis`，最大宽 240）。
-  - 进阶：行尾的折叠切换（Chevron 图标 +「进阶」12px）。展开后在参数区下方追加三行，行高 28、标签列宽 110、11.5px 次文字色：WebP 有损 `CheckBox`、PNG 压缩级别 `Slider` 0–9、保留源元数据 `CheckBox`。折叠状态不记忆。
+  - JPG 底色：仅目标格式为 JPEG 时显示；32px 高、120 宽的下拉按钮，内容为 14 × 14 色块 + 当前色值 12px + Chevron，点击打开预设色与自定义色值。
+  - 输出：32px 高的下拉按钮（与 JPG 底色同款描边和底），内容为文件夹图标 + 「同目录」或目录名（`CharacterEllipsis`，文字最大宽 170）+ Chevron；点击打开「使用源目录 / 选择文件夹」。
+  - 进阶：行尾的折叠切换（Chevron 图标 +「进阶」12px）。展开后在参数区下方追加一个内嵌面板（`SubtleFillColorSecondaryBrush` 底、圆角 8、内边距 14 10、行高 32、行距 8）：左侧 12px 次文字色标签，右侧控件右对齐；WebP 有损与保留源元数据用 `ToggleSwitch`（不显示 On/Off 文字），PNG 压缩级别用 `Slider` 0–9 + 右侧数值。不适用的行置灰，折叠状态不记忆。
 - 文件列表：行高 56，行内边距 8 0，行间 1px `DividerStrokeColorDefaultBrush`。
   - 缩略图 40 × 40、圆角 4、1px `ControlStrokeColorDefaultBrush`；未出图时显示格式文字 10px 次文字色。仅等比缩小，不放大，不裁剪。
   - 主行文件名 13px，超长 `CharacterEllipsis`；次行 10.5px `TextFillColorTertiaryBrush`，格式「宽 × 高 · 源格式 → 目标格式」。
@@ -239,7 +239,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
   - 失败行在次行位置追加原因，11px `SystemFillColorCriticalBrush`，与状态 chip 同一行换行显示。
   - 行尾 22 × 22 删除图标按钮；转换中禁用。
   - 列表最大高度按内容岛剩余空间，超出则纵向滚动，表头（文件名 / 状态）不吸顶。
-- 空态：以空态卡片替代参数区与列表，标题 `Tool.ImageConvert.Empty`、说明 `Tool.ImageConvert.Empty.Hint`；添加文件只在页头保留一个入口，空态不再重复放按钮。
+- 空态：以空态卡片替代参数区与列表，最小高 420、内容垂直居中；标题 `Tool.ImageConvert.Empty`、说明 `Tool.ImageConvert.Empty.Hint`；添加文件只在页头保留一个入口，空态不再重复放按钮。
 - 拖拽：整个内容岛接受文件拖放；拖入时岛描边换强调色并覆盖 12px 提示「松开以添加文件」。不接受的扩展名在入列时即标为失败，原因「不支持的格式」。
 - 底栏（列表下方、无分隔线以外装饰）：左侧 `ProgressBar` 高 4、圆角 2、宽 240 + 「已完成 / 总数」12px 次文字色；右侧「取消」按钮仅转换中显示。
 - 结束汇总走全局 InfoBar（见「错误呈现」章节）：全部成功为成功态，含「打开输出目录」动作；有失败为警告态，正文写「已完成 N，失败 M」，同样带「打开输出目录」。
