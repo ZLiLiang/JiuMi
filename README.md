@@ -1,8 +1,20 @@
 # JiuMi
 - [ ] 微信视频下载
 - [ ] 批量修改文件夹下文件名称
-- [ ] ps格式图标转换
+- [x] 图片格式转换（PSD 转 PNG 等）
 - [x] 世界工作时间
+
+## 主页
+
+![主页](docs/images/readme/home.png)
+
+## 世界工作时间
+
+![世界工作时间](docs/images/readme/world-clock.png)
+
+## 图片格式转换
+
+![图片格式转换](docs/images/readme/image-convert.png)
 
 ## 开发
 

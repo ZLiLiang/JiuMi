@@ -144,7 +144,7 @@ public partial class HomeView : UserControl
             ToolGrid.RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto");
             PositionCard(WeChatCard, row: 0, column: 0);
             PositionCard(BatchRenameCard, row: 1, column: 0);
-            PositionCard(IconConvertCard, row: 2, column: 0);
+            PositionCard(ImageConvertCard, row: 2, column: 0);
             PositionCard(WorldClockCard, row: 3, column: 0);
             return;
         }
@@ -164,7 +164,7 @@ public partial class HomeView : UserControl
         ToolGrid.RowDefinitions = new RowDefinitions("Auto,Auto");
         PositionCard(WeChatCard, row: 0, column: 0);
         PositionCard(BatchRenameCard, row: 0, column: 1);
-        PositionCard(IconConvertCard, row: 1, column: 0);
+        PositionCard(ImageConvertCard, row: 1, column: 0);
         PositionCard(WorldClockCard, row: 1, column: 1);
     }
 

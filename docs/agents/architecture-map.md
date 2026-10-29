@@ -19,7 +19,8 @@
 | 日志与诊断 | `日志与诊断` (274–382): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
 | 配置与外置文件 | `配置与外置文件` (383–466): locations, startup probe, file contract, atomic write, world clock state | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
 | 本地化 | `本地化` (467–566): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
-| 工具模块 | `工具模块` (567–616): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
+| 工具模块 | `工具模块` (584–643): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
+| 图片格式转换 | `图片格式转换` (644–698): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
 
 ## Stop rules
 

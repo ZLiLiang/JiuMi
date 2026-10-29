@@ -8,6 +8,7 @@ namespace JiuMi.ViewModels;
 public sealed class HomeViewModel : ViewModelBase
 {
     private IRelayCommand? _openWorldClockCommand;
+    private IRelayCommand? _openImageConvertCommand;
 
     /// <summary>
     /// Gets or sets the command that opens the world clock page from its tool card.
@@ -16,5 +17,14 @@ public sealed class HomeViewModel : ViewModelBase
     {
         get => _openWorldClockCommand;
         set => SetProperty(ref _openWorldClockCommand, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the command that opens the image conversion page from its tool card.
+    /// </summary>
+    public IRelayCommand? OpenImageConvertCommand
+    {
+        get => _openImageConvertCommand;
+        set => SetProperty(ref _openImageConvertCommand, value);
     }
 }
