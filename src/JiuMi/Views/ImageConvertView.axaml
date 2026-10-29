@@ -183,14 +183,14 @@
 
                 <StackPanel Margin="0,0,10,12">
                   <TextBlock Classes="param-label" Text="{loc:Localize Tool.ImageConvert.Quality}" />
-                  <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
-                    <Slider Width="160"
+                  <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="8">
+                    <Slider Width="140"
                             Minimum="1"
                             Maximum="100"
                             VerticalAlignment="Center"
                             IsEnabled="{Binding CanEditQuality}"
                             Value="{Binding Quality, Mode=TwoWay}" />
-                    <TextBlock Width="24"
+                    <TextBlock Width="40"
                                FontSize="12"
                                TextAlignment="Right"
                                VerticalAlignment="Center"
@@ -339,8 +339,6 @@
 
               <Border Margin="0,2,0,6"
                       Padding="14,10"
-                      MaxWidth="440"
-                      HorizontalAlignment="Left"
                       CornerRadius="8"
                       Background="{DynamicResource SubtleFillColorSecondaryBrush}"
                       IsVisible="{Binding IsAdvancedExpanded}">
@@ -374,13 +372,14 @@
                     <StackPanel Grid.Column="1"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal"
+                                Spacing="8"
                                 VerticalAlignment="Center">
                       <Slider Width="160"
                               Minimum="0"
                               Maximum="9"
                               IsEnabled="{Binding CanEditPngCompression}"
                               Value="{Binding PngCompressionLevel, Mode=TwoWay}" />
-                      <TextBlock Width="24"
+                      <TextBlock Width="20"
                                  FontSize="12"
                                  TextAlignment="Right"
                                  VerticalAlignment="Center"
