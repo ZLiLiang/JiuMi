@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<!--
+  批量重命名 · UI 提案原型（设计参考，不参与构建）
+
+  参数：
+    ?theme=light|dark        主题（默认 light）
+    ?state=ready|empty|sequence|affix|advanced|template|folders|error|done|partial|undo-failed
+                             页面状态，默认 ready（普通 · 替换文字）
+    ?sub=1                   含子目录
+    ?ext=.png                只处理这些扩展名（空格分隔可填多个）
+    ?backup=1                开启备份
+    ?skips=1                 展开「跳过 N 项」分组（默认收起）
+    ?confirm=1               直接打开确认对话框
+    ?capture=1               出图模式：隐藏页面滚动条与窗口外底色，只留 1200×760 的窗口本身
+
+  本原型只演示页面布局与状态，不连文件系统：预览行由内置示例名套用当前规则算出，
+  编号、差异高亮、预检冲突与统计都走同一段计算，改参数即可复核。
+
+  定稿依据见 issue #67「批量重命名：目录内文件与文件夹的规则化改名」。
+-->
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<title>批量重命名 · UI 提案</title>
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  :root {
+    --bg: #eef0f4;
+    --mica-a: #e9eef7;
+    --mica-b: #f6eef4;
+    --island: rgba(255, 255, 255, 0.68);
+    --island-border: rgba(0, 0, 0, 0.07);
+    --island-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+    --card: rgba(255, 255, 255, 0.72);
+    --card-border: rgba(0, 0, 0, 0.06);
+    --text: #1b1b1b;
+    --text-2: rgba(0, 0, 0, 0.55);
+    --text-3: rgba(0, 0, 0, 0.38);
+    --accent: #0f6cbd;
+    --accent-soft: rgba(15, 108, 189, 0.26);
+    --chip: rgba(0, 0, 0, 0.045);
+    --sel: rgba(0, 0, 0, 0.05);
+    --divider: rgba(0, 0, 0, 0.08);
+    --crit: #c42b1c;
+    --crit-bg: rgba(196, 43, 28, 0.07);
+    --scrim: rgba(12, 18, 28, 0.38);
+  }
+  [data-theme="dark"] {
+    --bg: #16171b;
+    --mica-a: #1e2027;
+    --mica-b: #221f28;
+    --island: rgba(58, 60, 70, 0.66);
+    --island-border: rgba(255, 255, 255, 0.09);
+    --island-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --card: rgba(72, 74, 84, 0.5);
+    --card-border: rgba(255, 255, 255, 0.07);
+    --text: #f2f2f2;
+    --text-2: rgba(255, 255, 255, 0.62);
+    --text-3: rgba(255, 255, 255, 0.4);
+    --accent: #60cdff;
+    --accent-soft: rgba(96, 205, 255, 0.24);
+    --chip: rgba(255, 255, 255, 0.08);
+    --sel: rgba(255, 255, 255, 0.08);
+    --divider: rgba(255, 255, 255, 0.09);
+    --crit: #ff99a4;
+    --crit-bg: rgba(255, 153, 164, 0.12);
+    --scrim: rgba(0, 0, 0, 0.6);
+  }
+  html, body { height: 100%; }
+  html.capture body { display: block; overflow: hidden; background: transparent; }
+  html.capture .scroll, html.capture .rows { scrollbar-width: none; }
+  html.capture .scroll::-webkit-scrollbar, html.capture .rows::-webkit-scrollbar { display: none; }
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    color: var(--text);
+  }
+  .app {
+    position: relative;
+    width: 1200px;
+    height: 760px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(900px 520px at 8% 0%, var(--mica-a), transparent 70%),
+      radial-gradient(760px 480px at 96% 100%, var(--mica-b), transparent 72%),
+      var(--bg);
+    overflow: hidden;
+  }
+  .titlebar {
+    height: 40px;
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+  }
+  .logo {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: linear-gradient(135deg, #6ea8fe, #0f6cbd);
+  }
+  .appname { font-size: 12px; color: var(--text-2); }
+
+  .shell { flex: 1; min-height: 0; display: flex; gap: 14px; padding: 0 14px 14px; }
+  .island {
+    background: var(--island);
+    border: 1px solid var(--island-border);
+    border-radius: 12px;
+    box-shadow: var(--island-shadow);
+    backdrop-filter: blur(30px);
+  }
+
+  .nav { flex: 0 0 280px; padding: 8px 8px 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-toggle {
+    width: 36px; height: 32px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 4px;
+    background: transparent; color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .nav-items { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    position: relative;
+    height: 36px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--text);
+    white-space: nowrap; overflow: hidden;
+  }
+  .nav-item svg { flex: 0 0 16px; }
+  .nav-item.disabled { color: var(--text-3); }
+  .nav-item.disabled .badge { margin-left: auto; }
+  .badge {
+    font-size: 10px; line-height: 16px; padding: 0 6px;
+    border-radius: 4px; background: var(--chip); color: var(--text-3);
+  }
+  .nav-item.selected { background: var(--sel); }
+  .nav-item.selected svg { color: var(--accent); }
+  .nav-item.selected::before {
+    content: "";
+    position: absolute; left: 0; top: 10px;
+    width: 3px; height: 16px; border-radius: 2px;
+    background: var(--accent);
+  }
+  .nav-spacer { flex: 1; }
+  .divider { height: 1px; background: var(--divider); margin: 6px 12px; }
+
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .scroll { flex: 1; min-height: 0; overflow: auto; padding: 32px 44px 36px; display: flex; flex-direction: column; }
+
+  .page-head { display: flex; align-items: flex-start; gap: 16px; }
+  h1 { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.25; }
+  .subtitle { margin: 6px 0 0; font-size: 13px; color: var(--text-2); }
+  .page-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 12px;
+    border: 1px solid var(--island-border);
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--text);
+    font: inherit; font-size: 13px;
+    white-space: nowrap;
+  }
+  .btn svg { color: var(--text-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  [data-theme="dark"] .btn.primary { color: #0b0b0b; }
+  .btn.ghost { background: transparent; }
+  .btn[disabled] { opacity: 0.45; }
+  .btn.primary[disabled] { background: var(--chip); border-color: var(--island-border); color: var(--text-3); }
+  .help {
+    width: 20px; height: 20px; padding: 0;
+    display: grid; place-items: center;
+    border: 1px solid var(--island-border); border-radius: 10px;
+    background: var(--chip); color: var(--text-3);
+    font: inherit; font-size: 11px;
+  }
+
+  .card {
+    margin-top: 22px;
+    padding: 20px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card);
+    display: flex; flex-direction: column;
+    flex: 1 1 auto; min-height: 0;
+  }
+
+  /* ---------- 参数区 ---------- */
+  .params { display: flex; flex-wrap: wrap; gap: 0 20px; }
+  .param { margin: 0 0 12px; }
+  .plabel { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+  .label-help {
+    width: 16px; height: 16px; padding: 0;
+    display: inline-grid; place-items: center;
+    border: 1px solid var(--island-border); border-radius: 8px;
+    background: var(--chip); color: var(--text-3);
+    font: inherit; font-size: 10px; line-height: 1;
+  }
+  .label-help:hover { color: var(--text); }
+  .segments { display: flex; gap: 2px; padding: 2px; border-radius: 4px; background: var(--chip); }
+  .segment {
+    height: 28px; padding: 0 12px;
+    border: 0; border-radius: 3px;
+    background: transparent; color: var(--text-2);
+    font: inherit; font-size: 13px; white-space: nowrap;
+  }
+  .segment.active { background: var(--card); color: var(--text); }
+  .switch { display: inline-flex; align-items: center; gap: 8px; height: 32px; font-size: 13px; }
+  .switch input { appearance: none; margin: 0; width: 40px; height: 20px; border-radius: 10px; background: var(--text-3); position: relative; outline: 0; }
+  .switch input::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    transition: left 120ms ease;
+  }
+  .switch input:checked { background: var(--accent); }
+  .switch input:checked::after { left: 23px; }
+  .field { height: 32px; padding: 0 10px; border: 1px solid var(--island-border); border-radius: 4px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; outline: 0; }
+  .field::placeholder { color: var(--text-3); }
+  .field:focus { border-color: var(--accent); }
+  #task, #ruleSelect { width: 132px; }
+  .rule-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 20px; }
+  .inline { display: inline-flex; align-items: center; gap: 8px; }
+  .check { display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: 13px; color: var(--text-2); }
+  .check input { width: 14px; height: 14px; accent-color: var(--accent); margin: 0; }
+  .rule-divider { height: 1px; background: var(--divider); margin: 4px 0 14px; }
+
+  /* ---------- 预检摘要 ---------- */
+  .precheck {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px; padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--crit); background: var(--crit-bg);
+    font-size: 12px; color: var(--text);
+  }
+  .precheck .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--crit); flex: none; }
+  .precheck .why { margin-left: auto; font-size: 11px; color: var(--text-2); }
+
+  /* ---------- 预览列表 ---------- */
+  .list { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .list-head, .row { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr) 92px; align-items: center; gap: 12px; }
+  .list-head { padding: 0 0 6px; font-size: 11px; color: var(--text-3); }
+  .list-head .status { justify-self: end; }
+  .rows { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+  .row { padding: 9px 0; border-bottom: 1px solid var(--divider); min-height: 44px; }
+  .row:last-child { border-bottom: 0; }
+  .name { font-size: 13px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .arrow { font-size: 12px; color: var(--text-3); text-align: center; }
+  .new { min-width: 0; }
+  .new .name { color: var(--text); }
+  .new .name .diff { color: var(--accent); font-weight: 600; }
+  .new .name.bad { color: var(--crit); }
+  .new .reason { margin-top: 2px; font-size: 11px; color: var(--crit); }
+  .chip {
+    justify-self: end;
+    display: inline-flex; align-items: center;
+    font-size: 11px; line-height: 18px;
+    padding: 0 7px; border-radius: 4px;
+    background: var(--chip); color: var(--text-2);
+    white-space: nowrap;
+  }
+  .chip.conflict { background: transparent; box-shadow: inset 0 0 0 1px var(--crit); color: var(--crit); }
+  .chip.done { background: var(--accent-soft); color: var(--accent); }
+  .chip.failed { background: transparent; box-shadow: inset 0 0 0 1px var(--crit); color: var(--crit); }
+  .chip.skip { color: var(--text-3); }
+  .skip-toggle {
+    flex: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 8px;
+    border: 0; border-radius: 4px;
+    background: transparent;
+    font: inherit; font-size: 12px;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .skip-toggle:hover { background: var(--sel); }
+  .skip-toggle svg { transition: transform 120ms ease; }
+  .skip-toggle.open svg { transform: rotate(90deg); }
+  .skip-panel {
+    flex: none;
+    max-height: 132px; overflow: auto;
+    margin-top: 4px;
+    border-top: 1px solid var(--divider);
+    padding: 4px 0;
+  }
+  .skip-panel .skip-row { padding: 5px 0; }
+
+  .skip-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: center; gap: 12px; padding: 5px 0; }
+  .skip-row .name { font-size: 12px; color: var(--text-2); }
+  .empty-inline { flex: 1 1 auto; display: grid; place-items: center; padding: 16px 0; font-size: 12px; color: var(--text-3); text-align: center; }
+
+  /* ---------- 底栏 ---------- */
+  .footer {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--divider);
+  }
+  .stats { flex: 0 1 auto; min-width: 0; font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .footer-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .icon-btn {
+    flex: none; width: 22px; height: 22px; padding: 0;
+    display: grid; place-items: center;
+    border: 0; border-radius: 4px;
+    background: transparent; color: var(--text-3);
+  }
+  .icon-btn:hover { background: var(--sel); color: var(--text); }
+  .icon-btn[disabled] { opacity: 0.4; }
+
+  /* ---------- 空态 ---------- */
+  .empty-card { align-items: center; justify-content: center; gap: 0; text-align: center; }
+  .empty-card .slot {
+    width: 56px; height: 56px; border-radius: 12px;
+    display: grid; place-items: center;
+    background: var(--chip); color: var(--text-3);
+    margin-bottom: 14px;
+  }
+  .empty-card .title { font-size: 14px; font-weight: 600; }
+  .empty-card .hint { margin-top: 6px; max-width: 380px; font-size: 12px; line-height: 1.6; color: var(--text-2); white-space: normal; }
+
+  /* ---------- InfoBar ---------- */
+  .infobar {
+    margin: 12px 12px 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--island-border);
+    border-radius: 4px;
+    background: var(--card);
+    font-size: 12.5px;
+  }
+  .infobar .mark { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 10px; color: #fff; background: var(--accent); }
+  .infobar.warn .mark { background: #c19c00; color: #fff; }
+  .infobar .msg { flex: 1; min-width: 0; }
+  .infobar .msg .m2 { display: block; margin-top: 2px; font-size: 11px; color: var(--text-2); }
+  .link { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12.5px; padding: 0 2px; }
+
+  /* ---------- 确认对话框 ---------- */
+  .overlay { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: var(--scrim); }
+  .dialog {
+    width: 400px;
+    border: 1px solid var(--island-border);
+    border-radius: 8px;
+    background: var(--bg);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    padding: 22px 24px 20px;
+  }
+  [data-theme="dark"] .dialog { background: #2b2b2b; }
+  .dialog h2 { margin: 0; font-size: 20px; font-weight: 600; }
+  .dialog .body { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .dialog .body b { font-weight: 600; }
+  .dialog .note { margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-3); }
+  .dialog .actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ---------- 拖放提示 ---------- */  .drop-hint {
+    position: absolute; inset: 0; z-index: 15;
+    display: grid; place-items: center;
+    border: 2px dashed var(--accent); border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    font-size: 12px; color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="titlebar">
+    <div class="logo"></div>
+    <span class="appname">JiuMi</span>
+  </header>
+
+  <div class="shell">
+    <nav class="island nav">
+      <button class="nav-toggle" aria-label="收起导航">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="2" y="3" width="12" height="10" rx="2" /><path d="M6.5 3v10" />
+        </svg>
+      </button>
+      <div class="nav-items">
+        <a class="nav-item">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 7.5 8 3l5.5 4.5V13a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z" /></svg>
+          <span>主页</span>
+        </a>
+        <a class="nav-item disabled">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="4" width="8" height="8" rx="1.5" /><path d="m10 7 4-2v6l-4-2z" /></svg>
+          <span>微信视频下载</span><span class="badge">即将推出</span>
+        </a>
+        <a class="nav-item selected">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5h7M3 8h9M3 11.5h5" /><path d="M12 3.5v5" /></svg>
+          <span>批量重命名</span>
+        </a>
+        <a class="nav-item">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11" rx="2" /><circle cx="6" cy="6" r="1.2" /><path d="m3 11 3-3 2.5 2.5L11 8l2 2" /></svg>
+          <span>图片格式转换</span>
+        </a>
+        <a class="nav-item">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5" /><path d="M8 4.8V8l2.2 1.4" /></svg>
+          <span>世界工作时间</span>
+        </a>
+      </div>
+      <div class="nav-spacer"></div>
+      <div class="divider"></div>
+      <a class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2" /><path d="M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" /></svg>
+          <span>设置</span>
+        </a>
+    </nav>
+
+    <main class="island content">
+      <div class="infobar" id="infobar" hidden>
+        <span class="mark" id="info-mark">✓</span>
+        <span class="msg" id="info-msg"></span>
+        <button class="link" id="info-action">打开文件夹</button>
+      </div>
+
+      <div class="scroll">
+        <div class="page-head">
+          <div>
+            <h1>批量重命名</h1>
+            <p class="subtitle">按一条规则给文件夹里的文件和文件夹改名；执行前先看这一份预览。</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn" id="pick">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.6l1.4 1.5h5A1.5 1.5 0 0 1 14 6v5.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z" /></svg>
+              选择文件夹
+            </button>
+            <button class="btn primary" id="run">执行改名</button>
+            <button class="help" title="编号按预览顺序从 1 开始；{index:00} 的补零宽度随本批条目数；执行后只保留最近一次批次的撤销。">?</button>
+          </div>
+        </div>
+
+        <section class="card empty-card" id="empty" hidden>
+          <div class="slot">
+            <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.6l1.4 1.5h5A1.5 1.5 0 0 1 14 6v5.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z" /></svg>
+          </div>
+          <div class="title">还没有选择文件夹</div>
+          <div class="hint">点右上角「选择文件夹」，或直接把文件夹拖进这个页面。改名只作用于该文件夹内部，它自己永远不会被改名。</div>
+        </section>
+
+        <section class="card" id="card">
+          <div class="params">
+            <div class="param">
+              <span class="plabel">改名对象</span>
+              <div class="segments" data-group="mode">
+                <button class="segment" data-value="files">文件</button>
+                <button class="segment" data-value="folders">文件夹</button>
+              </div>
+            </div>
+            <div class="param">
+              <span class="plabel">规则</span>
+              <div class="segments" data-group="level">
+                <button class="segment" data-value="basic">普通</button>
+                <button class="segment" data-value="advanced">进阶</button>
+              </div>
+            </div>
+            <div class="param">
+              <span class="plabel">含子目录</span>
+              <label class="switch"><input type="checkbox" id="sub" /></label>
+            </div>
+            <div class="param" id="ext-param">
+              <span class="plabel">只处理这些扩展名<button class="label-help" title="只处理这些扩展名，其余文件不参与本次改名；留空表示不限，空格分隔可填多个，大小写不敏感">?</button></span>
+              <input class="field" id="ext" style="width:150px" placeholder=".png .jpg" />
+            </div>
+            <div class="param">
+              <span class="plabel">备份<button class="label-help" title="改名之前先复制一份到同级的 JiuMi-backup-<时间戳> 目录">?</button></span>
+              <label class="switch"><input type="checkbox" id="backup" /></label>
+            </div>
+          </div>
+
+          <div class="rule-row" id="rule-basic">
+            <div class="param">
+              <span class="plabel">任务<button class="label-help" title="选好文件夹后，改动这里的任意一项，列表会即时显示改名预览。三种任务分别是：换掉一段文字、在名字首尾加字、按序号重新命名。">?</button></span>
+              <select class="field" id="task">
+                <option value="replace">替换文字</option>
+                <option value="affix">加前缀或后缀</option>
+                <option value="sequence">按序号重命名</option>
+              </select>
+            </div>
+            <div class="param" id="task-find">
+              <span class="plabel">查找</span>
+              <input class="field" id="basicFind" style="width:180px" />
+            </div>
+            <div class="param" id="task-with">
+              <span class="plabel">替换</span>
+              <input class="field" id="basicWith" style="width:200px" />
+            </div>
+            <div class="param" id="task-affixpos">
+              <span class="plabel">位置</span>
+              <div class="segments" data-group="affixPos">
+                <button class="segment" data-value="prefix">加在前面</button>
+                <button class="segment" data-value="suffix">加在后面</button>
+              </div>
+            </div>
+            <div class="param" id="task-affixtext">
+              <span class="plabel">文本</span>
+              <input class="field" id="affixText" style="width:160px" placeholder="2026-" />
+            </div>
+            <div class="param" id="task-seqname">
+              <span class="plabel">名称</span>
+              <input class="field" id="seqName" style="width:150px" placeholder="图片" />
+            </div>
+            <div class="param" id="task-pad">
+              <span class="plabel">补零</span>
+              <select class="field" id="seqPad">
+                <option value="0">不补零</option>
+                <option value="2">2 位</option>
+                <option value="3">3 位</option>
+                <option value="4">4 位</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="rule-row" id="rule-advanced" hidden>
+            <div class="param">
+              <span class="plabel">任务<button class="label-help" title="查找替换：直接写要换掉的文字，可勾正则、替换串里可用 {index} 编号。整名模板：用 {name}、{index}、{ext}、{date} 拼出新名字。选好文件夹后改动即时预览。">?</button></span>
+              <select class="field" id="ruleSelect">
+                <option value="replace">查找替换</option>
+                <option value="template">整名模板</option>
+              </select>
+            </div>
+            <div class="param" id="rule-replace">
+              <span class="plabel">查找</span>
+              <input class="field" id="find" style="width:180px" />
+            </div>
+            <div class="param" id="rule-replace-with">
+              <span class="plabel">替换<button class="label-help" title="替换串里可用 {index} 表示本项在预览里的序号；{index:00} 表示至少补到两位，例如 01。">?</button></span>
+              <span class="inline">
+                <input class="field" id="replace" style="width:200px" />
+                <label class="check" title="查找串按正则表达式解释"><input type="checkbox" id="regex" />按正则</label>
+              </span>
+            </div>
+            <div class="param" id="rule-template">
+              <span class="plabel">模板<button class="label-help" title="可用 {name} 原名、{index} 序号、{ext} 扩展名（含点）、{date} 今天。例：{index:00}-{name}{ext} 会把「产品图.png」变成「01-产品图.png」。">?</button></span>
+              <input class="field" id="template" style="width:300px" />
+            </div>
+          </div>
+
+          <div class="rule-divider"></div>
+
+          <div class="precheck" id="precheck" hidden>
+            <span class="dot"></span>
+            <span id="precheck-text"></span>
+            <span class="why" id="precheck-why"></span>
+          </div>
+
+          <div class="list">
+            <div class="list-head">
+              <span>原名称</span>
+              <span></span>
+              <span>改为</span>
+              <span class="status">状态</span>
+            </div>
+            <div class="rows" id="rows"></div>
+          </div>
+
+          <div class="skip-panel" id="skip-panel" hidden>
+            <div id="skip-rows"></div>
+          </div>
+
+          <div class="footer">
+            <div class="stats" id="stats"></div>
+            <button class="skip-toggle" id="skip-toggle" hidden>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" id="skip-chevron"><path d="m6 3 5 5-5 5" /></svg>
+              <span id="skip-label">跳过</span>
+            </button>
+            <div class="footer-actions">
+              <button class="icon-btn" id="export" title="导出撤销日志（JSON）">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2.5v7" /><path d="m5.2 6.8 2.8 2.8 2.8-2.8" /><path d="M3 11.5v1A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-1" /></svg>
+              </button>
+              <button class="btn" id="undo">撤销上次改名</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay" id="confirm" hidden>
+    <div class="dialog" role="dialog" aria-modal="true">
+      <h2>确认改名</h2>
+      <p class="body" id="confirm-body"></p>
+      <p class="note" id="confirm-note"></p>
+      <div class="actions">
+        <button class="btn" id="confirm-cancel">取消</button>
+        <button class="btn primary" id="confirm-ok">执行改名</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const stateParam = params.get('state') || 'ready';
+document.documentElement.dataset.theme = params.get('theme') === 'dark' ? 'dark' : 'light';
+document.documentElement.classList.toggle('capture', params.get('capture') === '1');
+
+const model = {
+  mode: 'files',
+  rule: 'replace',
+  find: '产品图-0',
+  replace: 'product-',
+  regex: false,
+  template: '{index:00}-{name}{ext}',
+  sub: params.get('sub') === '1',
+  ext: params.get('ext') || '',
+  backup: params.get('backup') === '1',
+  executed: false,
+  failFirst: false,
+  undoFailFirst: false,
+  undoTried: false,
+  undone: false,
+  skipsOpen: params.get('skips') === '1',
+  level: 'basic',
+  task: 'replace',
+  basicFind: '产品图-0',
+  basicWith: 'product-',
+  affixPos: 'prefix',
+  affixText: '',
+  seqName: '图片',
+  seqPad: '0',
+  basicEdited: false,
+  advancedEdited: false,
+};
+
+if (stateParam === 'template') { model.level = 'advanced'; model.rule = 'template'; model.template = '{index:00}-{name}{ext}'; model.advancedEdited = true; }
+if (stateParam === 'advanced') { model.level = 'advanced'; model.rule = 'replace'; model.advancedEdited = true; }
+if (stateParam === 'folders') { model.level = 'advanced'; model.mode = 'folders'; model.sub = true; model.find = '项目 '; model.replace = 'Project-{index} '; model.advancedEdited = true; }
+if (stateParam === 'error') { model.basicFind = '产品图-0'; model.basicWith = '产品:'; }
+if (stateParam === 'sequence') { model.task = 'sequence'; model.seqName = '素材'; model.seqPad = '3'; }
+if (stateParam === 'affix') { model.task = 'affix'; model.affixText = '2026-'; }
+
+const FILES = ['产品图-01.png', '产品图-02.png', '产品图-03.png', '会议记录 2024.txt', '会议记录 2025.txt', '报价单.xlsx', '草稿.txt'];
+const FILE_SKIPS = [{ name: '.hidden.tmp', reason: '隐藏属性' }, { name: '快捷方式.lnk', reason: '符号链接' }];
+const FOLDERS = ['项目 A', '项目 A/项目 素材', '项目 A/项目 素材/项目 封面', '项目 A/项目 备份', '临时文件夹'];
+const FOLDER_SKIPS = [{ name: '归档（链接）', reason: '符号链接' }];
+
+const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+const ILLEGAL = /[<>:"/\\|?*\u0000-\u001f]/;
+
+const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function digits(n) { return String(Math.max(n, 1)).length; }
+
+function expandToken(token, index, count) {
+  const parts = token.split(':');
+  if (parts.length === 1) return String(index);
+  const width = Math.max(parts[1].length, digits(count));
+  return String(index).padStart(width, '0');
+}
+
+function today() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+function splitName(full) {
+  const slash = full.lastIndexOf('/');
+  const dir = slash >= 0 ? full.slice(0, slash + 1) : '';
+  const name = full.slice(slash + 1);
+  return { dir, name };
+}
+
+function splitExt(name) {
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0 || dot === name.length - 1) return { stem: name, ext: '' };
+  return { stem: name.slice(0, dot), ext: name.slice(dot) };
+}
+
+function extAllowed(name) {
+  if (!model.ext.trim()) return true;
+  const filters = model.ext.split(/[\s,;]+/).filter(Boolean).map((e) => (e.startsWith('.') ? e : '.' + e).toLowerCase());
+  const lower = name.toLowerCase();
+  return filters.some((f) => lower.endsWith(f));
+}
+
+function matchesRule(name) {
+  if (model.level === 'basic') {
+    if (model.task === 'replace') return !!model.basicFind && name.includes(model.basicFind);
+    if (model.task === 'affix') return !!model.affixText;
+    return true;
+  }
+  if (model.rule === 'template') return true;
+  if (!model.find) return false;
+  if (model.regex) {
+    try { return new RegExp(model.find).test(name); } catch (e) { return false; }
+  }
+  return name.includes(model.find);
+}
+
+function newNameFor(name, index, count) {
+  const { stem, ext } = splitExt(name);
+  if (model.level === 'basic') {
+    if (model.task === 'replace') {
+      return model.basicFind ? name.split(model.basicFind).join(model.basicWith) : name;
+    }
+    if (model.task === 'affix') {
+      if (!model.affixText) return name;
+      return model.affixPos === 'prefix' ? model.affixText + name : stem + model.affixText + ext;
+    }
+    if (model.task === 'sequence') {
+      const width = Math.max(Number(model.seqPad) || 0, digits(count));
+      return model.seqName + String(index).padStart(width, '0') + ext;
+    }
+  }
+  if (model.rule === 'template') {
+    return model.template
+      .replace(/\{name\}/g, stem)
+      .replace(/\{ext\}/g, ext)
+      .replace(/\{date\}/g, today())
+      .replace(/\{index(?::(0+))?\}/g, (m, zeros) => expandToken('index' + (zeros ? ':' + zeros : ''), index, count));
+  }
+  const repl = (m) => model.replace.replace(/\{index(?::(0+))?\}/g, (x, zeros) => expandToken('index' + (zeros ? ':' + zeros : ''), index, count));
+  if (model.regex) {
+    let re;
+    try { re = new RegExp(model.find, 'g'); } catch (e) { return name; }
+    return name.replace(re, repl);
+  }
+  return name.split(model.find).join(repl());
+}
+
+function validate(target, taken) {
+  const { name } = splitName(target);
+  const { stem } = splitExt(name);
+  if (ILLEGAL.test(name)) {
+    const bad = name.match(ILLEGAL);
+    return '包含非法字符 ' + bad[0];
+  }
+  if (/[ .]$/.test(name)) return '名字不能以空格或点结尾';
+  if (RESERVED.test(stem)) return 'Windows 保留名';
+  if (name.length > 255) return '名字超过 255 个字符';
+  if (taken.has(target.toLowerCase())) return '本批次内目标重名';
+  return '';
+}
+
+function build() {
+  const isFolder = model.mode === 'folders';
+  let items = (isFolder ? FOLDERS : FILES).map((full) => ({ full, ...splitName(full) }));
+  if (!isFolder && model.ext.trim()) items = items.filter((it) => extAllowed(it.name));
+
+  const ordered = items.slice().sort((a, b) => collator.compare(a.name, b.name));
+  const matched = ordered.filter((it) => matchesRule(it.name));
+  // 编号与预览同序：文件按名称自然排序，文件夹先深后浅，编号自上而下 1..N。
+  if (isFolder) matched.sort((a, b) => depth(b.full) - depth(a.full) || collator.compare(a.full, b.full));
+  const count = matched.length;
+  const index = new Map(matched.map((it, i) => [it.full, i + 1]));
+
+  const rows = matched.map((it) => {
+    const target = newNameFor(it.name, index.get(it.full), count);
+    const newFull = it.dir + target;
+    return { old: it.full, next: newFull, oldFull: it.full, newFull };
+  }).filter((r) => r.next !== r.old);
+
+  const lower = new Set(rows.filter((r) => r.next.toLowerCase() !== r.old.toLowerCase()).map((r) => r.newFull.toLowerCase()));
+  const untouched = new Set(items.map((it) => it.full.toLowerCase()).filter((f) => !rows.some((r) => r.oldFull === f)));
+
+  rows.forEach((r) => {
+    const taken = new Set([...lower, ...untouched].filter((f) => f !== r.oldFull.toLowerCase() && f !== r.newFull.toLowerCase()));
+    r.reason = validate(r.newFull, taken);
+    r.status = r.reason ? 'conflict' : 'pending';
+  });
+
+  if (isFolder) {
+    rows.sort((a, b) => depth(b.oldFull) - depth(a.oldFull) || collator.compare(a.oldFull, b.oldFull));
+  } else {
+    rows.sort((a, b) => collator.compare(a.old, b.old));
+  }
+
+
+  if (rows.length) {
+    if (model.executed && model.failFirst) rows[0].execFail = true;
+    if (model.undoFailFirst) rows[0].undoFailed = true;
+  }
+  const unchanged = ordered.length - matched.length;
+  const skips = isFolder ? FOLDER_SKIPS : FILE_SKIPS;
+  const extChanges = rows.filter((r) => extOf(splitName(r.old).name).toLowerCase() !== extOf(splitName(r.next).name).toLowerCase()).length;
+  return { rows, skips, unchanged, extChanges, matched: count };
+}
+
+function depth(full) { return full.split('/').length; }
+function extOf(name) { const { ext } = splitExt(name); return ext; }
+
+function diffHtml(oldName, newName, bad) {
+  let p = 0;
+  while (p < oldName.length && p < newName.length && oldName[p] === newName[p]) p++;
+  let s = 0;
+  while (s < oldName.length - p && s < newName.length - p && oldName[oldName.length - 1 - s] === newName[newName.length - 1 - s]) s++;
+  const head = newName.slice(0, p);
+  const mid = newName.slice(p, newName.length - s);
+  const tail = newName.slice(newName.length - s);
+  const cls = bad ? '' : 'diff';
+  return escapeHtml(head) + '<span class="' + cls + '">' + escapeHtml(mid) + '</span>' + escapeHtml(tail);
+}
+
+const rowsEl = document.getElementById('rows');
+
+function render() {
+  const isFolder = model.mode === 'folders';
+  const result = build();
+  const changed = result.rows.length;
+  const conflicts = result.rows.filter((r) => r.status === 'conflict').length;
+
+  document.getElementById('ext-param').hidden = isFolder;
+  const basic = model.level === 'basic';
+  document.getElementById('rule-basic').hidden = !basic;
+  document.getElementById('rule-advanced').hidden = basic;
+  const isReplaceTask = model.task === 'replace';
+  const isAffixTask = model.task === 'affix';
+  const isSeqTask = model.task === 'sequence';
+  document.getElementById('task-find').hidden = !isReplaceTask;
+  document.getElementById('task-with').hidden = !isReplaceTask;
+  document.getElementById('task-affixpos').hidden = !isAffixTask;
+  document.getElementById('task-affixtext').hidden = !isAffixTask;
+  document.getElementById('task-seqname').hidden = !isSeqTask;
+  document.getElementById('task-pad').hidden = !isSeqTask;
+  const isAdvReplace = model.rule === 'replace';
+  document.getElementById('rule-replace').hidden = !isAdvReplace;
+  document.getElementById('rule-replace-with').hidden = !isAdvReplace;
+  document.getElementById('rule-template').hidden = isAdvReplace;
+  document.getElementById('empty').hidden = stateParam !== 'empty';
+  document.getElementById('card').hidden = stateParam === 'empty';
+
+  document.querySelectorAll('.segments').forEach((group) => {
+    group.querySelectorAll('.segment').forEach((btn) => {
+      btn.classList.toggle('active', model[group.dataset.group] === btn.dataset.value);
+    });
+  });
+
+  let html = '';
+  result.rows.forEach((r) => {
+    let status = r.status;
+    let reason = r.reason;
+    if (r.undoFailed) { status = 'undo-failed'; reason = '文件已被外部修改'; }
+    else if (r.execFail) { status = 'failed'; reason = '文件被其他程序占用'; }
+    else if (model.executed) { status = 'done'; reason = ''; }
+    const label = { pending: '将改名', conflict: '冲突', done: '已改名', failed: '失败', 'undo-failed': '撤销失败' }[status];
+    const chipClass = { pending: '', conflict: 'conflict', done: 'done', failed: 'failed', 'undo-failed': 'failed' }[status];
+    html += '<div class="row">'
+      + '<div class="name">' + escapeHtml(r.old) + '</div>'
+      + '<div class="arrow"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h9.5" /><path d="m9 4.5 3.5 3.5L9 11.5" /></svg></div>'
+      + '<div class="new">'
+      + '<div class="name' + (reason ? ' bad' : '') + '">' + diffHtml(r.old, r.next, !!reason) + '</div>'
+      + (reason ? '<div class="reason">' + escapeHtml(reason) + '</div>' : '')
+      + '</div>'
+      + '<span class="chip ' + chipClass + '">' + label + '</span>'
+      + '</div>';
+  });
+
+  if (!changed) {
+    let emptyHint = '这条规则没有命中任何' + (isFolder ? '文件夹' : '文件') + '。';
+    if (basic && isReplaceTask && !model.basicFind) emptyHint = '填上「查找」的内容后，这里会显示改名预览。';
+    if (basic && isAffixTask && !model.affixText) emptyHint = '填上要加的文字后，这里会显示改名预览。';
+    html += '<div class="empty-inline">' + emptyHint + '</div>';
+  }
+
+  rowsEl.innerHTML = html;
+
+  const skipToggle = document.getElementById('skip-toggle');
+  const skipPanel = document.getElementById('skip-panel');
+  skipToggle.hidden = result.skips.length === 0;
+  skipToggle.classList.toggle('open', model.skipsOpen);
+  skipPanel.hidden = !(model.skipsOpen && result.skips.length > 0);
+  document.getElementById('skip-label').textContent = '跳过 ' + result.skips.length + ' 项';
+  document.getElementById('skip-rows').innerHTML = result.skips.map((s) =>
+    '<div class="skip-row"><div class="name">' + escapeHtml(s.name) + '</div>'
+    + '<span class="chip skip">' + s.reason + '</span></div>').join('');
+
+  const precheck = document.getElementById('precheck');
+  precheck.hidden = conflicts === 0 || model.executed;
+  if (conflicts) {
+    document.getElementById('precheck-text').textContent = conflicts + ' 项无法改名，已禁用执行';
+    const kinds = [...new Set(result.rows.filter((r) => r.status === 'conflict').map((r) => r.reason))];
+    document.getElementById('precheck-why').textContent = kinds.join(' · ');
+  }
+
+  const stats = document.getElementById('stats');
+  const n = (v) => '<b>' + v + '</b>';
+  const failed = result.rows.filter((r) => r.execFail).length;
+  const undone = result.rows.filter((r) => r.undoFailed).length;
+  if (model.executed) {
+    stats.innerHTML = '已改名 ' + n(changed - failed - undone) + ' 项'
+      + (failed ? ' · 失败 ' + n(failed) + ' 项' : '');
+  } else if (model.undone) {
+    stats.innerHTML = '已撤销 ' + n(changed - undone) + ' 项'
+      + (undone ? ' · 撤销失败 ' + n(undone) + ' 项' : '');
+  } else {
+    stats.innerHTML = '将改名 ' + n(changed - conflicts) + ' 项 · 未匹配 ' + n(result.unchanged) + ' 项';
+  }
+
+  document.getElementById('run').disabled = conflicts > 0 || changed - conflicts <= 0 || model.executed;
+  document.getElementById('undo').disabled = !model.executed || model.undoTried;
+  document.getElementById('export').disabled = !(model.executed || model.undone);
+
+  const backupNote = model.backup ? '备份目录：' + 'JiuMi-backup-' + today().replace(/-/g, '') + '-1530（同级）。' : '';
+  document.getElementById('confirm-body').innerHTML = model.level === 'basic'
+    ? '将改名 ' + n(changed - conflicts) + ' 项。'
+    : '将改名 ' + n(changed - conflicts) + ' 项，其中 ' + n(result.extChanges) + ' 项会变更扩展名。';
+  document.getElementById('confirm-note').textContent =
+    '此页面永远不会覆盖已有名字；冲突项不会被改名。执行后可在底栏撤销最近一次批次。' + (backupNote ? ' ' + backupNote : '');
+
+  renderInfoBar(result);
+}
+
+function renderInfoBar(result) {
+  const bar = document.getElementById('infobar');
+  if (model.undone) {
+    const undone = result.rows.filter((r) => r.undoFailed).length;
+    bar.hidden = false; bar.classList.toggle('warn', undone > 0);
+    document.getElementById('info-mark').textContent = undone ? '!' : '✓';
+    document.getElementById('info-msg').innerHTML = undone
+      ? '撤销失败 ' + undone + ' 项<span class="m2">该项文件已被外部修改，保留撤销前的状态；其余项已恢复原名。</span>'
+      : '已撤销改名 ' + result.rows.length + ' 项';
+    document.getElementById('info-action').textContent = undone ? '导出日志' : '打开文件夹';
+    return;
+  }
+  if (stateParam === 'done' || model.executed) {
+    const failed = result.rows.filter((r) => r.execFail).length;
+    if (failed) {
+      bar.hidden = false; bar.classList.add('warn');
+      document.getElementById('info-mark').textContent = '!';
+      document.getElementById('info-msg').innerHTML = '已完成 ' + (result.rows.length - failed) + '，失败 ' + failed
+        + '<span class="m2">失败项已在列表里标出原因，可修正后重试，或撤销本次改名。</span>';
+      document.getElementById('info-action').textContent = '导出日志';
+    } else {
+      bar.hidden = false; bar.classList.remove('warn');
+      document.getElementById('info-mark').textContent = '✓';
+      document.getElementById('info-msg').innerHTML = '已改名 ' + result.rows.length + ' 项';
+      document.getElementById('info-action').textContent = '打开文件夹';
+    }
+    return;
+  }
+  bar.hidden = true;
+}
+
+// ---- 初始化 ----
+document.getElementById('find').value = model.find;
+document.getElementById('replace').value = model.replace;
+document.getElementById('regex').checked = model.regex;
+document.getElementById('template').value = model.template;
+document.getElementById('basicFind').value = model.basicFind;
+document.getElementById('basicWith').value = model.basicWith;
+document.getElementById('affixText').value = model.affixText;
+document.getElementById('seqName').value = model.seqName;
+document.getElementById('seqPad').value = model.seqPad;
+document.getElementById('task').value = model.task;
+document.getElementById('ruleSelect').value = model.rule;
+document.getElementById('sub').checked = model.sub;
+document.getElementById('ext').value = model.ext;
+document.getElementById('backup').checked = model.backup;
+
+function indexToken(pad) {
+  const width = Number(pad) || 0;
+  return width > 0 ? '{index:' + '0'.repeat(width) + '}' : '{index}';
+}
+
+function basicToAdvanced() {
+  if (model.task === 'replace') {
+    model.rule = 'replace';
+    model.find = model.basicFind;
+    model.replace = model.basicWith;
+    model.regex = false;
+  } else if (model.task === 'affix') {
+    model.rule = 'template';
+    model.template = model.affixPos === 'prefix'
+      ? model.affixText + '{name}{ext}'
+      : '{name}' + model.affixText + '{ext}';
+  } else if (model.task === 'sequence') {
+    model.rule = 'template';
+    model.template = model.seqName + indexToken(model.seqPad) + '{ext}';
+  }
+  document.getElementById('find').value = model.find;
+  document.getElementById('replace').value = model.replace;
+  document.getElementById('template').value = model.template;
+  document.getElementById('regex').checked = model.regex;
+  document.getElementById('ruleSelect').value = model.rule;
+}
+
+document.querySelectorAll('.segments .segment').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const group = btn.closest('.segments').dataset.group;
+    model[group] = btn.dataset.value;
+    if (group === 'mode' && btn.dataset.value === 'folders') {
+      if (model.find === '产品图-0') { model.find = '项目 '; model.replace = 'Project-{index} '; }
+      document.getElementById('find').value = model.find;
+      document.getElementById('replace').value = model.replace;
+    }
+    if (group === 'mode' && btn.dataset.value === 'files') {
+      if (model.find === '项目 ') { model.find = '产品图-0'; model.replace = 'product-'; }
+      document.getElementById('find').value = model.find;
+      document.getElementById('replace').value = model.replace;
+    }
+    if (group === 'level' && btn.dataset.value === 'advanced' && !model.advancedEdited) {
+      basicToAdvanced();
+    }
+    render();
+  });
+});
+
+const bind = (id, key, read, side) => document.getElementById(id).addEventListener('input', (e) => {
+  model[key] = read(e.target);
+  if (side === 'basic') model.basicEdited = true;
+  if (side === 'advanced') model.advancedEdited = true;
+  model.executed = false;
+  model.undone = false;
+  model.undoTried = false;
+  render();
+});
+bind('find', 'find', (t) => t.value, 'advanced');
+bind('replace', 'replace', (t) => t.value, 'advanced');
+bind('template', 'template', (t) => t.value, 'advanced');
+bind('basicFind', 'basicFind', (t) => t.value, 'basic');
+bind('basicWith', 'basicWith', (t) => t.value, 'basic');
+bind('affixText', 'affixText', (t) => t.value, 'basic');
+bind('seqName', 'seqName', (t) => t.value, 'basic');
+bind('ext', 'ext', (t) => t.value);
+document.getElementById('task').addEventListener('change', (e) => {
+  model.task = e.target.value;
+  model.basicEdited = true;
+  model.executed = false;
+  model.undone = false;
+  model.undoTried = false;
+  render();
+});
+document.getElementById('ruleSelect').addEventListener('change', (e) => {
+  model.rule = e.target.value;
+  model.advancedEdited = true;
+  model.executed = false;
+  model.undone = false;
+  model.undoTried = false;
+  render();
+});
+document.getElementById('seqPad').addEventListener('change', (e) => {
+  model.seqPad = e.target.value;
+  model.basicEdited = true;
+  model.executed = false;
+  model.undone = false;
+  model.undoTried = false;
+  render();
+});
+['regex', 'sub', 'backup'].forEach((key) => {
+  document.getElementById(key).addEventListener('change', (e) => {
+    model[key] = e.target.checked;
+    if (key === 'regex') { model.advancedEdited = true; model.executed = false; model.undone = false; }
+    render();
+  });
+});
+
+document.getElementById('skip-toggle').addEventListener('click', () => {
+  model.skipsOpen = !model.skipsOpen;
+  render();
+});
+
+document.getElementById('run').addEventListener('click', () => { document.getElementById('confirm').hidden = false; });
+document.getElementById('confirm-cancel').addEventListener('click', () => { document.getElementById('confirm').hidden = true; });
+document.getElementById('confirm-ok').addEventListener('click', () => {
+  document.getElementById('confirm').hidden = true;
+  model.executed = true;
+  model.undone = false;
+  model.undoTried = false;
+  model.failFirst = stateParam === 'partial';
+  model.undoFailFirst = stateParam === 'undo-failed';
+  render();
+});
+document.getElementById('undo').addEventListener('click', () => {
+  model.executed = false;
+  model.undone = true;
+  model.undoTried = true;
+  model.failFirst = false;
+  model.undoFailFirst = stateParam === 'undo-failed';
+  render();
+});
+
+render();
+
+if (stateParam === 'done' || stateParam === 'partial' || stateParam === 'undo-failed') {
+  model.executed = stateParam !== 'undo-failed';
+  model.undone = stateParam === 'undo-failed';
+  model.failFirst = stateParam === 'partial';
+  model.undoFailFirst = stateParam === 'undo-failed';
+  model.undoTried = stateParam === 'undo-failed';
+  render();
+}
+if (stateParam === 'confirm' || params.get('confirm') === '1') {
+  document.getElementById('confirm').hidden = false;
+}
+</script>
+</body>
+</html>
