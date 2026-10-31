@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -214,9 +213,9 @@ public partial class FileRenameView : UserControl
                         },
                     ],
                 });
-            if (file is not null)
+            if (file is not null && file.TryGetLocalPath() is { } path)
             {
-                await viewModel.ExportLogAsync(file.Path.LocalPath);
+                await viewModel.ExportLogAsync(path);
             }
         }
         catch (Exception exception)
@@ -255,7 +254,7 @@ public partial class FileRenameView : UserControl
             string? directory = null;
             foreach (IStorageItem item in items)
             {
-                if (item.TryGetLocalPath() is { } path && Directory.Exists(path))
+                if (item.TryGetLocalPath() is { } path && viewModel.IsDirectory(path))
                 {
                     directory = path;
                     break;
@@ -295,11 +294,12 @@ public partial class FileRenameView : UserControl
     private void UpdateDragState(DragEventArgs e)
     {
         bool hasDirectory = false;
-        if (e.DataTransfer?.TryGetFiles() is { Length: > 0 } items)
+        if (DataContext is FileRenameViewModel viewModel &&
+            e.DataTransfer?.TryGetFiles() is { Length: > 0 } items)
         {
             foreach (IStorageItem item in items)
             {
-                if (item.TryGetLocalPath() is { } path && Directory.Exists(path))
+                if (item.TryGetLocalPath() is { } path && viewModel.IsDirectory(path))
                 {
                     hasDirectory = true;
                     break;
