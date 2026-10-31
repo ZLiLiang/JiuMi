@@ -3,6 +3,7 @@ using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Settings;
 using JiuMi.Application.WorldClock;
@@ -154,6 +155,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             OnlineDataEnabled = ReadOnlineDataEnabled(root),
             WorldClock = worldClock,
             ImageConvert = ReadImageConvert(root),
+            FileRename = ReadFileRename(root),
         };
     }
 
@@ -242,6 +244,71 @@ public sealed class JsonSettingsStore : ISettingsStore
             JpegBackgroundColor = background,
         };
     }
+
+    private static FileRenameSettings ReadFileRename(JsonElement root)
+    {
+        if (!root.TryGetProperty("fileRename", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return FileRenameSettings.CreateDefault();
+        }
+
+        return new FileRenameSettings
+        {
+            RuleLevel = ParseRuleLevel(ReadString(element, "ruleLevel")),
+            BasicTask = ParseBasicTask(ReadString(element, "basicTask")),
+            BasicFind = ReadString(element, "basicFind") ?? string.Empty,
+            BasicReplace = ReadString(element, "basicReplace") ?? string.Empty,
+            AffixPosition = ParseAffixPosition(ReadString(element, "affixPosition")),
+            AffixText = ReadString(element, "affixText") ?? string.Empty,
+            SequenceName = ReadString(element, "sequenceName") ?? string.Empty,
+            SequencePadWidth = ReadSequencePadWidth(element),
+            AdvancedKind = ParseRuleKind(ReadString(element, "advancedKind")),
+            AdvancedFind = ReadString(element, "advancedFind") ?? string.Empty,
+            AdvancedReplace = ReadString(element, "advancedReplace") ?? string.Empty,
+            AdvancedUseRegex = ReadBoolean(element, "advancedUseRegex"),
+            Template = ReadString(element, "template") ?? string.Empty,
+            IncludeSubdirectories = ReadBoolean(element, "includeSubdirectories"),
+            Extensions = ReadString(element, "extensions") ?? string.Empty,
+            BackupEnabled = ReadBoolean(element, "backupEnabled"),
+        };
+    }
+
+    private static RenameRuleLevel ParseRuleLevel(string? value) =>
+        string.Equals(value, "advanced", StringComparison.OrdinalIgnoreCase)
+            ? RenameRuleLevel.Advanced
+            : RenameRuleLevel.Basic;
+
+    private static RenameBasicTask ParseBasicTask(string? value) => value?.ToUpperInvariant() switch
+    {
+        "AFFIX" => RenameBasicTask.Affix,
+        "SEQUENCE" => RenameBasicTask.Sequence,
+        _ => RenameBasicTask.Replace,
+    };
+
+    private static RenameAffixPosition ParseAffixPosition(string? value) =>
+        string.Equals(value, "suffix", StringComparison.OrdinalIgnoreCase)
+            ? RenameAffixPosition.Suffix
+            : RenameAffixPosition.Prefix;
+
+    private static RenameRuleKind ParseRuleKind(string? value) =>
+        string.Equals(value, "template", StringComparison.OrdinalIgnoreCase)
+            ? RenameRuleKind.Template
+            : RenameRuleKind.Replace;
+
+    private static int ReadSequencePadWidth(JsonElement element)
+    {
+        return element.TryGetProperty("sequencePadWidth", out JsonElement value) &&
+            value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt32(out int width) &&
+            RenameRuleConverter.SequencePadWidths.Contains(width)
+            ? width
+            : 0;
+    }
+
+    private static bool ReadBoolean(JsonElement element, string property) =>
+        element.TryGetProperty(property, out JsonElement value) &&
+        value.ValueKind == JsonValueKind.True;
 
     private static WorldClockSettings ReadWorldClock(JsonElement root, out bool invalidPlaces)
     {
@@ -352,6 +419,25 @@ public sealed class JsonSettingsStore : ISettingsStore
                 OutputDirectory = settings.ImageConvert.OutputDirectory,
                 JpegBackgroundColor = settings.ImageConvert.JpegBackgroundColor.ToHex(),
             },
+            FileRename = new FileRenameDocument
+            {
+                RuleLevel = settings.FileRename.RuleLevel == RenameRuleLevel.Advanced ? "advanced" : "basic",
+                BasicTask = ToStorageValue(settings.FileRename.BasicTask),
+                BasicFind = settings.FileRename.BasicFind,
+                BasicReplace = settings.FileRename.BasicReplace,
+                AffixPosition = settings.FileRename.AffixPosition == RenameAffixPosition.Suffix ? "suffix" : "prefix",
+                AffixText = settings.FileRename.AffixText,
+                SequenceName = settings.FileRename.SequenceName,
+                SequencePadWidth = settings.FileRename.SequencePadWidth,
+                AdvancedKind = settings.FileRename.AdvancedKind == RenameRuleKind.Template ? "template" : "replace",
+                AdvancedFind = settings.FileRename.AdvancedFind,
+                AdvancedReplace = settings.FileRename.AdvancedReplace,
+                AdvancedUseRegex = settings.FileRename.AdvancedUseRegex,
+                Template = settings.FileRename.Template,
+                IncludeSubdirectories = settings.FileRename.IncludeSubdirectories,
+                Extensions = settings.FileRename.Extensions,
+                BackupEnabled = settings.FileRename.BackupEnabled,
+            },
             WorldClock = new WorldClockDocument
             {
                 View = settings.WorldClock.View == WorldClockViewMode.Plan ? "plan" : "board",
@@ -379,6 +465,13 @@ public sealed class JsonSettingsStore : ISettingsStore
             _ => "system",
         };
     }
+
+    private static string ToStorageValue(RenameBasicTask task) => task switch
+    {
+        RenameBasicTask.Affix => "affix",
+        RenameBasicTask.Sequence => "sequence",
+        _ => "replace",
+    };
 
     private static void BackupCorruptedFile(string settingsPath, string directoryPath)
     {
@@ -455,6 +548,12 @@ public sealed class JsonSettingsStore : ISettingsStore
             init;
         }
 
+        public FileRenameDocument? FileRename
+        {
+            get;
+            init;
+        }
+
         public WorldClockDocument? WorldClock
         {
             get;
@@ -471,6 +570,105 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public string? JpegBackgroundColor
+        {
+            get;
+            init;
+        }
+    }
+
+    private sealed class FileRenameDocument
+    {
+        public string? RuleLevel
+        {
+            get;
+            init;
+        }
+
+        public string? BasicTask
+        {
+            get;
+            init;
+        }
+
+        public string? BasicFind
+        {
+            get;
+            init;
+        }
+
+        public string? BasicReplace
+        {
+            get;
+            init;
+        }
+
+        public string? AffixPosition
+        {
+            get;
+            init;
+        }
+
+        public string? AffixText
+        {
+            get;
+            init;
+        }
+
+        public string? SequenceName
+        {
+            get;
+            init;
+        }
+
+        public int SequencePadWidth
+        {
+            get;
+            init;
+        }
+
+        public string? AdvancedKind
+        {
+            get;
+            init;
+        }
+
+        public string? AdvancedFind
+        {
+            get;
+            init;
+        }
+
+        public string? AdvancedReplace
+        {
+            get;
+            init;
+        }
+
+        public bool AdvancedUseRegex
+        {
+            get;
+            init;
+        }
+
+        public string? Template
+        {
+            get;
+            init;
+        }
+
+        public bool IncludeSubdirectories
+        {
+            get;
+            init;
+        }
+
+        public string? Extensions
+        {
+            get;
+            init;
+        }
+
+        public bool BackupEnabled
         {
             get;
             init;

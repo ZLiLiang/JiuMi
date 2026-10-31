@@ -1,4 +1,5 @@
-﻿using JiuMi.Application.ImageConversion;
+﻿using JiuMi.Application.FileRename;
+using JiuMi.Application.ImageConversion;
 using JiuMi.Application.WorldClock;
 
 namespace JiuMi.Application.Settings;
@@ -70,6 +71,15 @@ public sealed record AppSettings
         get;
         init;
     } = ImageConvertSettings.CreateDefault();
+
+    /// <summary>
+    /// Gets the persisted batch rename parameters.
+    /// </summary>
+    public FileRenameSettings FileRename
+    {
+        get;
+        init;
+    } = FileRenameSettings.CreateDefault();
 
     /// <summary>
     /// Creates the settings used when the file is missing or unusable.

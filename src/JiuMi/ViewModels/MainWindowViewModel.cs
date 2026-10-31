@@ -25,8 +25,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ShellNavigationItem _settingsNavigationItem;
     private readonly ShellNavigationItem _worldClockNavigationItem;
     private readonly ShellNavigationItem _imageConvertNavigationItem;
+    private readonly ShellNavigationItem _fileRenameNavigationItem;
     private readonly WorldClockViewModel _worldClockPage;
     private readonly ImageConvertViewModel _imageConvertPage;
+    private readonly FileRenameViewModel _fileRenamePage;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
@@ -42,6 +44,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
     /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="imageConvertPage">The image conversion page.</param>
+    /// <param name="fileRenamePage">The batch rename page.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
     /// <param name="catalogUpdater">Checks the published world clock catalog after the shell is up.</param>
@@ -52,6 +55,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         SettingsViewModel settingsPage,
         WorldClockViewModel worldClockPage,
         ImageConvertViewModel imageConvertPage,
+        FileRenameViewModel fileRenamePage,
         InfoBarViewModel infoBar,
         ISettingsStore settingsStore,
         IWorldClockCatalogUpdater catalogUpdater,
@@ -62,6 +66,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(settingsPage);
         ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(imageConvertPage);
+        ArgumentNullException.ThrowIfNull(fileRenamePage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(catalogUpdater);
@@ -75,11 +80,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _logger = logger;
         _worldClockPage = worldClockPage;
         _imageConvertPage = imageConvertPage;
+        _fileRenamePage = fileRenamePage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
         HomePage.OpenWorldClockCommand = new RelayCommand(OpenWorldClock);
         HomePage.OpenImageConvertCommand = new RelayCommand(OpenImageConvert);
+        HomePage.OpenFileRenameCommand = new RelayCommand(OpenFileRename);
         SettingsPage = settingsPage;
         InfoBar = infoBar;
         _currentPage = HomePage;
@@ -88,11 +95,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             "world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", ShellPage.WorldClock, isEnabled: true);
         _imageConvertNavigationItem = CreateItem(
             "image-convert", "Tool.ImageConvert.Name", "Image", "ImageFilled", ShellPage.ImageConvert, isEnabled: true);
+        _fileRenameNavigationItem = CreateItem(
+            "file-rename", "Tool.FileRename.Name", "Rename", "Rename", ShellPage.FileRename, isEnabled: true);
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
             CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
-            CreateItem("batch-rename", "Tool.BatchRename.Name", "Rename", "Rename", page: null, isEnabled: false),
+            _fileRenameNavigationItem,
             _imageConvertNavigationItem,
             _worldClockNavigationItem,
         ];
@@ -253,6 +262,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public ImageConvertViewModel ImageConvertPage => _imageConvertPage;
 
     /// <summary>
+    /// Gets the page that hosts the batch rename content.
+    /// </summary>
+    public FileRenameViewModel FileRenamePage => _fileRenamePage;
+
+    /// <summary>
     /// Gets the application-wide error notice shown above the content.
     /// </summary>
     public InfoBarViewModel InfoBar
@@ -340,6 +354,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _localization.PropertyChanged -= OnLocalizationChanged;
         _worldClockPage.Dispose();
         _imageConvertPage.Dispose();
+        _fileRenamePage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
     }
@@ -374,6 +389,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             ShellPage.Settings => SettingsPage,
             ShellPage.WorldClock => _worldClockPage,
             ShellPage.ImageConvert => _imageConvertPage,
+            ShellPage.FileRename => _fileRenamePage,
             _ => HomePage,
         };
 
@@ -403,6 +419,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private void OpenImageConvert()
     {
         SelectedPrimaryItem = _imageConvertNavigationItem;
+    }
+
+    private void OpenFileRename()
+    {
+        SelectedPrimaryItem = _fileRenameNavigationItem;
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

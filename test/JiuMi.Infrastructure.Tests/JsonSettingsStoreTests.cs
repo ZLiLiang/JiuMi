@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Settings;
 using JiuMi.Infrastructure.Settings;
@@ -217,6 +218,76 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
         Assert.Null(settings.OutputDirectory);
         Assert.Equal(ImageRgbColor.White, settings.JpegBackgroundColor);
+    }
+
+    [Fact]
+    public void Save_GivenFileRenameSettings_RoundTrips()
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+        var settings = new FileRenameSettings
+        {
+            RuleLevel = RenameRuleLevel.Advanced,
+            BasicTask = RenameBasicTask.Sequence,
+            BasicFind = "old",
+            BasicReplace = "new",
+            AffixPosition = RenameAffixPosition.Suffix,
+            AffixText = "-copy",
+            SequenceName = "素材",
+            SequencePadWidth = 3,
+            AdvancedKind = RenameRuleKind.Template,
+            AdvancedFind = @"\d+",
+            AdvancedReplace = "{index}",
+            AdvancedUseRegex = true,
+            Template = "{index:00}-{name}{ext}",
+            IncludeSubdirectories = true,
+            Extensions = ".png .jpg",
+            BackupEnabled = true,
+        };
+
+        SettingsSaveResult result = store.Save(new AppSettings { FileRename = settings });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        JsonElement fileRename = document.RootElement.GetProperty("fileRename");
+        Assert.Equal("advanced", fileRename.GetProperty("ruleLevel").GetString());
+        Assert.Equal("sequence", fileRename.GetProperty("basicTask").GetString());
+        Assert.Equal("suffix", fileRename.GetProperty("affixPosition").GetString());
+        Assert.Equal(3, fileRename.GetProperty("sequencePadWidth").GetInt32());
+        Assert.Equal("template", fileRename.GetProperty("advancedKind").GetString());
+        Assert.True(fileRename.GetProperty("advancedUseRegex").GetBoolean());
+        Assert.True(fileRename.GetProperty("includeSubdirectories").GetBoolean());
+        Assert.True(fileRename.GetProperty("backupEnabled").GetBoolean());
+        Assert.DoesNotContain("directory", fileRename.GetRawText(), StringComparison.OrdinalIgnoreCase);
+
+        Assert.Equal(settings, CreateStore().Load().Settings.FileRename);
+    }
+
+    [Fact]
+    public void Load_GivenMissingFileRename_UsesDefaults()
+    {
+        WriteSettings("""{ "language": "en-US" }""");
+
+        FileRenameSettings settings = CreateStore().Load().Settings.FileRename;
+
+        Assert.Equal(FileRenameSettings.CreateDefault(), settings);
+    }
+
+    [Theory]
+    [InlineData("""{ "fileRename": { "ruleLevel": "weird", "basicTask": 5, "affixPosition": "middle" } }""")]
+    [InlineData("""{ "fileRename": { "sequencePadWidth": 9, "advancedKind": "nope" } }""")]
+    [InlineData("""{ "fileRename": "not an object" }""")]
+    public void Load_GivenInvalidFileRename_FallsBackToDefaults(string json)
+    {
+        WriteSettings(json);
+
+        FileRenameSettings settings = CreateStore().Load().Settings.FileRename;
+
+        Assert.Equal(RenameRuleLevel.Basic, settings.RuleLevel);
+        Assert.Equal(RenameBasicTask.Replace, settings.BasicTask);
+        Assert.Equal(RenameAffixPosition.Prefix, settings.AffixPosition);
+        Assert.Equal(RenameRuleKind.Replace, settings.AdvancedKind);
+        Assert.Equal(0, settings.SequencePadWidth);
     }
 
     [Fact]

@@ -14,6 +14,9 @@ public enum ShellPage
     /// <summary>The image conversion page.</summary>
     ImageConvert,
 
+    /// <summary>The batch rename page.</summary>
+    FileRename,
+
     /// <summary>The settings page.</summary>
     Settings,
 }

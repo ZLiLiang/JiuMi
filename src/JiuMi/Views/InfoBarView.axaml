@@ -96,21 +96,29 @@
         </Canvas>
       </Grid>
 
-      <WrapPanel Grid.Row="0"
-                 Grid.Column="1"
-                 VerticalAlignment="Center"
-                 Orientation="Horizontal">
-        <TextBlock FontSize="14"
-                   LineHeight="20"
+      <StackPanel Grid.Row="0"
+                  Grid.Column="1"
+                  VerticalAlignment="Center">
+        <WrapPanel Orientation="Horizontal">
+          <TextBlock FontSize="14"
+                     LineHeight="20"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                     AutomationProperties.Name="{Binding AccessibleName}"
+                     Text="{Binding Message}" />
+          <HyperlinkButton Classes="copy"
+                           IsVisible="{Binding CanCopyDetails}"
+                           Content="{Binding CopyText}"
+                           Click="OnCopyDetailsClick" />
+        </WrapPanel>
+        <TextBlock Margin="0,2,0,0"
+                   FontSize="11.5"
+                   LineHeight="16"
                    TextWrapping="Wrap"
-                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                   AutomationProperties.Name="{Binding AccessibleName}"
-                   Text="{Binding Message}" />
-        <HyperlinkButton Classes="copy"
-                         IsVisible="{Binding CanCopyDetails}"
-                         Content="{Binding CopyText}"
-                         Click="OnCopyDetailsClick" />
-      </WrapPanel>
+                   IsVisible="{Binding HasSecondaryMessage}"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="{Binding SecondaryMessage}" />
+      </StackPanel>
 
       <Button x:Name="ActionButton"
               Grid.Row="0"

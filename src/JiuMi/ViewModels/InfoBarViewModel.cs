@@ -36,6 +36,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     private string? _copiedCode;
     private InfoBarSummary? _summary;
     private string _message = string.Empty;
+    private string _secondaryMessage = string.Empty;
     private string _copyText = string.Empty;
 
     /// <summary>
@@ -117,7 +118,9 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     /// Gets a value indicating whether the current notice offers an action button.
     /// </summary>
     public bool HasAction =>
-        IsOpen && (_notices.Current?.Action != ErrorNoticeAction.None || ActiveSummary?.FolderPath is not null);
+        IsOpen &&
+        (_notices.Current?.Action != ErrorNoticeAction.None ||
+            ActiveSummary is { } summary && (summary.FolderPath is not null || summary.Action is not null));
 
     /// <summary>
     /// Gets a value indicating whether the current notice can be closed.
@@ -138,6 +141,20 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         get => _message;
         private set => SetProperty(ref _message, value);
     }
+
+    /// <summary>
+    /// Gets the optional second line of the current notice.
+    /// </summary>
+    public string SecondaryMessage
+    {
+        get => _secondaryMessage;
+        private set => SetProperty(ref _secondaryMessage, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the current notice shows a second line.
+    /// </summary>
+    public bool HasSecondaryMessage => _secondaryMessage.Length > 0;
 
     /// <summary>
     /// Gets the label of the copy-details action.
@@ -182,7 +199,8 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     {
         ErrorNoticeAction.Retry => _localization["Common.Retry"],
         ErrorNoticeAction.OpenFolder => _localization["Common.OpenFolder"],
-        _ => ActiveSummary?.FolderPath is not null ? _localization["Common.OpenOutputFolder"] : string.Empty,
+        _ => ActiveSummary?.ActionText ??
+            (ActiveSummary?.FolderPath is not null ? _localization["Common.OpenOutputFolder"] : string.Empty),
     };
 
     /// <summary>
@@ -374,7 +392,11 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         InfoBarSummary? summary = ActiveSummary;
         if (summary is not null)
         {
-            if (summary.FolderPath is { } summaryFolder)
+            if (summary.Action is { } action)
+            {
+                await action();
+            }
+            else if (summary.FolderPath is { } summaryFolder)
             {
                 _systemLauncher.OpenFolder(summaryFolder);
             }
@@ -430,6 +452,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     private void Refresh()
     {
         string message = string.Empty;
+        string secondaryMessage = string.Empty;
         InfoBarSummary? summary = ActiveSummary;
         if (_isActive && _notices.Current is { } notice)
         {
@@ -460,6 +483,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
             if (_isActive && summary is not null)
             {
                 message = summary.Message;
+                secondaryMessage = summary.SecondaryMessage ?? string.Empty;
                 if (!_isInteractionPaused && !_dismissTimer.IsEnabled)
                 {
                     RestartDismissTimer();
@@ -482,6 +506,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         }
 
         Message = message;
+        SecondaryMessage = secondaryMessage;
         CopyText = _isCopied ? _localization["Common.Copied"] : _localization["Common.CopyDetails"];
 
         OnPropertyChanged(nameof(IsOpen));
@@ -489,6 +514,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsWarning));
         OnPropertyChanged(nameof(IsSuccess));
         OnPropertyChanged(nameof(HasAction));
+        OnPropertyChanged(nameof(HasSecondaryMessage));
         OnPropertyChanged(nameof(CanClose));
         OnPropertyChanged(nameof(CanCopyDetails));
         OnPropertyChanged(nameof(ActionText));
