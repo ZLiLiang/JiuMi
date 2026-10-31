@@ -141,48 +141,45 @@
             </Grid>
           </Border>
 
-          <Border x:Name="BatchRenameCard"
+          <Button x:Name="FileRenameCard"
                   Grid.Row="0"
                   Grid.Column="1"
-                  Padding="18"
-                  CornerRadius="8"
-                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                  BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
-              <Border Width="40"
-                      Height="40"
-                      VerticalAlignment="Top"
-                      CornerRadius="8"
-                      Background="#1565C0">
-                <fac:FASymbolIcon Symbol="Rename"
-                                  FontSize="20"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Foreground="White" />
-              </Border>
-              <StackPanel Grid.Column="1">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                  <TextBlock Grid.Column="0"
-                             FontSize="14"
+                  Classes="tool-card"
+                  Command="{Binding OpenFileRenameCommand}"
+                  AutomationProperties.Name="{loc:Localize Tool.FileRename.Name}">
+            <Border Padding="18"
+                    CornerRadius="8"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                <Border Width="40"
+                        Height="40"
+                        VerticalAlignment="Top"
+                        CornerRadius="8"
+                        Background="#1565C0">
+                  <fac:FASymbolIcon Symbol="Rename"
+                                    FontSize="20"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="White" />
+                </Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock FontSize="14"
                              FontWeight="SemiBold"
                              TextWrapping="Wrap"
                              Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                             Text="{loc:Localize Tool.BatchRename.Name}" />
-                  <ContentControl Grid.Column="1"
-                                  VerticalAlignment="Center"
-                                  Theme="{StaticResource ComingSoonBadgeTheme}"
-                                  Content="{loc:Localize Common.ComingSoon}" />
-                </Grid>
-                <TextBlock Margin="0,5,0,0"
-                           FontSize="12"
-                           LineHeight="18"
-                           TextWrapping="Wrap"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                           Text="{loc:Localize Tool.BatchRename.Description}" />
-              </StackPanel>
-            </Grid>
-          </Border>
+                             Text="{loc:Localize Tool.FileRename.Name}" />
+                  <TextBlock Margin="0,5,0,0"
+                             FontSize="12"
+                             LineHeight="18"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{loc:Localize Tool.FileRename.Description}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </Button>
 
           <Button x:Name="ImageConvertCard"
                   Grid.Row="1"

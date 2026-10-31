@@ -49,4 +49,7 @@ public static class ErrorCodes
 
     /// <summary>The diagnostics bundle could not be written.</summary>
     public const string DiagnosticsExportFailed = "Diagnostics.ExportFailed";
+
+    /// <summary>A rename item or the rename batch failed; recorded for diagnostics only.</summary>
+    public const string FileRenameFailed = "FileRename.Failed";
 }

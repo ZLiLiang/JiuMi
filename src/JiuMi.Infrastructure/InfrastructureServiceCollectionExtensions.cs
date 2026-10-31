@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using JiuMi.Application;
 using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
+using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Logging;
@@ -12,6 +13,7 @@ using JiuMi.Application.Shell;
 using JiuMi.Application.WorldClock;
 using JiuMi.Infrastructure.Diagnostics;
 using JiuMi.Infrastructure.Errors;
+using JiuMi.Infrastructure.FileRename;
 using JiuMi.Infrastructure.ImageConversion;
 using JiuMi.Infrastructure.Localization;
 using JiuMi.Infrastructure.Logging;
@@ -50,6 +52,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
         services.AddSingleton<IImageProbe, MagickImageProbe>();
         services.AddSingleton<IImageConverter, MagickImageConverter>();
+        services.AddSingleton<IRenameScanner, RenameScanner>();
+        services.AddSingleton<IRenameExecutor, RenameExecutor>();
+        services.AddSingleton<IRenameBatchLogWriter, RenameBatchLogWriter>();
+        services.AddSingleton<IRenamePathProbe, SystemRenamePathProbe>();
         services.AddSingleton<ISingleInstanceCoordinator, SingleInstanceCoordinator>();
         services.AddSingleton(provider => new WorldClockCatalogCache(
             provider.GetRequiredService<ISettingsStore>().Location.DirectoryPath,

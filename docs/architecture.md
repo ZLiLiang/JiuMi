@@ -214,6 +214,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置落点回退到 AppData | Warning（每会话一次） | `Config.FallbackToAppData` | InfoBar | 打开文件夹 |
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
+| 批量重命名单项失败或日志导出失败 | Warning | `FileRename.Failed` | 仅日志 | —（批次结束另发一条 InfoBar 汇总） |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
 | 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
@@ -502,7 +503,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
-| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `BatchRename` / `ImageConvert` / `WorldClock` |
+| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock` |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
 | `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |
@@ -517,6 +518,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Weekday.Mon` … `.Sun` | 星期名，共七键 |
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
+| `Tool.FileRename.*` | 批量重命名页：页头与空态、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
 | `Settings.Subtitle` | 设置页副标题 |
@@ -696,6 +698,57 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 相关：[ADR-0009](./adr/0009-image-conversion.md)、[#59](https://github.com/ZLiLiang/JiuMi/issues/59)、[#60](https://github.com/ZLiLiang/JiuMi/issues/60)。
 
+## 批量重命名
+
+工具页的外壳、页头与导航复用「工具模块」章节；本节只记该工具的领域规则、接缝与降级。选型依据见 [ADR-0010](./adr/0010-batch-rename.md)。
+
+### 分层
+
+| 层 | 内容 | 约束 |
+| --- | --- | --- |
+| `JiuMi.Application` | `FileRename/`：`RenameRule`、普通任务换算、`RenamePlanner`、预检错误、批次与 JSON 日志模型；`FileNames/` 共享文件名规则 | 纯函数、无文件系统 I/O |
+| `JiuMi.Infrastructure` | `RenameScanner`、`RenameExecutor`、`SystemRenamePathProbe`、`RenameBatchLogWriter` | 只做文件系统与 JSON 写入，不含规则判定 |
+| `JiuMi`（UI） | `FileRenameViewModel`、`FileRenameRowViewModel`、`FileRenameView`、确认框、拖放与日志保存对话框 | 绑定与编组，文案走 i18n |
+
+### 规则与编号
+
+- 业务层只有一份 `RenameRule`：`Replace` 写查找与替换（可勾正则），`Template` 写整名模板。正则替换串按字面量展开 `{index}` / `{index:00}`，不解释 `$1`；非法正则按「无匹配」处理，不抛异常。
+- 普通三个任务只做输入换算：替换文字 → 字面量查找替换（不展开 `{index}`）；加前缀 / 后缀 → `{文本}{name}{ext}` / `{name}{文本}{ext}`；按序号 → `{名称}{index}{ext}`，补零写成 `{index:000}`。
+- 文件按相对路径自然排序（数字按数值、字母不分大小写）；文件夹先深后浅。编号与预览同序，从 1 开始；`{index:00}` 的补零宽度取显式宽度与本批条目数的较大值。
+- 扩展名参与查找替换；模板模式允许通过省略 `{ext}` 改扩展名，不做格式校验。
+
+### 范围与跳过
+
+- 文件 / 文件夹一次只做一种；默认只扫描所选目录第一层，「包含子目录」开启后遍历整棵子树；所选目录本身永不被改名。
+- 扩展名筛选只决定哪些文件进入扫描，支持空格 / 逗号 / 分号分隔、带不带点均可、大小写不敏感；它是筛选，不改扩展名。
+- 隐藏与系统属性项、符号链接、目录联接进入跳过列表且不跟进；只读项照常改名。
+- 扫描不到任何项或规则未匹配时显示 0 项受影响并禁用执行，不产生错误记录。
+
+### 预检
+
+- 每条目标名依次检查：空、非法字符与控制字符、尾部空格或点、Windows 保留名、名字 / 路径长度、批内重名、目标已存在。任一命中即标红该行并在页内汇总，禁用执行；不修补、不加序号、不跳过。
+- 目标占用由 `IRenamePathProbe` 回答，`RenamePlanner` 保持纯函数；大小写变化不算占用自己的原名。
+
+### 执行、撤销与备份
+
+- 执行前确认一次，文案只写变更数；进阶模式追加扩展名变化数。
+- 执行期逐项改名，单文件失败不中断；失败项生成未登记呈现的 `ErrorRecord`（只进日志与详情缓冲），结束时汇总一条 InfoBar。
+- 只保留最近一次批次的内存撤销；撤销逆序逐项复验文件或文件夹仍在、类型一致、文件长度与最后写入时间未变（文件夹只比最后写入时间）、原名未被占用。失败的项保留改名后的状态。
+- 备份默认关闭；开启时复制到所选目录之外的同级 `JiuMi-backup-<yyyyMMdd-HHmmss>`，目录已存在时追加序号；备份失败的那一项不改名。复制时跳过内部链接。
+- 批次可导出为缩进 JSON（`schemaVersion`、执行时间、备份目录、逐项 from / to / 类型 / 状态 / 失败原因）。
+
+### 设置
+
+- `fileRename` 段保存规则层级、两套规则参数、含子目录、扩展名筛选与备份开关；所选目录不保存。
+
+### 测试缝
+
+1. `JiuMi.Application` 纯函数：文件名规则、自然排序、令牌展开、普通任务换算、预检各条错误、目标重名与占用、排序与先深后浅、跳过列表、扩展名变化、日志序列化。
+2. Infrastructure：临时目录验证扫描范围、隐藏项、扩展名筛选；验证改名、占用与缺失、备份目录命名与复制、撤销复验；验证 JSON 日志写入。
+3. UI 的确认框、拖放、跳过面板与汇总文案不设自动化测试。
+
+相关：[ADR-0010](./adr/0010-batch-rename.md)、[#67](https://github.com/ZLiLiang/JiuMi/issues/67)。
+
 ## 参考
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
@@ -707,6 +760,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0007 世界时钟节假日：Nager.Date、缓存与失败降级](./adr/0007-holiday-network.md)
 - [ADR-0008 世界时钟目录：内置快照、双粒度与代表时区](./adr/0008-world-clock-catalog.md)
 - [ADR-0009 图片格式转换：PSD 解码选型与批量转换管线](./adr/0009-image-conversion.md)
+- [ADR-0010 批量重命名：一份规则模型、预检不修补、撤销而非备份](./adr/0010-batch-rename.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
