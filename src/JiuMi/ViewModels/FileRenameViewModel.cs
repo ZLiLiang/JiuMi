@@ -30,6 +30,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     private readonly Serilog.ILogger _logger;
     private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _scanTimer;
+    private readonly CancellationTokenSource _lifetime = new();
     private string? _selectedDirectory;
     private RenameScanResult? _scan;
     private RenamePlan _plan = new([], [], 0);
@@ -125,6 +126,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         _advancedReplace = settings.AdvancedReplace;
         _advancedUseRegex = settings.AdvancedUseRegex;
         _template = settings.Template;
+        _advancedEdited = settings.AdvancedEdited;
         _includeSubdirectories = settings.IncludeSubdirectories;
         _extensions = settings.Extensions;
         _backupEnabled = settings.BackupEnabled;
@@ -626,7 +628,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     /// <returns>A task that completes when the preview is rebuilt.</returns>
     public async Task SetDirectoryAsync(string path)
     {
-        if (_disposed || string.IsNullOrWhiteSpace(path))
+        if (_disposed || _isBusy || string.IsNullOrWhiteSpace(path))
         {
             return;
         }
@@ -655,6 +657,14 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowEmptyState));
         await RescanAsync();
     }
+
+    /// <summary>
+    /// Checks whether a dropped path is a folder, so the view does not probe the file system itself.
+    /// </summary>
+    /// <param name="path">The dropped path.</param>
+    /// <returns><see langword="true"/> when the path is an existing folder.</returns>
+    public bool IsDirectory(string path) =>
+        !string.IsNullOrWhiteSpace(path) && _pathProbe.IsDirectory(path);
 
     /// <summary>
     /// Records a failure raised by a page action without breaking the page.
@@ -695,7 +705,10 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
                         entry.Candidate.IsDirectory)),
                 ],
                 _backupEnabled);
-            RenameOperationResult result = await _executor.ExecuteAsync(request);
+            RenameOperationResult result = await _executor.ExecuteAsync(
+                request,
+                new Progress<RenameItemOutcome>(ApplyOutcome),
+                _lifetime.Token);
             var outcomes = result.Items.ToDictionary(
                 item => item.SourcePath,
                 StringComparer.OrdinalIgnoreCase);
@@ -796,7 +809,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
                         entry.IsDirectory,
                         entry.Stamp)),
             ];
-            RenameOperationResult result = await _executor.UndoAsync(items);
+            RenameOperationResult result = await _executor.UndoAsync(items, _lifetime.Token);
             var outcomes = result.Items.ToDictionary(
                 item => item.SourcePath,
                 StringComparer.OrdinalIgnoreCase);
@@ -880,7 +893,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
         try
         {
-            await _logWriter.WriteAsync(path, _lastBatch);
+            await _logWriter.WriteAsync(path, _lastBatch, _lifetime.Token);
         }
         catch (OperationCanceledException)
         {
@@ -908,12 +921,14 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         }
 
         _disposed = true;
+        _lifetime.Cancel();
         _saveTimer.Stop();
         _saveTimer.Tick -= OnSaveTick;
         _scanTimer.Stop();
         _scanTimer.Tick -= OnScanTick;
         _localization.PropertyChanged -= OnLocalizationChanged;
         PersistSettings();
+        _lifetime.Dispose();
     }
 
     private void SetTarget(RenameTarget target)
@@ -1075,11 +1090,13 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             RenameScanResult result;
             try
             {
-                result = await _scanner.ScanAsync(new RenameScanRequest(
-                    _selectedDirectory,
-                    _target,
-                    _includeSubdirectories,
-                    _extensions));
+                result = await _scanner.ScanAsync(
+                    new RenameScanRequest(
+                        _selectedDirectory,
+                        _target,
+                        _includeSubdirectories,
+                        _extensions),
+                    _lifetime.Token);
             }
             catch (Exception exception)
             {
@@ -1189,6 +1206,19 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         return null;
     }
 
+    private void ApplyOutcome(RenameItemOutcome outcome)
+    {
+        FileRenameRowViewModel? row = FindRow(outcome.SourcePath);
+        if (outcome.Succeeded)
+        {
+            row?.MarkDone();
+        }
+        else
+        {
+            row?.MarkFailed(outcome.Failure ?? RenameFailure.Unknown);
+        }
+    }
+
     private void ShowExecutionSummary(int renamed, int failed)
     {
         _infoBar.ShowSummary(failed == 0
@@ -1274,6 +1304,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
                 AdvancedReplace = _advancedReplace,
                 AdvancedUseRegex = _advancedUseRegex,
                 Template = _template,
+                AdvancedEdited = _advancedEdited,
                 IncludeSubdirectories = _includeSubdirectories,
                 Extensions = _extensions,
                 BackupEnabled = _backupEnabled,

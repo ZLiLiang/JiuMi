@@ -29,13 +29,14 @@ public sealed class RenameExecutor : IRenameExecutor
     /// <inheritdoc />
     public Task<RenameOperationResult> ExecuteAsync(
         RenameExecutionRequest request,
+        IProgress<RenameItemOutcome>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Items);
 
         // The Win32 move and copy APIs are synchronous; the whole batch runs off the caller's thread.
-        return Task.Run(() => ExecuteCore(request, cancellationToken), cancellationToken);
+        return Task.Run(() => ExecuteCore(request, progress, cancellationToken), cancellationToken);
     }
 
     /// <inheritdoc />
@@ -51,6 +52,7 @@ public sealed class RenameExecutor : IRenameExecutor
 
     private RenameOperationResult ExecuteCore(
         RenameExecutionRequest request,
+        IProgress<RenameItemOutcome>? progress,
         CancellationToken cancellationToken)
     {
         string? backupDirectory = null;
@@ -59,8 +61,15 @@ public sealed class RenameExecutor : IRenameExecutor
             backupDirectory = CreateBackupDirectory(request.SourceRoot);
             if (backupDirectory is null)
             {
-                return new RenameOperationResult(
-                    [.. request.Items.Select(item => Failed(item, RenameFailure.BackupFailed))]);
+                var failed = new List<RenameItemOutcome>(request.Items.Count);
+                foreach (RenameExecutionItem item in request.Items)
+                {
+                    RenameItemOutcome outcome = Failed(item, RenameFailure.BackupFailed);
+                    failed.Add(outcome);
+                    progress?.Report(outcome);
+                }
+
+                return new RenameOperationResult(failed);
             }
         }
 
@@ -69,14 +78,19 @@ public sealed class RenameExecutor : IRenameExecutor
         {
             cancellationToken.ThrowIfCancellationRequested();
             RenameExecutionItem item = request.Items[index];
+            RenameItemOutcome outcome;
             if (backupDirectory is not null &&
                 !CopyToBackup(item, backupDirectory, index + 1, cancellationToken))
             {
-                outcomes.Add(Failed(item, RenameFailure.BackupFailed));
-                continue;
+                outcome = Failed(item, RenameFailure.BackupFailed);
+            }
+            else
+            {
+                outcome = Move(item);
             }
 
-            outcomes.Add(Move(item));
+            outcomes.Add(outcome);
+            progress?.Report(outcome);
         }
 
         return new RenameOperationResult(outcomes, backupDirectory);

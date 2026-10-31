@@ -84,14 +84,47 @@ public sealed class RenameExecutorTests : IDisposable
         File.SetAttributes(source, FileAttributes.ReadOnly);
         string target = Path.Combine(_work, "renamed.txt");
 
-        RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
-            _work,
-            [new RenameExecutionItem(source, target, false)],
-            CreateBackup: false));
+        try
+        {
+            RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+                _work,
+                [new RenameExecutionItem(source, target, false)],
+                CreateBackup: false));
 
-        Assert.True(Assert.Single(result.Items).Succeeded);
-        Assert.True(File.Exists(target));
-        File.SetAttributes(target, FileAttributes.Normal);
+            Assert.True(Assert.Single(result.Items).Succeeded);
+            Assert.True(File.Exists(target));
+        }
+        finally
+        {
+            if (File.Exists(target))
+            {
+                File.SetAttributes(target, FileAttributes.Normal);
+            }
+
+            if (File.Exists(source))
+            {
+                File.SetAttributes(source, FileAttributes.Normal);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GivenProgress_ReportsEachOutcome()
+    {
+        string a = WriteFile("a.txt", "alpha");
+        string b = WriteFile("b.txt", "beta");
+        var reported = new List<RenameItemOutcome>();
+
+        await _executor.ExecuteAsync(
+            new RenameExecutionRequest(
+                _work,
+                [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false),
+                 new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false)],
+                CreateBackup: false),
+            new InlineProgress(reported));
+
+        Assert.Equal(2, reported.Count);
+        Assert.All(reported, item => Assert.True(item.Succeeded));
     }
 
     [Fact]
@@ -262,5 +295,17 @@ public sealed class RenameExecutorTests : IDisposable
             new(2026, 10, 31, 15, 30, 0, TimeSpan.Zero);
 
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+    }
+
+    private sealed class InlineProgress : IProgress<RenameItemOutcome>
+    {
+        private readonly List<RenameItemOutcome> _reported;
+
+        public InlineProgress(List<RenameItemOutcome> reported)
+        {
+            _reported = reported;
+        }
+
+        public void Report(RenameItemOutcome value) => _reported.Add(value);
     }
 }

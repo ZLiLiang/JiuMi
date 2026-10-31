@@ -268,6 +268,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             AdvancedReplace = ReadString(element, "advancedReplace") ?? string.Empty,
             AdvancedUseRegex = ReadBoolean(element, "advancedUseRegex"),
             Template = ReadString(element, "template") ?? string.Empty,
+            AdvancedEdited = ReadBoolean(element, "advancedEdited"),
             IncludeSubdirectories = ReadBoolean(element, "includeSubdirectories"),
             Extensions = ReadString(element, "extensions") ?? string.Empty,
             BackupEnabled = ReadBoolean(element, "backupEnabled"),
@@ -434,6 +435,7 @@ public sealed class JsonSettingsStore : ISettingsStore
                 AdvancedReplace = settings.FileRename.AdvancedReplace,
                 AdvancedUseRegex = settings.FileRename.AdvancedUseRegex,
                 Template = settings.FileRename.Template,
+                AdvancedEdited = settings.FileRename.AdvancedEdited,
                 IncludeSubdirectories = settings.FileRename.IncludeSubdirectories,
                 Extensions = settings.FileRename.Extensions,
                 BackupEnabled = settings.FileRename.BackupEnabled,
@@ -651,6 +653,12 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public string? Template
+        {
+            get;
+            init;
+        }
+
+        public bool AdvancedEdited
         {
             get;
             init;

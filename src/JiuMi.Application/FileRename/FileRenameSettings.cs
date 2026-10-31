@@ -53,6 +53,13 @@ public sealed record FileRenameSettings
     /// <summary>Gets the advanced whole-name template.</summary>
     public string Template { get; init; } = string.Empty;
 
+    /// <summary>Gets a value indicating whether the advanced fields were edited by the user.</summary>
+    public bool AdvancedEdited
+    {
+        get;
+        init;
+    }
+
     /// <summary>Gets a value indicating whether subdirectories are scanned.</summary>
     public bool IncludeSubdirectories
     {

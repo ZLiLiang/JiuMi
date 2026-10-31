@@ -10,10 +10,12 @@ public interface IRenameExecutor
     /// Renames every item in the request, continuing after a single item fails.
     /// </summary>
     /// <param name="request">The batch to rename.</param>
+    /// <param name="progress">Receives each item outcome as it completes, or <see langword="null"/>.</param>
     /// <param name="cancellationToken">Stops after the item in progress.</param>
     /// <returns>One outcome per attempted item.</returns>
     Task<RenameOperationResult> ExecuteAsync(
         RenameExecutionRequest request,
+        IProgress<RenameItemOutcome>? progress = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

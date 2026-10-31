@@ -240,6 +240,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
             AdvancedReplace = "{index}",
             AdvancedUseRegex = true,
             Template = "{index:00}-{name}{ext}",
+            AdvancedEdited = true,
             IncludeSubdirectories = true,
             Extensions = ".png .jpg",
             BackupEnabled = true,
@@ -256,6 +257,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Equal(3, fileRename.GetProperty("sequencePadWidth").GetInt32());
         Assert.Equal("template", fileRename.GetProperty("advancedKind").GetString());
         Assert.True(fileRename.GetProperty("advancedUseRegex").GetBoolean());
+        Assert.True(fileRename.GetProperty("advancedEdited").GetBoolean());
         Assert.True(fileRename.GetProperty("includeSubdirectories").GetBoolean());
         Assert.True(fileRename.GetProperty("backupEnabled").GetBoolean());
         Assert.DoesNotContain("directory", fileRename.GetRawText(), StringComparison.OrdinalIgnoreCase);

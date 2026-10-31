@@ -137,6 +137,25 @@ public sealed class RenamePlannerTests
         Assert.Equal(RenameSkipReason.Hidden, skipped.Reason);
     }
 
+    [Theory]
+    [InlineData(RenameSkipReason.System)]
+    [InlineData(RenameSkipReason.SymbolicLink)]
+    [InlineData(RenameSkipReason.Junction)]
+    public void Build_GivenSkipReason_ListsItAndLeavesItOutOfTheRows(RenameSkipReason reason)
+    {
+        RenamePlan plan = Build(
+            RenameRule.CreateTemplate("{index}{ext}"),
+            [
+                new RenameCandidate(Path.Combine(Root, "a.txt"), "a.txt", IsDirectory: false),
+                new RenameCandidate(Path.Combine(Root, "linked.txt"), "linked.txt", IsDirectory: false, reason),
+            ]);
+
+        Assert.Single(plan.Entries);
+        RenameSkippedItem skipped = Assert.Single(plan.Skipped);
+        Assert.Equal("linked.txt", skipped.Candidate.RelativePath);
+        Assert.Equal(reason, skipped.Reason);
+    }
+
     [Fact]
     public void Build_GivenFolders_NumbersDeepestFirstThenByName()
     {
