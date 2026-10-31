@@ -78,6 +78,23 @@ public sealed class RenameExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task ExecuteAsync_GivenReadOnlyFile_RenamesIt()
+    {
+        string source = WriteFile("readonly.txt", "alpha");
+        File.SetAttributes(source, FileAttributes.ReadOnly);
+        string target = Path.Combine(_work, "renamed.txt");
+
+        RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+            _work,
+            [new RenameExecutionItem(source, target, false)],
+            CreateBackup: false));
+
+        Assert.True(Assert.Single(result.Items).Succeeded);
+        Assert.True(File.Exists(target));
+        File.SetAttributes(target, FileAttributes.Normal);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_GivenMissingSource_ReportsSourceMissing()
     {
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
