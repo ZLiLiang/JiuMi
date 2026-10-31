@@ -518,7 +518,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Weekday.Mon` … `.Sun` | 星期名，共七键 |
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
-| `Tool.FileRename.*` | 批量重命名页：页头与空态、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
+| `Tool.FileRename.*` | 批量重命名页：页头与空态、入口与来源列表、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
 | `Settings.Subtitle` | 设置页副标题 |
@@ -706,7 +706,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 | 层 | 内容 | 约束 |
 | --- | --- | --- |
-| `JiuMi.Application` | `FileRename/`：`RenameRule`、普通任务换算、`RenamePlanner`、预检错误、批次与 JSON 日志模型；`FileNames/` 共享文件名规则 | 纯函数、无文件系统 I/O |
+| `JiuMi.Application` | `FileRename/`：`RenameRule`、普通任务换算、`RenamePlanner`、预检错误、来源模型（`RenameSource`）、批次与 JSON 日志模型；`FileNames/` 共享文件名规则 | 纯函数、无文件系统 I/O |
 | `JiuMi.Infrastructure` | `RenameScanner`、`RenameExecutor`、`SystemRenamePathProbe`、`RenameBatchLogWriter` | 只做文件系统与 JSON 写入，不含规则判定 |
 | `JiuMi`（UI） | `FileRenameViewModel`、`FileRenameRowViewModel`、`FileRenameView`、确认框、拖放与日志保存对话框 | 绑定与编组，文案走 i18n |
 
@@ -717,12 +717,14 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 文件按相对路径自然排序（数字按数值、字母不分大小写）；文件夹先深后浅。编号与预览同序，从 1 开始；`{index:00}` 的补零宽度取显式宽度与本批条目数的较大值。
 - 扩展名参与查找替换；模板模式允许通过省略 `{ext}` 改扩展名，不做格式校验。
 
-### 范围与跳过
+### 来源、范围与跳过
 
-- 文件 / 文件夹一次只做一种；默认只扫描所选目录第一层，「包含子目录」开启后遍历整棵子树；所选目录本身永不被改名。
-- 扩展名筛选只决定哪些文件进入扫描，支持空格 / 逗号 / 分号分隔、带不带点均可、大小写不敏感；它是筛选，不改扩展名。
+- 文件模式维护来源列表：文件夹来源只作扫描容器、贡献其中的文件，容器本身永不被改名；直接添加的文件直接入批；两者可来自不同目录甚至不同盘符，只存在会话内。文件夹模式仍只有一个根目录。
+- 来源按添加顺序决定编号分组；同一路径（大小写不敏感）只进批一次，直接文件优先于扫描结果；父子来源并存时重复文件只保留一份。
+- 默认只取来源第一层，「包含子目录」开启后对所有文件夹来源遍历整棵子树；扩展名筛选作用于本批所有文件，包括直接添加的文件，支持空格 / 逗号 / 分号分隔、带不带点均可、大小写不敏感；它是筛选，不改扩展名。
 - 隐藏与系统属性项、符号链接、目录联接进入跳过列表且不跟进；只读项照常改名。
 - 扫描不到任何项或规则未匹配时显示 0 项受影响并禁用执行，不产生错误记录。
+- 模式切换清空来源并回到空态，必须重新选择。
 
 ### 预检
 
@@ -734,20 +736,20 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 执行前确认一次，文案只写变更数；进阶模式追加扩展名变化数。
 - 执行期逐项改名，单文件失败不中断；失败项生成未登记呈现的 `ErrorRecord`（只进日志与详情缓冲），结束时汇总一条 InfoBar。
 - 只保留最近一次批次的内存撤销；撤销逆序逐项复验文件或文件夹仍在、类型一致、文件长度与最后写入时间未变（文件夹只比最后写入时间）、原名未被占用。失败的项保留改名后的状态。
-- 备份默认关闭；开启时复制到所选目录之外的同级 `JiuMi-backup-<yyyyMMdd-HHmmss>`，目录已存在时追加序号；备份失败的那一项不改名。复制时跳过内部链接。
+- 备份默认关闭；开启时在第一个来源所在目录的父目录建一个 `JiuMi-backup-<yyyyMMdd-HHmmss>`（已存在时追加序号），内部按来源序号分子目录，跨盘来源照样复制进去；备份失败的那一项不改名。复制时跳过内部链接。
 - 批次可导出为缩进 JSON（`schemaVersion`、执行时间、备份目录、逐项 from / to / 类型 / 状态 / 失败原因）。
 
 ### 设置
 
-- `fileRename` 段保存规则层级、两套规则参数、含子目录、扩展名筛选与备份开关；所选目录不保存。
+- `fileRename` 段保存规则层级、两套规则参数、含子目录、扩展名筛选与备份开关；来源列表不保存。
 
 ### 测试缝
 
-1. `JiuMi.Application` 纯函数：文件名规则、自然排序、令牌展开、普通任务换算、预检各条错误、目标重名与占用、排序与先深后浅、跳过列表、扩展名变化、日志序列化。
-2. Infrastructure：临时目录验证扫描范围、隐藏项、扩展名筛选；验证改名、占用与缺失、备份目录命名与复制、撤销复验；验证 JSON 日志写入。
-3. UI 的确认框、拖放、跳过面板与汇总文案不设自动化测试。
+1. `JiuMi.Application` 纯函数：文件名规则、自然排序、令牌展开、普通任务换算、预检各条错误、目标重名与占用、排序与先深后浅、来源去重与分组编号、跳过列表、扩展名变化、日志序列化。
+2. Infrastructure：临时目录验证多来源扫描、去重、隐藏项、扩展名筛选；验证改名、占用与缺失、备份根与按来源分组、撤销复验；验证 JSON 日志写入。
+3. UI 的确认框、拖放、来源行、跳过面板与汇总文案不设自动化测试。
 
-相关：[ADR-0010](./adr/0010-batch-rename.md)、[#67](https://github.com/ZLiLiang/JiuMi/issues/67)。
+相关：[ADR-0010](./adr/0010-batch-rename.md)、[ADR-0011](./adr/0011-multi-source-rename-batch.md)、[#67](https://github.com/ZLiLiang/JiuMi/issues/67)、[#74](https://github.com/ZLiLiang/JiuMi/issues/74)。
 
 ## 参考
 
@@ -761,6 +763,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0008 世界时钟目录：内置快照、双粒度与代表时区](./adr/0008-world-clock-catalog.md)
 - [ADR-0009 图片格式转换：PSD 解码选型与批量转换管线](./adr/0009-image-conversion.md)
 - [ADR-0010 批量重命名：一份规则模型、预检不修补、撤销而非备份](./adr/0010-batch-rename.md)
+- [ADR-0011 批量重命名：文件模式的多来源批次](./adr/0011-multi-source-rename-batch.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)

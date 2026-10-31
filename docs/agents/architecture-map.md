@@ -21,7 +21,7 @@
 | 本地化 | `本地化` (467–566): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
 | 工具模块 | `工具模块` (lines 585–644): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
 | 图片格式转换 | `图片格式转换` (645–699): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
-| 批量重命名 | `批量重命名` (700–750): rule model and numbering, scope and skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md) |
+| 批量重命名 | `批量重命名` (701–753): rule model and numbering, sources/scope/skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md), [ADR-0011](../adr/0011-multi-source-rename-batch.md) |
 
 ## Stop rules
 

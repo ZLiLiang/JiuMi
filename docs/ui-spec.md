@@ -287,15 +287,27 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 版式取自 UI 提案原型 [`batch-rename.html`](./prototypes/batch-rename.html)（`?state=` 切状态、`?theme=dark` 切深色、`?ext=` 演示扩展名筛选、`?capture=1` 出图）。本节十张 1200 × 760 参考图取自该原型的 `?capture=1`，是 #67 的视觉基准；原型与截图都只作复现与对照，不参与构建。原型内置示例名只用于演示规则。
 
 - 页头沿用「页头」的结构与字号，副标题取 `Tool.FileRename.Subtitle`，只说明「按规则批量改名、执行前先看预览」，不写排序与编号规则。
-- 动作区三项，顺序同图片转换：`选择文件夹`（普通按钮，高 32，14px 文件夹图标）→ `执行改名`（强调色按钮，高 32）→ 20 × 20 圆形问号。问号的 ToolTip 说明编号按预览顺序从 1 开始、`{index:00}` 的补零宽度随本批条目数、执行后只保留最近一次批次的撤销。
+- 动作区三项，顺序同图片转换：入口 → `执行改名`（强调色按钮，高 32）→ 20 × 20 圆形问号。问号的 ToolTip 说明编号按预览顺序从 1 开始、`{index:00}` 的补零宽度随本批条目数、执行后只保留最近一次批次的撤销。
+- 入口随模式分叉：`文件夹` 模式仍是单个 `选择文件夹`（普通按钮，高 32，14px 文件夹图标）；`文件` 模式换成 `添加` 下拉（同尺寸、同图标位置），菜单两项 `添加文件…` / `添加文件夹…`，分别打开系统文件对话框（可多选、可双击进目录）与系统文件夹对话框（可多选，文件夹只作扫描容器）。文件模式不出现「选择文件夹」字样——唯一根目录只属于文件夹模式。
 - 执行按钮是否可用由预检结果决定：有冲突、可改名数为 0、或本批次已执行时禁用；底栏只放与「最近批次」相关的统计与操作，不再重复放执行入口。
-- 首次进入是未选目录的空态；所选目录**不记忆**（见 #67），参数从 `FileRename` 设置段恢复。
+- 首次进入是未选来源的空态；来源列表**不记忆**（见 #67、#74 与 [ADR-0011](./adr/0011-multi-source-rename-batch.md)），参数从 `FileRename` 设置段恢复。
 - 导航项与主页卡片已启用：导航项去掉「即将推出」徽标、可聚焦可选中，主页卡片整张可点击；「导航栏」与「工具卡网格」两节的禁用清单只剩微信视频下载。
 
 **卡片**
 
 - 外边距上 22、内边距 20、圆角 8，`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`；高度铺满内容区剩余空间。
-- 自上而下：参数区 → 1px 分隔线 → 预检摘要（按需）→ 列表 → 跳过面板（按需，从底栏向上撑开）→ 底栏。列表占 `*` 并在内部纵向滚动，条目少时卡片不收缩，底栏始终贴底。
+- 自上而下：参数区 → 1px 分隔线 → 来源行（仅文件模式）→ 预检摘要（按需）→ 列表 → 跳过面板（按需，从底栏向上撑开）→ 底栏。列表占 `*` 并在内部纵向滚动，条目少时卡片不收缩，底栏始终贴底。
+
+**来源行（仅文件模式）**
+
+- 位置：分隔线之下、预检摘要之上，横跨卡片内宽；一个来源都没有时整行隐藏，由空态卡片接管。
+- 形态：可换行的标签行（`WrapPanel`），标签 12px 次文字、高 24、圆角 4、内边距 0 8，`SubtleFillColorSecondaryBrush` 底 + 1px `ControlStrokeColorDefaultBrush` 描边；行尾一个 `清空` 文字按钮（同底栏次要按钮样式，来源为空时隐藏）。
+- 标签内容：12px 图标（文件夹来源用文件夹图标，直接文件来源用文档图标）+ 名称 + 净贡献。文件夹来源名称取目录名（`CharacterEllipsis`，最大宽 200）；直接文件来源写成 `N 个文件`。
+- 净贡献写成 `12 项`；有文件被扩展名筛选挡掉时写成 `9 / 12 项`，ToolTip 列出被挡掉的文件名。父子来源重叠导致某来源贡献 0 项时显示 `0 项`，不自动移除。
+- ToolTip 给完整路径；直接文件来源列出全部文件名，超过 10 个给前 10 个加「等 N 个」。
+- 每个标签右侧带 18 × 18 的 `×` 移除按钮（悬停转 `SystemFillColorCriticalBrush`），移除粒度为**整批**：一个文件夹来源、或一次「添加文件…」选中的全部文件。
+- 扫描中标签只读（移除、清空、添加一起禁用），行尾显示 11px 三级文字「读取中…」。
+- 模式切换时整行随来源一起清空。
 
 **参数区**
 
@@ -303,9 +315,9 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 第一行：
   - 改名对象：分段控件，`文件` / `文件夹`，一次只做一种。
   - 规则：分段控件，`普通` / `进阶`，**默认普通**。普通模式只让人选任务、填一两个词，不出现 `{index}`、正则等写法。
-  - 含子目录：`ToggleSwitch`，默认关闭；开启后遍历整棵子树。
-  - 只处理这些扩展名：`TextBox` 宽 150，占位 `.png .jpg`，默认空（不限）。空格分隔可填多个、大小写不敏感。它是**筛选**，不改任何文件的扩展名——名字用「只处理这些扩展名」，不用「扩展名」，避免被读成改扩展名。说明挂在标签后的问号上（文案：「只处理这些扩展名，其余文件不参与本次改名；留空表示不限，空格分隔可填多个，大小写不敏感」）。仅 `文件` 模式显示，切到 `文件夹` 时隐藏但保留输入。
-  - 备份：`ToggleSwitch`，默认关闭；说明挂在标签后的问号上（文案：「改名之前先复制一份到同级的 `JiuMi-backup-<时间戳>` 目录」），不在行内堆文字。
+  - 含子目录：`ToggleSwitch`，默认关闭；开启后对**所有文件夹来源**遍历整棵子树，直接添加的文件不受影响。
+  - 只处理这些扩展名：`TextBox` 宽 150，占位 `.png .jpg`，默认空（不限）。空格分隔可填多个、大小写不敏感。它是**筛选**，不改任何文件的扩展名——名字用「只处理这些扩展名」，不用「扩展名」，避免被读成改扩展名。说明挂在标签后的问号上（文案：「只处理这些扩展名，其余文件不参与本次改名；留空表示不限，空格分隔可填多个，大小写不敏感」）。它作用于本批**所有**文件，包括直接添加的文件；被挡掉的直接文件仍留在来源标签里，计入 `N / M 项`。仅 `文件` 模式显示，切到 `文件夹` 时隐藏但保留输入。
+  - 备份：`ToggleSwitch`，默认关闭；说明挂在标签后的问号上（文案：「改名之前先把整批复制一份到 `JiuMi-backup-<时间戳>` 目录：放在第一个来源所在目录的同级，内部按来源分子目录」），不在行内堆文字。
 - 第二行随层级切换：
   - **普通**：`任务` 为 `ComboBox`（宽按最长项），右侧只显示该任务需要的字段：
 
@@ -330,10 +342,11 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 列宽：原名称 `*` / 箭头 18 / 改为 `*` / 状态 92；列距 12。表头 11px 三级文字，不吸顶。
 - 行高 44、行内边距 9 0，行间 1px `DividerStrokeColorDefaultBrush`，末行不带分隔线。
 - 原名称 13px 主文字，超长 `CharacterEllipsis`；文件夹模式显示**相对路径**（`项目 A/项目 素材`），因为同名的文件夹可能出现在不同层。
+- 文件模式在本批涉及两个及以上不同目录时，主文字后追加来源目录末段（11px 三级文字、间距 6、最大宽 120、`CharacterEllipsis`），单目录时不显示；行高保持 44，ToolTip 始终给完整路径。
 - 改为 13px：去掉与原名称的最长公共前缀与后缀后，中间变化的片段用 `AccentFillColorDefaultBrush` + SemiBold，其余取主文字色。大小写变化只改后缀也会被标出。
 - 状态 chip 11px、高 18、圆角 4、内边距 0 7，列表行五态：将改名（`SubtleFillColorSecondaryBrush` + 次文字）、冲突（透明底 + 1px `SystemFillColorCriticalBrush` 描边 + 同色文字）、已改名（`JiuMiCellWorkingBrush` + 强调色文字）、失败、撤销失败（同冲突）。跳过面板里的行复用同一套 chip 样式，文字取三级文字色。
 - 冲突与失败、撤销失败行在「改为」列下方追加 11px `SystemFillColorCriticalBrush` 原因，行高随内容增高；「改为」列同名文字也转 critical 色。
-- 排序：文件名自然排序（不区分大小写）；文件夹先深后浅。**编号与预览同序**，自上而下 1..N——预览里的序号永远连续可读。
+- 排序：按来源在列表里的**添加顺序**分组，组内自然排序（不区分大小写，数字按数值；递归时按相对各自来源的路径）；文件夹模式仍是文件夹先深后浅。直接文件按一次添加成组，组内按文件名自然排序，不按点选顺序（系统多选返回的顺序不可靠）。**编号与预览同序**，自上而下 1..N——预览里的序号永远连续可读，跨来源连续，不按来源重新从 1 开始。
 - 跳过项**不进这张列表**，入口在底栏（见下一节）。
 - 未匹配项**不进列表**，只计入底栏统计；0 项受影响时列表区内**垂直与水平居中**显示 12px 三级文字「这条规则没有匹配到任何文件 / 文件夹」，执行禁用；普通模式下输入尚未填写时换成引导文案。
 
@@ -360,29 +373,31 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 **空态**
 
-- 未选目录时用空态卡片替代整张卡片：与有内容时同高，内容垂直居中。
-- 56 × 56、圆角 12 的 `SubtleFillColorSecondaryBrush` 槽位内放 24px 文件夹图标；标题 14px SemiBold `Tool.FileRename.Empty`；说明 12px 次文字、最大宽 380、行高 1.6 `Tool.FileRename.Empty.Hint`，写明「也可以把文件夹拖进来」「所选目录自己永远不会被改名」。
-- 空态不再重复放「选择文件夹」按钮，页头已有入口。
+- 一个来源都没有时用空态卡片替代整张卡片：与有内容时同高，内容垂直居中。
+- 56 × 56、圆角 12 的 `SubtleFillColorSecondaryBrush` 槽位内放 24px 文件夹图标；标题 14px SemiBold `Tool.FileRename.Empty`；说明 12px 次文字、最大宽 380、行高 1.6 `Tool.FileRename.Empty.Hint`。文件模式写明「也可以把文件或文件夹拖进来」「文件夹只取其中的文件，容器自己永远不会被改名」；文件夹模式仍是「也可以把文件夹拖进来」「所选目录自己永远不会被改名」。
+- 空态不重复放入口按钮，页头已有「添加」下拉或「选择文件夹」。
 
 **确认对话框**
 
 - `ContentDialog`：宽 400，内边距 22 24 20，圆角 8，`JiuMiIslandBorderBrush` 描边。
-- 标题 20px SemiBold `Tool.FileRename.Confirm.Title`；正文 13px 只说变更数：普通为「将改名 N 项。」，进阶为「将改名 N 项，其中 M 项会变更扩展名。」，数字 600；下方 11px 三级文字补两句：不覆盖已有名字、可在底栏撤销；开启备份时追加一行备份目录名。
+- 标题 20px SemiBold `Tool.FileRename.Confirm.Title`；正文 13px 只说变更数：普通为「将改名 N 项。」，进阶为「将改名 N 项，其中 M 项会变更扩展名。」，数字 600；下方 11px 三级文字补两句：不覆盖已有名字、可在底栏撤销；开启备份时追加一行备份根名（`JiuMi-backup-<时间戳>`，内部按来源分子目录）。
 - 按钮右对齐：`取消` / `执行改名`（强调色）；默认焦点在取消，Esc 关闭，关闭后不执行。
 
 **执行与撤销**
 
 - 执行中逐行把状态 chip 从「将改名」改为「已改名」或「失败」，不显示进度条；执行期间参数区、执行、撤销、导出一起禁用，避免边改边跑。
 - 结束反馈走全局 InfoBar（位置与尺寸见「错误呈现」）：
-  - 成功：强调色对勾 + `已改名 N 项` + 动作「打开文件夹」。
+  - 成功：强调色对勾 + `已改名 N 项` + 动作「打开文件夹」（仅单目录；多目录时为 `已改名 N 项，分布在 M 个目录`，不带按钮）。
   - 部分失败：警告态 + `已完成 N，失败 M` + 次行「失败项已在列表里标出原因，可修正后重试，或撤销本次改名。」+ 动作「导出日志」。
-  - 撤销成功：强调色对勾 + `已撤销改名 N 项` + 动作「打开文件夹」。
+  - 撤销成功：强调色对勾 + `已撤销改名 N 项` + 动作「打开文件夹」（仅单目录；多目录时为 `已撤销改名 N 项，分布在 M 个目录`，不带按钮）。
   - 撤销失败：警告态 + `撤销失败 N 项` + 次行「该项文件已被外部修改，保留撤销前的状态；其余项已恢复原名。」+ 动作「导出日志」。
 - InfoBar 跨页常驻，切页不清空。
+- 成功与撤销成功的「打开文件夹」动作只在整批涉及**单一目录**时出现；多目录时同一张 InfoBar 不带按钮，文案改成一句 `已改名 N 项，分布在 M 个目录`（撤销为 `已撤销改名 N 项，分布在 M 个目录`），因为「打开哪一个」没有唯一答案。
 
 **拖放**
 
-- 整个内容岛接受目录拖放；拖入时岛描边换强调色并覆盖 12px 提示「松开以读取文件夹」。拖入的不是目录时描边不变、不提示。
+- 整个内容岛接受拖放。文件夹模式只认目录：拖入时岛描边换强调色并覆盖 12px 提示「松开以读取文件夹」，拖入的不是目录时描边不变、不提示。
+- 文件模式同时接受文件与文件夹：拖入任一本地项即可，覆盖层提示「松开以添加文件和文件夹」；文件夹成为扫描来源、文件成为直接文件来源，一律追加并按去重规则处理。非本地项忽略。
 
 **窄窗与缩放**
 
@@ -391,7 +406,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 **本页新增文案键**
 
-`Tool.FileRename.` 前缀：`Name`、`Subtitle`、`Pick`、`Help`、`Empty`、`Empty.Hint`、`Target.Files`、`Target.Folders`、`Level.Basic`、`Level.Advanced`、`Task`、`Task.Replace`、`Task.Affix`、`Task.Sequence`、`Task.Find`、`Task.With`、`Task.Affix.Prefix`、`Task.Affix.Suffix`、`Task.Affix.Text`、`Task.Sequence.Name`、`Task.Sequence.Pad`、`Task.Sequence.Pad.None`、`Empty.Hint.Basic`、`Scope.Subdirectories`、`Scope.Extensions`、`Scope.Extensions.Placeholder`、`Scope.Extensions.Help`、`Backup`、`Backup.Help`、`Task.Help`、`Rule.Help`、`Rule.Replace`、`Rule.Template`、`Find`、`Replace`、`Replace.Help`、`Regex`、`Regex.Help`、`Template`、`Template.Help`、`List.Original`、`List.Target`、`List.Status`、`Status.Pending`、`Status.Conflict`、`Status.Done`、`Status.Failed`、`Status.UndoFailed`、`Status.Skipped`、`Skip.Toggle`、`Skip.Hidden`、`Skip.System`、`Skip.Link`、`Precheck.Summary`、`Reason.IllegalChar`、`Reason.Trailing`、`Reason.Reserved`、`Reason.TooLong`、`Reason.Occupied`、`Reason.Duplicate`、`Action.Run`、`Action.Undo`、`Action.Export`、`Action.OpenFolder`、`Confirm.Title`、`Confirm.Body`、`Confirm.Note`、`Confirm.Backup`、`InfoBar.Done`、`InfoBar.Partial`、`InfoBar.Undone`、`InfoBar.UndoFailed`、`Drop.Hint`。实现时按架构的本地化章节登记，`Error.*` 键按 ADR-0003 映射表补。
+`Tool.FileRename.` 前缀：`Name`、`Subtitle`、`Pick`、`Add`、`Add.Files`、`Add.Folders`、`Source.Clear`、`Source.Remove`、`Source.Count`、`Source.Filtered`、`Source.Files`、`Source.Reading`、`Help`、`Empty`、`Empty.Hint`、`Target.Files`、`Target.Folders`、`Level.Basic`、`Level.Advanced`、`Task`、`Task.Replace`、`Task.Affix`、`Task.Sequence`、`Task.Find`、`Task.With`、`Task.Affix.Prefix`、`Task.Affix.Suffix`、`Task.Affix.Text`、`Task.Sequence.Name`、`Task.Sequence.Pad`、`Task.Sequence.Pad.None`、`Empty.Hint.Basic`、`Scope.Subdirectories`、`Scope.Extensions`、`Scope.Extensions.Placeholder`、`Scope.Extensions.Help`、`Backup`、`Backup.Help`、`Task.Help`、`Rule.Help`、`Rule.Replace`、`Rule.Template`、`Find`、`Replace`、`Replace.Help`、`Regex`、`Regex.Help`、`Template`、`Template.Help`、`List.Original`、`List.Target`、`List.Status`、`Status.Pending`、`Status.Conflict`、`Status.Done`、`Status.Failed`、`Status.UndoFailed`、`Status.Skipped`、`Skip.Toggle`、`Skip.Hidden`、`Skip.System`、`Skip.Link`、`Precheck.Summary`、`Reason.IllegalChar`、`Reason.Trailing`、`Reason.Reserved`、`Reason.TooLong`、`Reason.Occupied`、`Reason.Duplicate`、`Action.Run`、`Action.Undo`、`Action.Export`、`Action.OpenFolder`、`Confirm.Title`、`Confirm.Body`、`Confirm.Note`、`Confirm.Backup`、`InfoBar.Done`、`InfoBar.Done.MultiSource`、`InfoBar.Partial`、`InfoBar.Undone`、`InfoBar.Undone.MultiSource`、`InfoBar.UndoFailed`、`Drop.Hint`。实现时按架构的本地化章节登记，`Error.*` 键按 ADR-0003 映射表补。
 
 **参考图**
 
