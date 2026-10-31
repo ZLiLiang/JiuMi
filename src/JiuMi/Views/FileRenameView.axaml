@@ -222,55 +222,59 @@
                 <WrapPanel Orientation="Horizontal">
                   <StackPanel Margin="0,0,20,12">
                     <TextBlock Classes="param-label" Text="{loc:Localize Tool.FileRename.Target}" />
-                    <Border Margin="0,4,0,0"
-                            Padding="2"
-                            CornerRadius="4"
-                            HorizontalAlignment="Left"
-                            Background="{DynamicResource SubtleFillColorSecondaryBrush}">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Classes="segment"
-                                Classes.active="{Binding IsFilesMode}"
-                                Command="{Binding SetTargetCommand}"
-                                CommandParameter="{x:Static fr:RenameTarget.Files}"
-                                Content="{loc:Localize Tool.FileRename.Target.Files}"
-                                IsEnabled="{Binding IsIdle}" />
-                        <Button Classes="segment"
-                                Classes.active="{Binding IsFoldersMode}"
-                                Command="{Binding SetTargetCommand}"
-                                CommandParameter="{x:Static fr:RenameTarget.Folders}"
-                                Content="{loc:Localize Tool.FileRename.Target.Folders}"
-                                IsEnabled="{Binding IsIdle}" />
-                      </StackPanel>
-                    </Border>
+                    <Grid Height="44" Margin="0,4,0,0">
+                      <Border Padding="2"
+                              CornerRadius="4"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"
+                              Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <Button Classes="segment"
+                                  Classes.active="{Binding IsFilesMode}"
+                                  Command="{Binding SetTargetCommand}"
+                                  CommandParameter="{x:Static fr:RenameTarget.Files}"
+                                  Content="{loc:Localize Tool.FileRename.Target.Files}"
+                                  IsEnabled="{Binding IsIdle}" />
+                          <Button Classes="segment"
+                                  Classes.active="{Binding IsFoldersMode}"
+                                  Command="{Binding SetTargetCommand}"
+                                  CommandParameter="{x:Static fr:RenameTarget.Folders}"
+                                  Content="{loc:Localize Tool.FileRename.Target.Folders}"
+                                  IsEnabled="{Binding IsIdle}" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
                   </StackPanel>
 
                   <StackPanel Margin="0,0,20,12">
                     <TextBlock Classes="param-label" Text="{loc:Localize Tool.FileRename.Rule}" />
-                    <Border Margin="0,4,0,0"
-                            Padding="2"
-                            CornerRadius="4"
-                            HorizontalAlignment="Left"
-                            Background="{DynamicResource SubtleFillColorSecondaryBrush}">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Classes="segment"
-                                Classes.active="{Binding IsBasicLevel}"
-                                Command="{Binding SetLevelCommand}"
-                                CommandParameter="{x:Static fr:RenameRuleLevel.Basic}"
-                                Content="{loc:Localize Tool.FileRename.Level.Basic}"
-                                IsEnabled="{Binding IsIdle}" />
-                        <Button Classes="segment"
-                                Classes.active="{Binding IsAdvancedLevel}"
-                                Command="{Binding SetLevelCommand}"
-                                CommandParameter="{x:Static fr:RenameRuleLevel.Advanced}"
-                                Content="{loc:Localize Tool.FileRename.Level.Advanced}"
-                                IsEnabled="{Binding IsIdle}" />
-                      </StackPanel>
-                    </Border>
+                    <Grid Height="44" Margin="0,4,0,0">
+                      <Border Padding="2"
+                              CornerRadius="4"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"
+                              Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <Button Classes="segment"
+                                  Classes.active="{Binding IsBasicLevel}"
+                                  Command="{Binding SetLevelCommand}"
+                                  CommandParameter="{x:Static fr:RenameRuleLevel.Basic}"
+                                  Content="{loc:Localize Tool.FileRename.Level.Basic}"
+                                  IsEnabled="{Binding IsIdle}" />
+                          <Button Classes="segment"
+                                  Classes.active="{Binding IsAdvancedLevel}"
+                                  Command="{Binding SetLevelCommand}"
+                                  CommandParameter="{x:Static fr:RenameRuleLevel.Advanced}"
+                                  Content="{loc:Localize Tool.FileRename.Level.Advanced}"
+                                  IsEnabled="{Binding IsIdle}" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
                   </StackPanel>
 
                   <StackPanel Margin="0,0,20,12">
                     <TextBlock Classes="param-label" Text="{loc:Localize Tool.FileRename.Scope.Subdirectories}" />
-                    <ToggleSwitch Margin="0,8,0,0"
+                    <ToggleSwitch Margin="0,4,0,0"
                                   OnContent=""
                                   OffContent=""
                                   IsEnabled="{Binding IsIdle}"
@@ -291,12 +295,15 @@
                                    Text="?" />
                       </Button>
                     </StackPanel>
-                    <TextBox Width="150"
-                             Height="32"
-                             Margin="0,4,0,0"
-                             IsEnabled="{Binding IsIdle}"
-                             PlaceholderText="{loc:Localize Tool.FileRename.Scope.Extensions.Placeholder}"
-                             Text="{Binding Extensions, Mode=TwoWay}" />
+                    <Grid Height="44" Margin="0,4,0,0">
+                      <TextBox Width="150"
+                               Height="32"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               IsEnabled="{Binding IsIdle}"
+                               PlaceholderText="{loc:Localize Tool.FileRename.Scope.Extensions.Placeholder}"
+                               Text="{Binding Extensions, Mode=TwoWay}" />
+                    </Grid>
                   </StackPanel>
 
                   <StackPanel Margin="0,0,20,12">
@@ -312,7 +319,7 @@
                                    Text="?" />
                       </Button>
                     </StackPanel>
-                    <ToggleSwitch Margin="0,8,0,0"
+                    <ToggleSwitch Margin="0,4,0,0"
                                   OnContent=""
                                   OffContent=""
                                   IsEnabled="{Binding IsIdle}"
@@ -320,6 +327,10 @@
                                   AutomationProperties.Name="{loc:Localize Tool.FileRename.Backup}" />
                   </StackPanel>
                 </WrapPanel>
+
+                <Border Height="1"
+                        Margin="0,0,0,12"
+                        Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
 
                 <WrapPanel Orientation="Horizontal" IsVisible="{Binding IsBasicLevel}">
                   <StackPanel Margin="0,0,20,12">
