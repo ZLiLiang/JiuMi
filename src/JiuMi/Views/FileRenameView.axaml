@@ -16,13 +16,6 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
     </Style>
-    <Style Selector="ToggleSwitch.param-toggle">
-      <Setter Property="Height" Value="32" />
-      <Setter Property="MinHeight" Value="32" />
-      <Setter Property="Margin" Value="0,4,0,0" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
     <Style Selector="Button.segment">
       <Setter Property="Height" Value="28" />
       <Setter Property="Padding" Value="12,0" />
@@ -277,7 +270,7 @@
 
                   <StackPanel Margin="0,0,20,12">
                     <TextBlock Classes="param-label" Text="{loc:Localize Tool.FileRename.Scope.Subdirectories}" />
-                    <ToggleSwitch Classes="param-toggle"
+                    <ToggleSwitch Margin="0,8,0,0"
                                   OnContent=""
                                   OffContent=""
                                   IsEnabled="{Binding IsIdle}"
@@ -319,7 +312,7 @@
                                    Text="?" />
                       </Button>
                     </StackPanel>
-                    <ToggleSwitch Classes="param-toggle"
+                    <ToggleSwitch Margin="0,8,0,0"
                                   OnContent=""
                                   OffContent=""
                                   IsEnabled="{Binding IsIdle}"
