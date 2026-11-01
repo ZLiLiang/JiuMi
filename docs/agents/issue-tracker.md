@@ -34,6 +34,23 @@ Create a GitHub issue.
 
 Read it as in **Read an issue** above.
 
+## 排最后（`do-last`）
+
+`do-last` 表示「只在其余实现票完成后开始」，用于必须等业务面稳定才值得做的票（例如 `PublishTrimmed` 裁剪），或卡在 owner 决策上、需先定行为的票。
+
+- **新票建票时挂边**：新建的票若触及同一子系统（功能面、打包面、壳行为），把对应的 `do-last` 票挂成被阻塞方：
+
+  ```bash
+  gh api --method POST repos/{owner}/{repo}/issues/<do-last-n>/dependencies/blocked_by \
+    -F issue_id=$(gh api repos/{owner}/{repo}/issues/<new-n> --jq .id)
+  ```
+
+  这里的 `issue_id` 是新票的**数据库 id**（`--jq .id`），不是 `#number`，也不是 `node_id`。
+- **Frontier 查询要排除**：`issue_dependencies_summary.blocked_by` 只反映已声明的边，`do-last` 票可能仍显示 0。带 `do-last` 的票一律不进入 frontier，除非 owner 在票内写明已解除。
+- **不挂假边**：无关票（typo、纯文档）不挂。`blocked by N` 一旦失真，真实的阻塞关系就没人看了。
+- **与就绪态互斥**：`do-last` 的票不同时带 `ready-for-agent`；到点（其余票全部关闭、owner 确认）再换回。
+- **链条用真边表达**：排最后的票之间若有次序，加真实依赖，例如 #66 被 #71 阻塞。
+
 ## Wayfinding operations
 
 Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
