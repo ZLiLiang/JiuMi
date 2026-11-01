@@ -674,6 +674,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 输出与命名
 
 - 默认写回源文件同目录；可切换到用户选定目录，并跨会话记住上次选择。
+- 两个选择器的起点只在进程内记忆：输出选择器优先用自定义输出目录，其次用本页上一次指定的目录；文件选择器用后者；都不可用时用系统默认。起点不进设置段，也不新增设置字段。
 - 命名为 `原名.<新后缀>`；目标已存在时追加序号（`a-1.png`、`a-2.png`），**绝不覆盖已有文件或源文件**。
 - 输出目录不可写时该行失败，不静默改写到别处。
 
@@ -696,7 +697,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 2. Infrastructure：用 Magick.NET 在测试里自行写出的小 PSD/PSB 夹具，验证读合成图、sRGB 转换、元数据剥离、JPG 底色合成、等比缩放；坏文件返回可读原因而不抛未处理异常。
 3. UI 的拖拽、进度与汇总文案不设自动化测试。
 
-相关：[ADR-0009](./adr/0009-image-conversion.md)、[#59](https://github.com/ZLiLiang/JiuMi/issues/59)、[#60](https://github.com/ZLiLiang/JiuMi/issues/60)。
+相关：[ADR-0009](./adr/0009-image-conversion.md)、[#59](https://github.com/ZLiLiang/JiuMi/issues/59)、[#60](https://github.com/ZLiLiang/JiuMi/issues/60)、[#79](https://github.com/ZLiLiang/JiuMi/issues/79)。
 
 ## 批量重命名
 
