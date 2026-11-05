@@ -671,11 +671,19 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Remembers a directory the user chose in this session. Blank values are ignored; the memory is
-    /// never cleared until the process exits.
+    /// Remembers the directory of a source file the user chose for this session. Choosing an output
+    /// directory does not change it.
     /// </summary>
-    /// <param name="directory">The chosen directory.</param>
-    public void RememberPickerStartDirectory(string? directory)
+    /// <param name="filePath">The chosen source file.</param>
+    public void RememberSourcePickerFile(string? filePath)
+    {
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            RememberSourcePickerDirectory(Path.GetDirectoryName(filePath));
+        }
+    }
+
+    private void RememberSourcePickerDirectory(string? directory)
     {
         if (!_pickerMemory.Remember(directory))
         {
@@ -684,18 +692,6 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
 
         OnPropertyChanged(nameof(SourcePickerStartDirectory));
         OnPropertyChanged(nameof(OutputPickerStartDirectory));
-    }
-
-    /// <summary>
-    /// Remembers the parent directory of a file the user chose in this session.
-    /// </summary>
-    /// <param name="filePath">The chosen file.</param>
-    public void RememberPickerStartFile(string? filePath)
-    {
-        if (!string.IsNullOrWhiteSpace(filePath))
-        {
-            RememberPickerStartDirectory(Path.GetDirectoryName(filePath));
-        }
     }
 
     /// <inheritdoc />

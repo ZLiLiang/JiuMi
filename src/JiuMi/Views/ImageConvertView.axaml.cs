@@ -162,7 +162,7 @@ public partial class ImageConvertView : UserControl
         {
             if (await viewModel.AddFilesAsync(paths) is { } firstAdded)
             {
-                viewModel.RememberPickerStartFile(firstAdded);
+                viewModel.RememberSourcePickerFile(firstAdded);
             }
         }
         catch (Exception exception)
@@ -213,7 +213,7 @@ public partial class ImageConvertView : UserControl
 
             if (paths.Count > 0)
             {
-                viewModel.RememberPickerStartFile(paths[0]);
+                viewModel.RememberSourcePickerFile(paths[0]);
             }
 
             await viewModel.AddFilesAsync(paths);
@@ -255,7 +255,6 @@ public partial class ImageConvertView : UserControl
             if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
             {
                 viewModel.SetOutputDirectory(path);
-                viewModel.RememberPickerStartDirectory(path);
             }
         }
         catch (Exception exception)
