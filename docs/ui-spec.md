@@ -286,7 +286,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 批量重命名
 
-版式取自 UI 提案原型 [`batch-rename.html`](./prototypes/batch-rename.html)（`?state=` 切状态、`?theme=dark` 切深色、`?ext=` 演示扩展名筛选、`?capture=1` 出图）。本节十张 1200 × 760 参考图取自该原型的 `?capture=1`，是 #67 的视觉基准；原型与截图都只作复现与对照，不参与构建。原型内置示例名只用于演示规则。
+版式取自 UI 提案原型 [`batch-rename.html`](./prototypes/batch-rename.html)（`?state=` 切状态、`?theme=dark` 切深色、`?ext=` 演示扩展名筛选、`?capture=1` 出图）。本节十张 1200 × 760 参考图取自该原型的 `?capture=1`，是 #67 的视觉基准；空态与多来源相关的四张取自 #77 的实际页面。原型与截图都只作复现与对照，不参与构建。原型内置示例名只用于演示规则。
 
 - 页头沿用「页头」的结构与字号，副标题取 `Tool.FileRename.Subtitle`，只说明「按规则批量改名、执行前先看预览」，不写排序与编号规则。
 - 动作区三项，顺序同图片转换：入口 → `执行改名`（强调色按钮，高 32）→ 20 × 20 圆形问号。问号的 ToolTip 说明编号按预览顺序从 1 开始、`{index:00}` 的补零宽度随本批条目数、执行后只保留最近一次批次的撤销。
@@ -378,7 +378,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 - 一个来源都没有时用空态卡片替代整张卡片：与有内容时同高，内容垂直居中。
 - 56 × 56、圆角 12 的 `SubtleFillColorSecondaryBrush` 槽位内放 24px 文件夹图标；标题 14px SemiBold `Tool.FileRename.Empty`；说明 12px 次文字、最大宽 380、行高 1.6 `Tool.FileRename.Empty.Hint`。文件模式写明「也可以把文件或文件夹拖进来」「文件夹只取其中的文件，容器自己永远不会被改名」；文件夹模式仍是「也可以把文件夹拖进来」「所选目录自己永远不会被改名」。
-- 空态不重复放入口按钮，页头已有「添加」下拉或「选择文件夹」。
+- 空态不重复放入口按钮，页头已有「添加」下拉或「选择文件夹」；底部保留 `文件` / `文件夹` 分段，否则模式切换清空来源后会失去切回另一模式的入口。
 
 **确认对话框**
 
@@ -410,7 +410,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 **本页新增文案键**
 
-`Tool.FileRename.` 前缀：`Name`、`Subtitle`、`Pick`、`Add`、`Add.Files`、`Add.Folders`、`Source.Clear`、`Source.Remove`、`Source.Count`、`Source.Filtered`、`Source.Files`、`Source.Reading`、`Help`、`Empty`、`Empty.Hint`、`Target.Files`、`Target.Folders`、`Level.Basic`、`Level.Advanced`、`Task`、`Task.Replace`、`Task.Affix`、`Task.Sequence`、`Task.Find`、`Task.With`、`Task.Affix.Prefix`、`Task.Affix.Suffix`、`Task.Affix.Text`、`Task.Sequence.Name`、`Task.Sequence.Pad`、`Task.Sequence.Pad.None`、`Empty.Hint.Basic`、`Scope.Subdirectories`、`Scope.Extensions`、`Scope.Extensions.Placeholder`、`Scope.Extensions.Help`、`Backup`、`Backup.Help`、`Task.Help`、`Rule.Help`、`Rule.Replace`、`Rule.Template`、`Find`、`Replace`、`Replace.Help`、`Regex`、`Regex.Help`、`Template`、`Template.Help`、`List.Original`、`List.Target`、`List.Status`、`Status.Pending`、`Status.Conflict`、`Status.Done`、`Status.Failed`、`Status.UndoFailed`、`Status.Skipped`、`Skip.Toggle`、`Skip.Hidden`、`Skip.System`、`Skip.Link`、`Precheck.Summary`、`Reason.IllegalChar`、`Reason.Trailing`、`Reason.Reserved`、`Reason.TooLong`、`Reason.Occupied`、`Reason.Duplicate`、`Action.Run`、`Action.Undo`、`Action.Export`、`Action.OpenFolder`、`Confirm.Title`、`Confirm.Body`、`Confirm.Note`、`Confirm.Backup`、`InfoBar.Done`、`InfoBar.Done.MultiSource`、`InfoBar.Partial`、`InfoBar.Undone`、`InfoBar.Undone.MultiSource`、`InfoBar.UndoFailed`、`Drop.Hint`。实现时按架构的本地化章节登记，`Error.*` 键按 ADR-0003 映射表补。
+`Tool.FileRename.` 前缀：`Name`、`Subtitle`、`Pick`、`Add`、`Add.Files`、`Add.Folders`、`Source.Clear`、`Source.Remove`、`Source.Count`、`Source.Filtered`、`Source.Files`、`Source.More`、`Source.Reading`、`Source.Filtered.Tooltip`、`Empty.Files`、`Empty.Hint.Files`、`Help`、`Empty`、`Empty.Hint`、`Target.Files`、`Target.Folders`、`Level.Basic`、`Level.Advanced`、`Task`、`Task.Replace`、`Task.Affix`、`Task.Sequence`、`Task.Find`、`Task.With`、`Task.Affix.Prefix`、`Task.Affix.Suffix`、`Task.Affix.Text`、`Task.Sequence.Name`、`Task.Sequence.Pad`、`Task.Sequence.Pad.None`、`Empty.Hint.Basic`、`Scope.Subdirectories`、`Scope.Extensions`、`Scope.Extensions.Placeholder`、`Scope.Extensions.Help`、`Backup`、`Backup.Help`、`Task.Help`、`Rule.Help`、`Rule.Replace`、`Rule.Template`、`Find`、`Replace`、`Replace.Help`、`Regex`、`Regex.Help`、`Template`、`Template.Help`、`List.Original`、`List.Target`、`List.Status`、`List.Empty.NoSources`、`Status.Pending`、`Status.Conflict`、`Status.Done`、`Status.Failed`、`Status.UndoFailed`、`Status.Skipped`、`Skip.Toggle`、`Skip.Hidden`、`Skip.System`、`Skip.Link`、`Precheck.Summary`、`Reason.IllegalChar`、`Reason.Trailing`、`Reason.Reserved`、`Reason.TooLong`、`Reason.Occupied`、`Reason.Duplicate`、`Action.Run`、`Action.Undo`、`Action.Export`、`Action.OpenFolder`、`Confirm.Title`、`Confirm.Body`、`Confirm.Note`、`Confirm.Backup`、`InfoBar.Done`、`InfoBar.Done.MultiSource`、`InfoBar.Partial`、`InfoBar.Undone`、`InfoBar.Undone.MultiSource`、`InfoBar.UndoFailed`、`Drop.Hint`、`Drop.Hint.Files`。实现时按架构的本地化章节登记，`Error.*` 键按 ADR-0003 映射表补。
 
 **参考图**
 
@@ -424,6 +424,12 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ![文件夹模式 + 含子目录：显示相对路径，先深后浅，编号自上而下](./images/file-rename-folders.png)
 
+![文件模式多来源：来源标签显示净贡献，预览行标注来源目录末段](./images/file-rename-sources.png)
+
+![文件模式添加下拉：添加文件… / 添加文件夹…](./images/file-rename-add.png)
+
+![多目录执行完成：InfoBar 不带「打开文件夹」动作，文案说明分布目录数](./images/file-rename-multidir-done.png)
+
 ![预检冲突：卡片内红色摘要 + 行内原因 + 执行禁用](./images/file-rename-precheck.png)
 
 ![跳过项：底栏按钮展开，面板向上撑起，列表收缩](./images/file-rename-skip.png)
@@ -432,7 +438,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ![执行完成：InfoBar 成功态、行内已改名、底栏可撤销](./images/file-rename-done.png)
 
-![空态：未选目录，入口只在页头](./images/file-rename-empty.png)
+![空态：文件模式未添加来源，入口只在页头，底部保留模式切换](./images/file-rename-empty.png)
 
 ## 主题
 
