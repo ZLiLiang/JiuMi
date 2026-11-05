@@ -166,16 +166,13 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     public bool HasSources => _sources.Count > 0;
 
     /// <summary>Gets a value indicating whether the empty state replaces the card.</summary>
-    public bool ShowEmptyState => !HasSources;
+    public bool ShowEmptyState => !HasSources && !HasUndoableBatch;
 
     /// <summary>Gets a value indicating whether the source row is shown.</summary>
     public bool ShowSourceRow => IsFilesMode && HasSources;
 
     /// <summary>Gets a value indicating whether the source list and the header entry may change.</summary>
     public bool CanEditSources => !_isBusy && !_isScanning;
-
-    /// <summary>Gets a value indicating whether the clear action is shown and usable.</summary>
-    public bool CanClearSources => ShowSourceRow && CanEditSources;
 
     /// <summary>Gets a value indicating whether a scan is in progress.</summary>
     public bool IsScanning => _isScanning;
@@ -591,10 +588,12 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         !(_batchVisible && _lastBatch is { IsUndone: false, RenamedCount: > 0 });
 
     /// <summary>Gets a value indicating whether the last batch may be undone.</summary>
-    public bool CanUndo => !_isBusy && _lastBatch is { IsUndone: false, RenamedCount: > 0 };
+    public bool CanUndo => !_isBusy && HasUndoableBatch;
 
     /// <summary>Gets a value indicating whether the last batch may be exported.</summary>
     public bool CanExport => !_isBusy && _lastBatch is not null;
+
+    private bool HasUndoableBatch => _lastBatch is { IsUndone: false, RenamedCount: > 0 };
 
     /// <summary>Gets the confirmation title.</summary>
     public string ConfirmTitle => _localization["Tool.FileRename.Confirm.Title"];
@@ -679,7 +678,6 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         string? fullPath = TryGetFullPath(path);
         if (fullPath is null)
         {
-            _logger.Warning("The chosen rename folder is not a valid path");
             return;
         }
 
@@ -1295,6 +1293,8 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     {
         _batchVisible = false;
         _scanStale = false;
+        PopulateSources();
+        RaiseSourceProperties();
         await RescanAsync();
     }
 
@@ -1423,25 +1423,13 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     private void ShowExecutionSummary(int renamed, int failed, IReadOnlyList<RenamePlanEntry> entries)
     {
-        string[] directories = EntryDirectories(entries.Select(entry => entry.Candidate.FullPath));
         if (failed == 0)
         {
-            if (IsFilesMode && directories.Length > 1)
-            {
-                _infoBar.ShowSummary(new InfoBarSummary(
-                    _localization.Format("Tool.FileRename.InfoBar.Done.MultiSource", renamed, directories.Length),
-                    IsWarning: false,
-                    FolderPath: null));
-                return;
-            }
-
-            _infoBar.ShowSummary(new InfoBarSummary(
-                _localization.Format("Tool.FileRename.InfoBar.Done", renamed),
-                IsWarning: false,
-                SingleFolder(directories))
-            {
-                ActionText = _localization["Tool.FileRename.Action.OpenFolder"],
-            });
+            ShowSuccessSummary(
+                "Tool.FileRename.InfoBar.Done",
+                "Tool.FileRename.InfoBar.Done.MultiSource",
+                renamed,
+                entries.Select(entry => entry.Candidate.FullPath));
             return;
         }
 
@@ -1458,29 +1446,17 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     private void ShowUndoSummary(int undone, int failed)
     {
-        string[] directories = _lastBatch is null
-            ? []
-            : EntryDirectories(_lastBatch.Entries
-                .Where(entry => entry.State == RenameBatchEntryState.Undone)
-                .Select(entry => entry.OriginalPath));
         if (failed == 0)
         {
-            if (IsFilesMode && directories.Length > 1)
-            {
-                _infoBar.ShowSummary(new InfoBarSummary(
-                    _localization.Format("Tool.FileRename.InfoBar.Undone.MultiSource", undone, directories.Length),
-                    IsWarning: false,
-                    FolderPath: null));
-                return;
-            }
-
-            _infoBar.ShowSummary(new InfoBarSummary(
-                _localization.Format("Tool.FileRename.InfoBar.Undone", undone),
-                IsWarning: false,
-                SingleFolder(directories))
-            {
-                ActionText = _localization["Tool.FileRename.Action.OpenFolder"],
-            });
+            ShowSuccessSummary(
+                "Tool.FileRename.InfoBar.Undone",
+                "Tool.FileRename.InfoBar.Undone.MultiSource",
+                undone,
+                _lastBatch is null
+                    ? []
+                    : _lastBatch.Entries
+                        .Where(entry => entry.State == RenameBatchEntryState.Undone)
+                        .Select(entry => entry.OriginalPath));
             return;
         }
 
@@ -1495,9 +1471,44 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         });
     }
 
+    private void ShowSuccessSummary(
+        string singleKey,
+        string multiKey,
+        int count,
+        IEnumerable<string> paths)
+    {
+        string[] directories = EntryDirectories(paths);
+        if (IsFilesMode && directories.Length > 1)
+        {
+            _infoBar.ShowSummary(new InfoBarSummary(
+                _localization.Format(multiKey, count, directories.Length),
+                IsWarning: false,
+                FolderPath: null));
+            return;
+        }
+
+        _infoBar.ShowSummary(new InfoBarSummary(
+            _localization.Format(singleKey, count),
+            IsWarning: false,
+            SingleFolder(directories))
+        {
+            ActionText = _localization["Tool.FileRename.Action.OpenFolder"],
+        });
+    }
+
     private async Task ExportLogToDefaultPathAsync()
     {
-        if (_lastBatch is null || _sources.Count == 0 || _sources[0].Directory is not { } directory)
+        if (_lastBatch is null)
+        {
+            return;
+        }
+
+        string? directory = _sources.Count > 0
+            ? _sources[0].Directory
+            : _lastBatch.Entries.Count > 0
+                ? Path.GetDirectoryName(_lastBatch.Entries[0].OriginalPath)
+                : null;
+        if (directory is null)
         {
             return;
         }
@@ -1637,7 +1648,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         RaiseSourceProperties();
     }
 
-    private static string? TryGetFullPath(string path)
+    private string? TryGetFullPath(string path)
     {
         try
         {
@@ -1645,6 +1656,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
         {
+            _logger.Warning(exception, "The rename path {Path} is not valid", path);
             return null;
         }
     }
@@ -1704,7 +1716,6 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(ShowSourceRow));
         OnPropertyChanged(nameof(CanEditSources));
-        OnPropertyChanged(nameof(CanClearSources));
         OnPropertyChanged(nameof(IsScanning));
         OnPropertyChanged(nameof(SourceReadingText));
         OnPropertyChanged(nameof(EmptyTitle));
@@ -1727,6 +1738,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanRun));
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanExport));
+        OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(ConfirmBody));
         OnPropertyChanged(nameof(ShowConfirmBackup));
         UndoCommand.NotifyCanExecuteChanged();

@@ -191,10 +191,19 @@ public partial class FileRenameView : UserControl
 
     private async void OnRemoveSourceClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is FileRenameViewModel viewModel &&
-            sender is Button { CommandParameter: int order })
+        if (DataContext is not FileRenameViewModel viewModel ||
+            sender is not Button { CommandParameter: int order })
+        {
+            return;
+        }
+
+        try
         {
             await viewModel.RemoveSourceAsync(order);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
         }
     }
 
@@ -324,8 +333,8 @@ public partial class FileRenameView : UserControl
         DropOverlay.IsVisible = false;
         e.Handled = true;
         if (DataContext is not FileRenameViewModel viewModel ||
-            !viewModel.CanEditSources ||
-            e.DataTransfer is null)
+            e.DataTransfer is null ||
+            (viewModel.IsFilesMode && !viewModel.CanEditSources))
         {
             return;
         }
@@ -362,7 +371,7 @@ public partial class FileRenameView : UserControl
                 if (folders.Count > 0 || files.Count > 0)
                 {
                     Dispatcher.UIThread.Post(
-                        () => AddDroppedSourcesAsync(viewModel, folders, files),
+                        () => _ = AddDroppedSourcesCoreAsync(viewModel, folders, files),
                         DispatcherPriority.ApplicationIdle);
                 }
 
@@ -393,12 +402,6 @@ public partial class FileRenameView : UserControl
             viewModel.ReportPageFailure(exception);
         }
     }
-
-    private static void AddDroppedSourcesAsync(
-        FileRenameViewModel viewModel,
-        IReadOnlyList<string> folders,
-        IReadOnlyList<string> files) =>
-        _ = AddDroppedSourcesCoreAsync(viewModel, folders, files);
 
     private static async Task AddDroppedSourcesCoreAsync(
         FileRenameViewModel viewModel,
@@ -434,7 +437,6 @@ public partial class FileRenameView : UserControl
     {
         bool accepts = false;
         if (DataContext is FileRenameViewModel viewModel &&
-            viewModel.CanEditSources &&
             e.DataTransfer?.TryGetFiles() is { Length: > 0 } items)
         {
             foreach (IStorageItem item in items)
@@ -444,7 +446,15 @@ public partial class FileRenameView : UserControl
                     continue;
                 }
 
-                if (viewModel.IsFilesMode || viewModel.IsDirectory(path))
+                if (viewModel.IsFilesMode)
+                {
+                    if (viewModel.CanEditSources)
+                    {
+                        accepts = true;
+                        break;
+                    }
+                }
+                else if (viewModel.IsDirectory(path))
                 {
                     accepts = true;
                     break;

@@ -67,9 +67,6 @@ public sealed class FileRenameRowViewModel : ViewModelBase
         get;
     }
 
-    /// <summary>Gets a value indicating whether the source directory follows the original name.</summary>
-    public bool ShowSourceDirectory => SourceDirectory.Length > 0;
-
     /// <summary>Gets the new name.</summary>
     public string TargetDisplay
     {

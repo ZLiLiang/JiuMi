@@ -286,7 +286,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 批量重命名
 
-版式取自 UI 提案原型 [`batch-rename.html`](./prototypes/batch-rename.html)（`?state=` 切状态、`?theme=dark` 切深色、`?ext=` 演示扩展名筛选、`?capture=1` 出图）。本节十张 1200 × 760 参考图取自该原型的 `?capture=1`，是 #67 的视觉基准；多来源相关的三张取自 #77 的实际页面。原型与截图都只作复现与对照，不参与构建。原型内置示例名只用于演示规则。
+版式取自 UI 提案原型 [`batch-rename.html`](./prototypes/batch-rename.html)（`?state=` 切状态、`?theme=dark` 切深色、`?ext=` 演示扩展名筛选、`?capture=1` 出图）。本节十张 1200 × 760 参考图取自该原型的 `?capture=1`，是 #67 的视觉基准；空态与多来源相关的三张取自 #77 的实际页面。原型与截图都只作复现与对照，不参与构建。原型内置示例名只用于演示规则。
 
 - 页头沿用「页头」的结构与字号，副标题取 `Tool.FileRename.Subtitle`，只说明「按规则批量改名、执行前先看预览」，不写排序与编号规则。
 - 动作区三项，顺序同图片转换：入口 → `执行改名`（强调色按钮，高 32）→ 20 × 20 圆形问号。问号的 ToolTip 说明编号按预览顺序从 1 开始、`{index:00}` 的补零宽度随本批条目数、执行后只保留最近一次批次的撤销。
@@ -424,7 +424,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ![文件夹模式 + 含子目录：显示相对路径，先深后浅，编号自上而下](./images/file-rename-folders.png)
 
-![文件模式多来源：来源标签显示净贡献与筛选比例，预览行标注来源目录末段](./images/file-rename-sources.png)
+![文件模式多来源：来源标签显示净贡献，预览行标注来源目录末段](./images/file-rename-sources.png)
 
 ![文件模式添加下拉：添加文件… / 添加文件夹…](./images/file-rename-add.png)
 
@@ -438,7 +438,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ![执行完成：InfoBar 成功态、行内已改名、底栏可撤销](./images/file-rename-done.png)
 
-![空态：未选目录，入口只在页头](./images/file-rename-empty.png)
+![空态：文件模式未添加来源，入口只在页头，底部保留模式切换](./images/file-rename-empty.png)
 
 ## 主题
 

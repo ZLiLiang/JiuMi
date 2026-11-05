@@ -347,7 +347,7 @@
                   Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
-                  IsVisible="{Binding HasSources}">
+                  IsVisible="{Binding !ShowEmptyState}">
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
               <StackPanel Grid.Row="0">
                 <WrapPanel Orientation="Horizontal">
@@ -668,7 +668,7 @@
                                             Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                           <TextBlock MaxWidth="200"
                                      TextTrimming="CharacterEllipsis"
-                                     Text="{Binding Name}" />
+                                     Text="{Binding DisplayName}" />
                           <TextBlock Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                      Text="{Binding CountText}" />
                           <Button Classes="chip-remove"
@@ -768,25 +768,18 @@
                                 Classes="row"
                                 Classes.last="{Binding IsLast}">
                           <Grid ColumnDefinitions="*,18,*,92" ColumnSpacing="12">
-                            <Grid Grid.Column="0"
-                                  ColumnDefinitions="*,Auto"
-                                  ColumnSpacing="6"
-                                  ToolTip.Tip="{Binding OriginalPath}">
-                              <TextBlock Grid.Column="0"
-                                         FontSize="13"
-                                         VerticalAlignment="Center"
-                                         TextTrimming="CharacterEllipsis"
-                                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                         Text="{Binding OriginalDisplay}" />
-                              <TextBlock Grid.Column="1"
-                                         MaxWidth="120"
-                                         FontSize="11"
-                                         VerticalAlignment="Center"
-                                         TextTrimming="CharacterEllipsis"
-                                         IsVisible="{Binding ShowSourceDirectory}"
-                                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                         Text="{Binding SourceDirectory}" />
-                            </Grid>
+                            <TextBlock Grid.Column="0"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                       ToolTip.Tip="{Binding OriginalPath}">
+                              <Run Text="{Binding OriginalDisplay}" />
+                              <Run Text="  " />
+                              <Run FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                   Text="{Binding SourceDirectory}" />
+                            </TextBlock>
                             <Viewbox Grid.Column="1"
                                      Width="12"
                                      Height="12"

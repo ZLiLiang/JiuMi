@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using JiuMi.Application.FileRename;
 using JiuMi.Application.Localization;
@@ -29,7 +28,7 @@ public sealed class FileRenameSourceViewModel
 
         Order = source.Order;
         IsFolder = source.Kind == RenameSourceKind.Folder;
-        Name = IsFolder
+        DisplayName = IsFolder
             ? FileRenameText.DirectoryLabel(source.Directory)
             : localization.Format("Tool.FileRename.Source.Files", source.Paths.Count);
         CountText = BuildCountText(summary, localization);
@@ -50,7 +49,7 @@ public sealed class FileRenameSourceViewModel
     }
 
     /// <summary>Gets the folder name, or the file count of a directly added group.</summary>
-    public string Name
+    public string DisplayName
     {
         get;
     }
