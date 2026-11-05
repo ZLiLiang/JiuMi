@@ -33,6 +33,7 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     private readonly ErrorRecordFactory _recordFactory;
     private readonly Serilog.ILogger _logger;
     private readonly OutputPathPlanner _pathPlanner;
+    private readonly ImageConvertPickerDirectories _pickerMemory = new();
     private readonly SemaphoreSlim _probeGate;
     private readonly SemaphoreSlim _convertGate;
     private readonly CancellationTokenSource _lifetime = new();
@@ -330,6 +331,18 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     public bool HasCustomOutputDirectory => !string.IsNullOrWhiteSpace(_outputDirectory);
 
     /// <summary>
+    /// Gets the directory the file picker opens at: the last directory chosen in this session, or
+    /// <see langword="null"/> for the system default.
+    /// </summary>
+    public string? SourcePickerStartDirectory => _pickerMemory.SourceDirectory;
+
+    /// <summary>
+    /// Gets the directory the output picker opens at: the custom output directory when one is set,
+    /// otherwise the last directory chosen in this session.
+    /// </summary>
+    public string? OutputPickerStartDirectory => _pickerMemory.GetOutputDirectory(_outputDirectory);
+
+    /// <summary>
     /// Gets a value indicating whether the advanced section is expanded.
     /// </summary>
     public bool IsAdvancedExpanded
@@ -576,16 +589,20 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
     /// queued as failed rows so the list explains why they cannot be converted.
     /// </summary>
     /// <param name="paths">The file paths to add.</param>
-    /// <returns>A task that completes when the files are queued; probing continues in the background.</returns>
-    public Task AddFilesAsync(IEnumerable<string> paths)
+    /// <returns>
+    /// A task that completes when the files are queued, with the first newly added source path or
+    /// <see langword="null"/> when nothing was added; probing continues in the background.
+    /// </returns>
+    public Task<string?> AddFilesAsync(IEnumerable<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
         if (_disposed || _isRunning)
         {
-            return Task.CompletedTask;
+            return Task.FromResult<string?>(null);
         }
 
         var added = new List<ImageConvertRowViewModel>();
+        string? firstAddedPath = null;
         foreach (string rawPath in paths)
         {
             string path = rawPath.Trim().Trim('"');
@@ -617,11 +634,12 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
             var row = new ImageConvertRowViewModel(fullPath, TargetFormat, _localization, RemoveRow);
             Rows.Add(row);
             added.Add(row);
+            firstAddedPath ??= fullPath;
         }
 
         if (added.Count == 0)
         {
-            return Task.CompletedTask;
+            return Task.FromResult<string?>(null);
         }
 
         OnRowsChanged();
@@ -630,7 +648,7 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
             _ = ProbeRowAsync(row);
         }
 
-        return Task.CompletedTask;
+        return Task.FromResult(firstAddedPath);
     }
 
     /// <summary>
@@ -648,7 +666,32 @@ public sealed class ImageConvertViewModel : ViewModelBase, IDisposable
         _outputDirectory = normalized;
         OnPropertyChanged(nameof(OutputDirectoryLabel));
         OnPropertyChanged(nameof(HasCustomOutputDirectory));
+        OnPropertyChanged(nameof(OutputPickerStartDirectory));
         PersistSettings();
+    }
+
+    /// <summary>
+    /// Remembers the directory of a source file the user chose for this session. Choosing an output
+    /// directory does not change it.
+    /// </summary>
+    /// <param name="filePath">The chosen source file.</param>
+    public void RememberSourcePickerFile(string? filePath)
+    {
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            RememberSourcePickerDirectory(Path.GetDirectoryName(filePath));
+        }
+    }
+
+    private void RememberSourcePickerDirectory(string? directory)
+    {
+        if (!_pickerMemory.Remember(directory))
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(SourcePickerStartDirectory));
+        OnPropertyChanged(nameof(OutputPickerStartDirectory));
     }
 
     /// <inheritdoc />
