@@ -439,6 +439,8 @@ public partial class FileRenameView : UserControl
         if (DataContext is FileRenameViewModel viewModel &&
             e.DataTransfer?.TryGetFiles() is { Length: > 0 } items)
         {
+            bool filesMode = viewModel.IsFilesMode;
+            bool canAddFiles = viewModel.CanEditSources;
             foreach (IStorageItem item in items)
             {
                 if (item.TryGetLocalPath() is not { } path)
@@ -446,9 +448,9 @@ public partial class FileRenameView : UserControl
                     continue;
                 }
 
-                if (viewModel.IsFilesMode)
+                if (filesMode)
                 {
-                    if (viewModel.CanEditSources)
+                    if (canAddFiles)
                     {
                         accepts = true;
                         break;

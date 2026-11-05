@@ -166,7 +166,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     public bool HasSources => _sources.Count > 0;
 
     /// <summary>Gets a value indicating whether the empty state replaces the card.</summary>
-    public bool ShowEmptyState => !HasSources && !HasUndoableBatch;
+    public bool ShowEmptyState => !HasSources;
 
     /// <summary>Gets a value indicating whether the source row is shown.</summary>
     public bool ShowSourceRow => IsFilesMode && HasSources;
@@ -592,6 +592,9 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets a value indicating whether the last batch may be exported.</summary>
     public bool CanExport => !_isBusy && _lastBatch is not null;
+
+    /// <summary>Gets a value indicating whether the empty state offers the last-batch actions.</summary>
+    public bool HasLastBatch => _lastBatch is not null;
 
     private bool HasUndoableBatch => _lastBatch is { IsUndone: false, RenamedCount: > 0 };
 
@@ -1433,15 +1436,10 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _infoBar.ShowSummary(new InfoBarSummary(
-            _localization.Format("Tool.FileRename.InfoBar.Partial", renamed, failed),
-            IsWarning: true,
-            FolderPath: null)
-        {
-            SecondaryMessage = _localization["Tool.FileRename.InfoBar.Partial.Detail"],
-            ActionText = _localization["Tool.FileRename.Action.Export"],
-            Action = ExportLogToDefaultPathAsync,
-        });
+        ShowFailureSummary(
+            "Tool.FileRename.InfoBar.Partial",
+            "Tool.FileRename.InfoBar.Partial.Detail",
+            failed);
     }
 
     private void ShowUndoSummary(int undone, int failed)
@@ -1460,12 +1458,20 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        ShowFailureSummary(
+            "Tool.FileRename.InfoBar.UndoFailed",
+            "Tool.FileRename.InfoBar.UndoFailed.Detail",
+            failed);
+    }
+
+    private void ShowFailureSummary(string messageKey, string detailKey, int failed)
+    {
         _infoBar.ShowSummary(new InfoBarSummary(
-            _localization.Format("Tool.FileRename.InfoBar.UndoFailed", failed),
+            _localization.Format(messageKey, failed),
             IsWarning: true,
             FolderPath: null)
         {
-            SecondaryMessage = _localization["Tool.FileRename.InfoBar.UndoFailed.Detail"],
+            SecondaryMessage = _localization[detailKey],
             ActionText = _localization["Tool.FileRename.Action.Export"],
             Action = ExportLogToDefaultPathAsync,
         });
@@ -1738,6 +1744,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanRun));
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanExport));
+        OnPropertyChanged(nameof(HasLastBatch));
         OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(ConfirmBody));
         OnPropertyChanged(nameof(ShowConfirmBackup));
