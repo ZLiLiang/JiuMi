@@ -1,7 +1,10 @@
 ﻿namespace JiuMi.Application.FileRename;
 
 /// <summary>
-/// Everything found under the selected directory, including the skipped items.
+/// Everything the sources contributed, including the skipped and filtered items.
 /// </summary>
-/// <param name="Candidates">The scoped items; the selected directory itself is never included.</param>
-public sealed record RenameScanResult(IReadOnlyList<RenameCandidate> Candidates);
+/// <param name="Candidates">The scoped items; a folder source itself is never included.</param>
+/// <param name="Sources">One summary per source, in add order.</param>
+public sealed record RenameScanResult(
+    IReadOnlyList<RenameCandidate> Candidates,
+    IReadOnlyList<RenameSourceScanSummary> Sources);

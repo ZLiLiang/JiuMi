@@ -696,13 +696,16 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         IsBusy = true;
         try
         {
+            var renameSource = new RenameSource(1, RenameSourceKind.Folder, [_selectedDirectory]);
+            string backupGroup = _target == RenameTarget.Files ? renameSource.BackupGroup : string.Empty;
             var request = new RenameExecutionRequest(
-                _selectedDirectory,
+                renameSource.BackupRoot ?? string.Empty,
                 [
                     .. entries.Select(entry => new RenameExecutionItem(
                         entry.Candidate.FullPath,
                         entry.TargetFullPath,
-                        entry.Candidate.IsDirectory)),
+                        entry.Candidate.IsDirectory,
+                        backupGroup)),
                 ],
                 _backupEnabled);
             RenameOperationResult result = await _executor.ExecuteAsync(
@@ -1092,7 +1095,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             {
                 result = await _scanner.ScanAsync(
                     new RenameScanRequest(
-                        _selectedDirectory,
+                        [new RenameSource(1, RenameSourceKind.Folder, [_selectedDirectory])],
                         _target,
                         _includeSubdirectories,
                         _extensions),
@@ -1101,7 +1104,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             catch (Exception exception)
             {
                 _logger.Warning(exception, "Scanning the rename folder failed");
-                result = new RenameScanResult([]);
+                result = new RenameScanResult([], []);
             }
 
             if (_disposed || version != _scanVersion)

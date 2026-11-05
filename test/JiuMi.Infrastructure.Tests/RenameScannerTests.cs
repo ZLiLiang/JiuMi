@@ -218,11 +218,149 @@ public sealed class RenameScannerTests : IDisposable
     public async Task ScanAsync_GivenMissingDirectory_ReturnsNoCandidates()
     {
         RenameScanResult result = await _scanner.ScanAsync(
-            new RenameScanRequest(Path.Combine(_work, "missing"), RenameTarget.Files, false, string.Empty));
+            new RenameScanRequest(
+                [new RenameSource(1, RenameSourceKind.Folder, [Path.Combine(_work, "missing")])],
+                RenameTarget.Files,
+                false,
+                string.Empty));
 
         Assert.Empty(result.Candidates);
+        Assert.Equal(0, Assert.Single(result.Sources).ContributionCount);
+    }
+
+    [Fact]
+    public async Task ScanAsync_GivenFolderAndDirectFileSources_ReportsTheirOrderAndRelativePaths()
+    {
+        string other = Path.Combine(_root, "other");
+        Directory.CreateDirectory(other);
+        string otherFile = Path.Combine(other, "o.txt");
+        File.WriteAllText(otherFile, "o");
+        string direct = Path.Combine(_root, "direct.txt");
+        File.WriteAllText(direct, "direct");
+
+        RenameScanResult result = await _scanner.ScanAsync(new RenameScanRequest(
+            [
+                new RenameSource(1, RenameSourceKind.Folder, [_work]),
+                new RenameSource(2, RenameSourceKind.Files, [direct]),
+                new RenameSource(3, RenameSourceKind.Folder, [other]),
+            ],
+            RenameTarget.Files,
+            IncludeSubdirectories: false,
+            string.Empty));
+
+        Assert.Equal(1, result.Candidates.Single(candidate => candidate.RelativePath == "a.txt").SourceOrder);
+        Assert.Equal(2, result.Candidates.Single(candidate => candidate.RelativePath == "direct.txt").SourceOrder);
+        Assert.Equal(3, result.Candidates.Single(candidate => candidate.RelativePath == "o.txt").SourceOrder);
+        Assert.Equal([1, 2, 3], result.Sources.Select(summary => summary.Source.Order));
+        Assert.Equal([2, 1, 1], result.Sources.Select(summary => summary.ContributionCount));
+    }
+
+    [Fact]
+    public async Task ScanAsync_GivenSameFileInAFolderAndAsADirectFile_KeepsTheDirectFile()
+    {
+        string file = Path.Combine(_work, "a.txt");
+
+        RenameScanResult result = await _scanner.ScanAsync(new RenameScanRequest(
+            [
+                new RenameSource(1, RenameSourceKind.Folder, [_work]),
+                new RenameSource(2, RenameSourceKind.Files, [file]),
+            ],
+            RenameTarget.Files,
+            IncludeSubdirectories: false,
+            string.Empty));
+
+        RenameCandidate candidate = Assert.Single(
+            result.Candidates,
+            item => string.Equals(item.FullPath, file, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(2, candidate.SourceOrder);
+        Assert.Equal(1, result.Sources[0].ContributionCount);
+        Assert.Equal(1, result.Sources[1].ContributionCount);
+    }
+
+    [Fact]
+    public async Task ScanAsync_GivenTheSameDirectFileTwice_KeepsTheFirstSource()
+    {
+        string file = Path.Combine(_work, "a.txt");
+
+        RenameScanResult result = await _scanner.ScanAsync(new RenameScanRequest(
+            [
+                new RenameSource(1, RenameSourceKind.Files, [file]),
+                new RenameSource(2, RenameSourceKind.Files, [file]),
+            ],
+            RenameTarget.Files,
+            IncludeSubdirectories: false,
+            string.Empty));
+
+        Assert.Equal(1, Assert.Single(result.Candidates).SourceOrder);
+        Assert.Equal(0, result.Sources[1].ContributionCount);
+    }
+
+    [Fact]
+    public async Task ScanAsync_GivenParentAndChildSources_KeepsEveryPathOnce()
+    {
+        RenameScanResult result = await _scanner.ScanAsync(new RenameScanRequest(
+            [
+                new RenameSource(1, RenameSourceKind.Folder, [_work]),
+                new RenameSource(2, RenameSourceKind.Folder, [Path.Combine(_work, "child")]),
+            ],
+            RenameTarget.Files,
+            IncludeSubdirectories: true,
+            string.Empty));
+
+        Assert.DoesNotContain(
+            result.Candidates.GroupBy(candidate => candidate.FullPath, StringComparer.OrdinalIgnoreCase),
+            group => group.Count() > 1);
+        Assert.Equal(1, result.Candidates.Count(candidate => candidate.RelativePath == "child/c.txt"));
+        Assert.Equal(4, result.Sources[0].ContributionCount);
+        Assert.Equal(0, result.Sources[1].ContributionCount);
+    }
+
+    [Fact]
+    public async Task ScanAsync_GivenAFilteredDirectFile_CountsItForItsSource()
+    {
+        string csv = Path.Combine(_root, "data.csv");
+        File.WriteAllText(csv, "data");
+
+        RenameScanResult result = await _scanner.ScanAsync(new RenameScanRequest(
+            [new RenameSource(1, RenameSourceKind.Files, [csv])],
+            RenameTarget.Files,
+            IncludeSubdirectories: false,
+            ".png"));
+
+        Assert.Empty(result.Candidates);
+        RenameSourceScanSummary summary = Assert.Single(result.Sources);
+        Assert.Equal(1, summary.TotalCount);
+        Assert.Equal(0, summary.ContributionCount);
+        Assert.Equal([csv], summary.FilteredPaths);
+    }
+
+    [Fact]
+    public async Task ScanAsync_GivenOneMissingSource_StillScansTheOthers()
+    {
+        string direct = Path.Combine(_root, "direct.txt");
+        File.WriteAllText(direct, "direct");
+
+        RenameScanResult result = await _scanner.ScanAsync(new RenameScanRequest(
+            [
+                new RenameSource(1, RenameSourceKind.Folder, [Path.Combine(_root, "missing")]),
+                new RenameSource(2, RenameSourceKind.Files, [direct]),
+                new RenameSource(3, RenameSourceKind.Folder, [_work]),
+            ],
+            RenameTarget.Files,
+            IncludeSubdirectories: false,
+            string.Empty));
+
+        Assert.Equal(3, result.Sources.Count);
+        Assert.Equal(0, result.Sources[0].ContributionCount);
+        Assert.Equal(1, result.Sources[1].ContributionCount);
+        Assert.Equal(2, result.Sources[2].ContributionCount);
+        Assert.Contains(result.Candidates, candidate => candidate.FullPath == direct);
     }
 
     private RenameScanRequest Request(RenameTarget target, bool recurse, string extensions) =>
-        new(_work, target, recurse, extensions);
+        new(
+            [new RenameSource(1, RenameSourceKind.Folder, [_work])],
+            target,
+            recurse,
+            extensions);
 }

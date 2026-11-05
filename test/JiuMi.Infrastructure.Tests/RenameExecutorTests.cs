@@ -34,8 +34,8 @@ public sealed class RenameExecutorTests : IDisposable
 
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false),
-             new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false)],
+            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false, "1-work"),
+             new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false, "1-work")],
             CreateBackup: false));
 
         Assert.All(result.Items, item => Assert.True(item.Succeeded));
@@ -54,7 +54,7 @@ public sealed class RenameExecutorTests : IDisposable
 
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(a, Path.Combine(_work, "taken.txt"), false)],
+            [new RenameExecutionItem(a, Path.Combine(_work, "taken.txt"), false, "1-work")],
             CreateBackup: false));
 
         RenameItemOutcome item = Assert.Single(result.Items);
@@ -70,7 +70,7 @@ public sealed class RenameExecutorTests : IDisposable
 
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(source, Path.Combine(_work, "REPORT.txt"), false)],
+            [new RenameExecutionItem(source, Path.Combine(_work, "REPORT.txt"), false, "1-work")],
             CreateBackup: false));
 
         Assert.True(Assert.Single(result.Items).Succeeded);
@@ -88,7 +88,7 @@ public sealed class RenameExecutorTests : IDisposable
         {
             RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
                 _work,
-                [new RenameExecutionItem(source, target, false)],
+                [new RenameExecutionItem(source, target, false, "1-work")],
                 CreateBackup: false));
 
             Assert.True(Assert.Single(result.Items).Succeeded);
@@ -118,8 +118,8 @@ public sealed class RenameExecutorTests : IDisposable
         await _executor.ExecuteAsync(
             new RenameExecutionRequest(
                 _work,
-                [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false),
-                 new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false)],
+                [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false, "1-work"),
+                 new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false, "1-work")],
                 CreateBackup: false),
             new InlineProgress(reported));
 
@@ -132,14 +132,14 @@ public sealed class RenameExecutorTests : IDisposable
     {
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(Path.Combine(_work, "missing.txt"), Path.Combine(_work, "x.txt"), false)],
+            [new RenameExecutionItem(Path.Combine(_work, "missing.txt"), Path.Combine(_work, "x.txt"), false, "1-work")],
             CreateBackup: false));
 
         Assert.Equal(RenameFailure.SourceMissing, Assert.Single(result.Items).Failure);
     }
 
     [Fact]
-    public async Task ExecuteAsync_GivenBackup_CopiesFilesAndFoldersBesideTheSelectedDirectory()
+    public async Task ExecuteAsync_GivenBackup_CopiesFilesAndFoldersIntoTheirSourceGroup()
     {
         string file = WriteFile("a.txt", "alpha");
         string folder = Path.Combine(_work, "folder");
@@ -148,34 +148,134 @@ public sealed class RenameExecutorTests : IDisposable
         string renamedFolder = Path.Combine(_work, "renamed-folder");
 
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
-            _work,
-            [new RenameExecutionItem(file, Path.Combine(_work, "b.txt"), false),
-             new RenameExecutionItem(folder, renamedFolder, true)],
+            _root,
+            [new RenameExecutionItem(file, Path.Combine(_work, "b.txt"), false, "1-work"),
+             new RenameExecutionItem(folder, renamedFolder, true, "1-work")],
             CreateBackup: true));
 
         Assert.All(result.Items, item => Assert.True(item.Succeeded));
         Assert.NotNull(result.BackupDirectory);
         Assert.Equal(_root, Path.GetDirectoryName(result.BackupDirectory));
-        Assert.True(File.Exists(Path.Combine(result.BackupDirectory!, "001-a.txt")));
-        Assert.True(File.Exists(Path.Combine(result.BackupDirectory!, "002-folder", "child.txt")));
+        Assert.True(File.Exists(Path.Combine(result.BackupDirectory!, "1-work", "001-a.txt")));
+        Assert.True(File.Exists(Path.Combine(result.BackupDirectory!, "1-work", "002-folder", "child.txt")));
         Assert.True(Directory.Exists(renamedFolder));
         Assert.False(Directory.Exists(folder));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GivenTwoSources_GroupsTheirBackupsUnderOneRoot()
+    {
+        string a = WriteFile("a.txt", "alpha");
+        string other = Path.Combine(_root, "other");
+        Directory.CreateDirectory(other);
+        string b = Path.Combine(other, "b.txt");
+        File.WriteAllText(b, "beta");
+
+        RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+            _root,
+            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false, "1-work"),
+             new RenameExecutionItem(b, Path.Combine(other, "y.txt"), false, "2-other")],
+            CreateBackup: true));
+
+        Assert.All(result.Items, item => Assert.True(item.Succeeded));
+        string backup = result.BackupDirectory!;
+        Assert.Equal(_root, Path.GetDirectoryName(backup));
+        Assert.True(File.Exists(Path.Combine(backup, "1-work", "001-a.txt")));
+        Assert.True(File.Exists(Path.Combine(backup, "2-other", "002-b.txt")));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GivenASourceBeyondTheBackupRoot_CopiesItIntoItsGroup()
+    {
+        string outside = Path.Combine(
+            Path.GetTempPath(),
+            "JiuMi.Tests.Source." + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(outside);
+        string file = Path.Combine(outside, "outside.txt");
+        File.WriteAllText(file, "outside");
+
+        try
+        {
+            RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+                _root,
+                [new RenameExecutionItem(file, Path.Combine(outside, "renamed.txt"), false, "1-outside")],
+                CreateBackup: true));
+
+            Assert.True(Assert.Single(result.Items).Succeeded);
+            Assert.True(File.Exists(Path.Combine(result.BackupDirectory!, "1-outside", "001-outside.txt")));
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GivenOneBackupFailure_LeavesThatItemInPlaceAndRenamesTheOthers()
+    {
+        string locked = WriteFile("locked.txt", "locked");
+        string free = WriteFile("free.txt", "free");
+        RenameOperationResult result;
+        using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+                _root,
+                [new RenameExecutionItem(locked, Path.Combine(_work, "locked-renamed.txt"), false, "1-work"),
+                 new RenameExecutionItem(free, Path.Combine(_work, "free-renamed.txt"), false, "1-work")],
+                CreateBackup: true));
+        }
+
+        Assert.Equal(RenameFailure.BackupFailed, result.Items[0].Failure);
+        Assert.True(result.Items[1].Succeeded);
+        Assert.True(File.Exists(locked));
+        Assert.False(File.Exists(Path.Combine(_work, "locked-renamed.txt")));
+        Assert.True(File.Exists(Path.Combine(_work, "free-renamed.txt")));
     }
 
     [Fact]
     public async Task ExecuteAsync_GivenExistingBackupFolder_AddsANumericSuffix()
     {
         string file = WriteFile("a.txt", "alpha");
-        Directory.CreateDirectory(Path.Combine(_root, "JiuMi-backup-20261031-153000"));
+        Directory.CreateDirectory(Path.Combine(_work, "JiuMi-backup-20261031-153000"));
 
         RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(file, Path.Combine(_work, "b.txt"), false)],
+            [new RenameExecutionItem(file, Path.Combine(_work, "b.txt"), false, "1-work")],
             CreateBackup: true));
 
         Assert.Equal(
             "JiuMi-backup-20261031-153000-2",
             Path.GetFileName(result.BackupDirectory));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GivenAnEmptyBackupRoot_FailsEveryItemWithoutRenamingIt()
+    {
+        string file = WriteFile("a.txt", "alpha");
+
+        RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+            string.Empty,
+            [new RenameExecutionItem(file, Path.Combine(_work, "b.txt"), false, "1-work")],
+            CreateBackup: true));
+
+        Assert.Equal(RenameFailure.BackupFailed, Assert.Single(result.Items).Failure);
+        Assert.Null(result.BackupDirectory);
+        Assert.True(File.Exists(file));
+        Assert.False(File.Exists(Path.Combine(_work, "b.txt")));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GivenAnEmptyBackupGroup_WritesDirectlyUnderTheBackupDirectory()
+    {
+        string file = WriteFile("a.txt", "alpha");
+
+        RenameOperationResult result = await _executor.ExecuteAsync(new RenameExecutionRequest(
+            _root,
+            [new RenameExecutionItem(file, Path.Combine(_work, "b.txt"), false, string.Empty)],
+            CreateBackup: true));
+
+        Assert.True(Assert.Single(result.Items).Succeeded);
+        Assert.True(File.Exists(Path.Combine(result.BackupDirectory!, "001-a.txt")));
     }
 
     [Fact]
@@ -185,8 +285,8 @@ public sealed class RenameExecutorTests : IDisposable
         string b = WriteFile("b.txt", "beta");
         RenameOperationResult executed = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false),
-             new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false)],
+            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false, "1-work"),
+             new RenameExecutionItem(b, Path.Combine(_work, "y.txt"), false, "1-work")],
             CreateBackup: false));
 
         RenameOperationResult undone = await _executor.UndoAsync(
@@ -210,7 +310,7 @@ public sealed class RenameExecutorTests : IDisposable
         File.WriteAllText(Path.Combine(folder, "child.txt"), "child");
         RenameOperationResult executed = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(folder, Path.Combine(_work, "renamed-folder"), true)],
+            [new RenameExecutionItem(folder, Path.Combine(_work, "renamed-folder"), true, "1-work")],
             CreateBackup: false));
         RenameItemOutcome item = Assert.Single(executed.Items);
 
@@ -229,7 +329,7 @@ public sealed class RenameExecutorTests : IDisposable
         Directory.CreateDirectory(folder);
         RenameOperationResult executed = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(folder, Path.Combine(_work, "renamed-folder"), true)],
+            [new RenameExecutionItem(folder, Path.Combine(_work, "renamed-folder"), true, "1-work")],
             CreateBackup: false));
         string renamed = Path.Combine(_work, "renamed-folder");
         File.WriteAllText(Path.Combine(renamed, "added.txt"), "added");
@@ -250,7 +350,7 @@ public sealed class RenameExecutorTests : IDisposable
         string a = WriteFile("a.txt", "alpha");
         RenameOperationResult executed = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false)],
+            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false, "1-work")],
             CreateBackup: false));
         string renamed = Path.Combine(_work, "x.txt");
         File.WriteAllText(renamed, "changed by another program");
@@ -271,7 +371,7 @@ public sealed class RenameExecutorTests : IDisposable
         string a = WriteFile("a.txt", "alpha");
         RenameOperationResult executed = await _executor.ExecuteAsync(new RenameExecutionRequest(
             _work,
-            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false)],
+            [new RenameExecutionItem(a, Path.Combine(_work, "x.txt"), false, "1-work")],
             CreateBackup: false));
         File.Delete(Path.Combine(_work, "x.txt"));
         RenameItemOutcome item = Assert.Single(executed.Items);

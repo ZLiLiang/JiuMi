@@ -6,4 +6,11 @@
 /// <param name="SourcePath">The current absolute path.</param>
 /// <param name="TargetPath">The absolute path to rename to.</param>
 /// <param name="IsDirectory">Whether the item is a folder.</param>
-public sealed record RenameExecutionItem(string SourcePath, string TargetPath, bool IsDirectory);
+/// <param name="BackupGroup">
+/// The backup subfolder that groups the item with its source, such as <c>1-photos</c>.
+/// </param>
+public sealed record RenameExecutionItem(
+    string SourcePath,
+    string TargetPath,
+    bool IsDirectory,
+    string BackupGroup);

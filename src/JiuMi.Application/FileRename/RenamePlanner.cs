@@ -220,6 +220,12 @@ public static class RenamePlanner
 
     private static int CompareCandidates(RenameCandidate left, RenameCandidate right)
     {
+        int sourceOrder = left.SourceOrder.CompareTo(right.SourceOrder);
+        if (sourceOrder != 0)
+        {
+            return sourceOrder;
+        }
+
         if (left.IsDirectory || right.IsDirectory)
         {
             int depthOrder = Depth(right.RelativePath).CompareTo(Depth(left.RelativePath));
