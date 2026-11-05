@@ -1,4 +1,5 @@
-﻿using JiuMi.Application.FileRename;
+﻿using System.IO;
+using JiuMi.Application.FileRename;
 
 namespace JiuMi.ViewModels;
 
@@ -7,6 +8,31 @@ namespace JiuMi.ViewModels;
 /// </summary>
 internal static class FileRenameText
 {
+    /// <summary>
+    /// Returns the last segment of a directory path, falling back to the drive label.
+    /// </summary>
+    /// <param name="directory">The absolute directory path, or <see langword="null"/>.</param>
+    /// <returns>The segment shown after a preview row, or an empty string.</returns>
+    public static string DirectoryLabel(string? directory)
+    {
+        if (string.IsNullOrEmpty(directory))
+        {
+            return string.Empty;
+        }
+
+        string trimmed = Path.TrimEndingDirectorySeparator(directory);
+        string name = Path.GetFileName(trimmed);
+        if (name.Length > 0)
+        {
+            return name;
+        }
+
+        string? root = Path.GetPathRoot(trimmed);
+        return string.IsNullOrEmpty(root)
+            ? string.Empty
+            : root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, ':');
+    }
+
     /// <summary>
     /// Gets the reason key of a precheck error.
     /// </summary>

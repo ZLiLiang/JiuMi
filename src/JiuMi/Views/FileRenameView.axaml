@@ -126,6 +126,50 @@
     <Style Selector="Button.skip-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
     </Style>
+    <Style Selector="Button.add-menu-item">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.add-menu-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Border.source-chip">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Margin" Value="0,0,8,8" />
+      <Setter Property="Padding" Value="8,0,4,0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.source-chip TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.chip-remove">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+    <Style Selector="Button.chip-remove:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+    <Style Selector="Button.chip-remove:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
   </UserControl.Styles>
 
   <Grid>
@@ -149,6 +193,7 @@
                       VerticalAlignment="Top">
             <Button Height="32"
                     Padding="12,0"
+                    IsVisible="{Binding IsFoldersMode}"
                     IsEnabled="{Binding IsIdle}"
                     Click="OnPickFolderClick"
                     AutomationProperties.AutomationId="FileRename.PickFolder">
@@ -160,6 +205,59 @@
                 <TextBlock FontSize="13"
                            VerticalAlignment="Center"
                            Text="{loc:Localize Tool.FileRename.Pick}" />
+              </StackPanel>
+            </Button>
+            <Button Height="32"
+                    Padding="12,0"
+                    IsVisible="{Binding IsFilesMode}"
+                    IsEnabled="{Binding CanEditSources}"
+                    AutomationProperties.AutomationId="FileRename.Add">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Width="168" Spacing="2">
+                    <Button Classes="add-menu-item"
+                            Click="OnAddFilesClick"
+                            AutomationProperties.AutomationId="FileRename.AddFiles">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fac:FASymbolIcon FontSize="13"
+                                          VerticalAlignment="Center"
+                                          Symbol="Document"
+                                          Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                        <TextBlock FontSize="13"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                   Text="{Binding AddFilesText}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="add-menu-item"
+                            Click="OnAddFoldersClick"
+                            AutomationProperties.AutomationId="FileRename.AddFolders">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fac:FASymbolIcon FontSize="13"
+                                          VerticalAlignment="Center"
+                                          Symbol="Folder"
+                                          Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                        <TextBlock FontSize="13"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                   Text="{Binding AddFoldersText}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <fac:FASymbolIcon FontSize="14"
+                                  VerticalAlignment="Center"
+                                  Symbol="Add"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <TextBlock FontSize="13"
+                           VerticalAlignment="Center"
+                           Text="{loc:Localize Tool.FileRename.Add}" />
+                <fac:FASymbolIcon FontSize="10"
+                                  VerticalAlignment="Center"
+                                  Symbol="ChevronDown"
+                                  Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
               </StackPanel>
             </Button>
             <Button Height="32"
@@ -208,7 +306,7 @@
                          FontWeight="SemiBold"
                          HorizontalAlignment="Center"
                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                         Text="{loc:Localize Tool.FileRename.Empty}" />
+                         Text="{Binding EmptyTitle}" />
               <TextBlock MaxWidth="380"
                          Margin="0,6,0,0"
                          FontSize="12"
@@ -217,7 +315,27 @@
                          TextWrapping="Wrap"
                          HorizontalAlignment="Center"
                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                         Text="{loc:Localize Tool.FileRename.Empty.Hint}" />
+                         Text="{Binding EmptyHint}" />
+              <Border Margin="0,16,0,0"
+                      Padding="2"
+                      CornerRadius="4"
+                      HorizontalAlignment="Center"
+                      Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                  <Button Classes="segment"
+                          Classes.active="{Binding IsFilesMode}"
+                          Command="{Binding SetTargetCommand}"
+                          CommandParameter="{x:Static fr:RenameTarget.Files}"
+                          Content="{loc:Localize Tool.FileRename.Target.Files}"
+                          IsEnabled="{Binding IsIdle}" />
+                  <Button Classes="segment"
+                          Classes.active="{Binding IsFoldersMode}"
+                          Command="{Binding SetTargetCommand}"
+                          CommandParameter="{x:Static fr:RenameTarget.Folders}"
+                          Content="{loc:Localize Tool.FileRename.Target.Folders}"
+                          IsEnabled="{Binding IsIdle}" />
+                </StackPanel>
+              </Border>
             </StackPanel>
           </Border>
 
@@ -229,8 +347,8 @@
                   Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
-                  IsVisible="{Binding HasDirectory}">
-            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                  IsVisible="{Binding HasSources}">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
               <StackPanel Grid.Row="0">
                 <WrapPanel Orientation="Horizontal">
                   <StackPanel Margin="0,0,20,12">
@@ -521,7 +639,68 @@
                       Margin="0,4,0,0"
                       Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
 
-              <Border Grid.Row="2"
+              <Grid Grid.Row="2"
+                    Margin="0,10,0,2"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="8"
+                    IsVisible="{Binding ShowSourceRow}">
+                <ItemsControl Grid.Column="0"
+                              ItemsSource="{Binding SourceRows}"
+                              IsEnabled="{Binding CanEditSources}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FileRenameSourceViewModel">
+                      <Border Classes="source-chip" ToolTip.Tip="{Binding ToolTipText}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <fac:FASymbolIcon FontSize="12"
+                                            VerticalAlignment="Center"
+                                            Symbol="Folder"
+                                            IsVisible="{Binding IsFolder}"
+                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                          <fac:FASymbolIcon FontSize="12"
+                                            VerticalAlignment="Center"
+                                            Symbol="Document"
+                                            IsVisible="{Binding !IsFolder}"
+                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                          <TextBlock MaxWidth="200"
+                                     TextTrimming="CharacterEllipsis"
+                                     Text="{Binding Name}" />
+                          <TextBlock Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                     Text="{Binding CountText}" />
+                          <Button Classes="chip-remove"
+                                  Content="×"
+                                  Click="OnRemoveSourceClick"
+                                  CommandParameter="{Binding Order}"
+                                  ToolTip.Tip="{Binding RemoveText}"
+                                  AutomationProperties.Name="{Binding RemoveText}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Top">
+                  <TextBlock FontSize="11"
+                             VerticalAlignment="Center"
+                             Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                             IsVisible="{Binding IsScanning}"
+                             Text="{Binding SourceReadingText}" />
+                  <Button Classes="skip-toggle"
+                          Content="{loc:Localize Tool.FileRename.Source.Clear}"
+                          IsVisible="{Binding HasSources}"
+                          IsEnabled="{Binding CanEditSources}"
+                          Click="OnClearSourcesClick"
+                          AutomationProperties.AutomationId="FileRename.ClearSources" />
+                </StackPanel>
+              </Grid>
+
+              <Border Grid.Row="3"
                       Margin="0,10,0,10"
                       Padding="8,10"
                       CornerRadius="4"
@@ -550,7 +729,7 @@
                 </Grid>
               </Border>
 
-              <Grid Grid.Row="3" RowDefinitions="Auto,*">
+              <Grid Grid.Row="4" RowDefinitions="Auto,*">
                 <Grid Margin="8,8,8,6" ColumnDefinitions="*,18,*,92" ColumnSpacing="12">
                   <TextBlock Grid.Column="0"
                              FontSize="11"
@@ -589,12 +768,25 @@
                                 Classes="row"
                                 Classes.last="{Binding IsLast}">
                           <Grid ColumnDefinitions="*,18,*,92" ColumnSpacing="12">
-                            <TextBlock Grid.Column="0"
-                                       FontSize="13"
-                                       VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                       Text="{Binding OriginalDisplay}" />
+                            <Grid Grid.Column="0"
+                                  ColumnDefinitions="*,Auto"
+                                  ColumnSpacing="6"
+                                  ToolTip.Tip="{Binding OriginalPath}">
+                              <TextBlock Grid.Column="0"
+                                         FontSize="13"
+                                         VerticalAlignment="Center"
+                                         TextTrimming="CharacterEllipsis"
+                                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                         Text="{Binding OriginalDisplay}" />
+                              <TextBlock Grid.Column="1"
+                                         MaxWidth="120"
+                                         FontSize="11"
+                                         VerticalAlignment="Center"
+                                         TextTrimming="CharacterEllipsis"
+                                         IsVisible="{Binding ShowSourceDirectory}"
+                                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                         Text="{Binding SourceDirectory}" />
+                            </Grid>
                             <Viewbox Grid.Column="1"
                                      Width="12"
                                      Height="12"
@@ -642,7 +834,7 @@
                 </ScrollViewer>
               </Grid>
 
-              <Border Grid.Row="4"
+              <Border Grid.Row="5"
                       IsVisible="{Binding IsSkipPanelVisible}"
                       Margin="0,4,0,0"
                       Padding="0,4,0,0"
@@ -668,7 +860,7 @@
                 </ScrollViewer>
               </Border>
 
-              <Border Grid.Row="5"
+              <Border Grid.Row="6"
                       Margin="0,12,0,0"
                       Padding="0,12,0,0"
                       BorderThickness="0,1,0,0"
@@ -740,7 +932,7 @@
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
                  Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                 Text="{loc:Localize Tool.FileRename.Drop.Hint}" />
+                 Text="{Binding DropHintText}" />
     </Border>
   </Grid>
 </UserControl>
