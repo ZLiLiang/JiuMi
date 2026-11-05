@@ -166,7 +166,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     public bool HasSources => _sources.Count > 0;
 
     /// <summary>Gets a value indicating whether the empty state replaces the card.</summary>
-    public bool ShowEmptyState => !HasSources;
+    public bool ShowEmptyState => !HasSources && !HasUndoableBatch;
 
     /// <summary>Gets a value indicating whether the source row is shown.</summary>
     public bool ShowSourceRow => IsFilesMode && HasSources;
@@ -501,6 +501,11 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     {
         get
         {
+            if (!HasSources && HasUndoableBatch)
+            {
+                return _localization["Tool.FileRename.List.Empty.NoSources"];
+            }
+
             if (!HasRuleInput)
             {
                 return _localization[_level == RenameRuleLevel.Basic
@@ -592,9 +597,6 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets a value indicating whether the last batch may be exported.</summary>
     public bool CanExport => !_isBusy && _lastBatch is not null;
-
-    /// <summary>Gets a value indicating whether the empty state offers the last-batch actions.</summary>
-    public bool HasLastBatch => _lastBatch is not null;
 
     private bool HasUndoableBatch => _lastBatch is { IsUndone: false, RenamedCount: > 0 };
 
@@ -1744,7 +1746,6 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanRun));
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanExport));
-        OnPropertyChanged(nameof(HasLastBatch));
         OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(ConfirmBody));
         OnPropertyChanged(nameof(ShowConfirmBackup));
