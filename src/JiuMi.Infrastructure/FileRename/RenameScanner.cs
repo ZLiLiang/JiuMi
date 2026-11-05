@@ -126,14 +126,8 @@ public sealed class RenameScanner : IRenameScanner
             RenameSkipReason? reason = attributes is { } present
                 ? Classify(present, isDirectory: false)
                 : null;
-            if (reason is null)
+            if (FilterByExtension(tally, path, reason, extensions))
             {
-                tally.RecordSeen();
-            }
-
-            if (reason is null && !RenameExtensions.Allows(Path.GetFileName(path), extensions))
-            {
-                tally.RecordFiltered(path);
                 continue;
             }
 
@@ -171,14 +165,8 @@ public sealed class RenameScanner : IRenameScanner
                 continue;
             }
 
-            if (reason is null)
+            if (FilterByExtension(tally, entry, reason, extensions))
             {
-                tally.RecordSeen();
-            }
-
-            if (reason is null && !RenameExtensions.Allows(Path.GetFileName(entry), extensions))
-            {
-                tally.RecordFiltered(entry);
                 continue;
             }
 
@@ -279,6 +267,27 @@ public sealed class RenameScanner : IRenameScanner
 
     private static string RelativePath(string root, string path) =>
         Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/');
+
+    private static bool FilterByExtension(
+        SourceTally tally,
+        string path,
+        RenameSkipReason? reason,
+        IReadOnlyList<string> extensions)
+    {
+        if (reason is not null)
+        {
+            return false;
+        }
+
+        tally.RecordSeen();
+        if (RenameExtensions.Allows(Path.GetFileName(path), extensions))
+        {
+            return false;
+        }
+
+        tally.RecordFiltered(path);
+        return true;
+    }
 
     private static bool Accept(
         SourceTally tally,

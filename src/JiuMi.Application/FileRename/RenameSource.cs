@@ -71,7 +71,7 @@ public sealed record RenameSource
         other is not null &&
         Order == other.Order &&
         Kind == other.Kind &&
-        Paths.SequenceEqual(other.Paths, StringComparer.Ordinal);
+        Paths.SequenceEqual(other.Paths, StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public override int GetHashCode()
@@ -81,7 +81,7 @@ public sealed record RenameSource
         hash.Add(Kind);
         foreach (string path in Paths)
         {
-            hash.Add(path, StringComparer.Ordinal);
+            hash.Add(path, StringComparer.OrdinalIgnoreCase);
         }
 
         return hash.ToHashCode();

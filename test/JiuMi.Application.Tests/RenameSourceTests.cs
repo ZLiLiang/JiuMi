@@ -71,6 +71,16 @@ public sealed class RenameSourceTests
     }
 
     [Fact]
+    public void Equals_GivenPathsThatDifferOnlyByCase_ReturnsTrue()
+    {
+        var first = new RenameSource(1, RenameSourceKind.Files, [@"D:\A.png"]);
+        var second = new RenameSource(1, RenameSourceKind.Files, [@"d:\a.PNG"]);
+
+        Assert.Equal(first, second);
+        Assert.Equal(first.GetHashCode(), second.GetHashCode());
+    }
+
+    [Fact]
     public void Constructor_GivenAFolderSourceWithTwoDirectories_Throws()
     {
         Assert.Throws<ArgumentException>(() =>
