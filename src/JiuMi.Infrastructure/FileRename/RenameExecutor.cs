@@ -58,7 +58,7 @@ public sealed class RenameExecutor : IRenameExecutor
         string? backupDirectory = null;
         if (request.CreateBackup)
         {
-            backupDirectory = CreateBackupDirectory(request.SourceRoot);
+            backupDirectory = CreateBackupDirectory(request.BackupRoot);
             if (backupDirectory is null)
             {
                 var failed = new List<RenameItemOutcome>(request.Items.Count);
@@ -194,12 +194,16 @@ public sealed class RenameExecutor : IRenameExecutor
         int index,
         CancellationToken cancellationToken)
     {
+        string directory = string.IsNullOrEmpty(item.BackupGroup)
+            ? backupDirectory
+            : Path.Combine(backupDirectory, item.BackupGroup);
         string destination = Path.Combine(
-            backupDirectory,
+            directory,
             index.ToString("D3", CultureInfo.InvariantCulture) + "-" + Path.GetFileName(item.SourcePath));
 
         try
         {
+            Directory.CreateDirectory(directory);
             if (item.IsDirectory)
             {
                 CopyDirectory(item.SourcePath, destination, cancellationToken);
@@ -245,21 +249,20 @@ public sealed class RenameExecutor : IRenameExecutor
         }
     }
 
-    private string? CreateBackupDirectory(string sourceRoot)
+    private string? CreateBackupDirectory(string backupRoot)
     {
+        if (string.IsNullOrWhiteSpace(backupRoot))
+        {
+            _logger.Warning("The rename backup root is missing");
+            return null;
+        }
+
         try
         {
-            string root = Path.GetFullPath(sourceRoot);
-            string? parent = Directory.GetParent(root)?.FullName;
-            if (parent is null)
-            {
-                _logger.Warning("The rename backup folder cannot be placed beside {SourceRoot}", root);
-                return null;
-            }
-
+            string root = Path.GetFullPath(backupRoot);
             string timestamp = _timeProvider.GetLocalNow()
                 .ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-            string basePath = Path.Combine(parent, "JiuMi-backup-" + timestamp);
+            string basePath = Path.Combine(root, "JiuMi-backup-" + timestamp);
             string path = basePath;
             for (int suffix = 2; Directory.Exists(path) || File.Exists(path); suffix++)
             {

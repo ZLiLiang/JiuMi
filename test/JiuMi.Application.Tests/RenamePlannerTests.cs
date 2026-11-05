@@ -123,12 +123,13 @@ public sealed class RenamePlannerTests
         RenamePlan plan = Build(
             RenameRule.CreateTemplate("{index}{ext}"),
             [
-                new RenameCandidate(Path.Combine(Root, "a.txt"), "a.txt", IsDirectory: false),
+                new RenameCandidate(Path.Combine(Root, "a.txt"), "a.txt", IsDirectory: false, SourceOrder: 1),
                 new RenameCandidate(
                     Path.Combine(Root, "secret.txt"),
                     "secret.txt",
                     IsDirectory: false,
-                    RenameSkipReason.Hidden),
+                    SourceOrder: 1,
+                    SkipReason: RenameSkipReason.Hidden),
             ]);
 
         Assert.Single(plan.Entries);
@@ -146,8 +147,13 @@ public sealed class RenamePlannerTests
         RenamePlan plan = Build(
             RenameRule.CreateTemplate("{index}{ext}"),
             [
-                new RenameCandidate(Path.Combine(Root, "a.txt"), "a.txt", IsDirectory: false),
-                new RenameCandidate(Path.Combine(Root, "linked.txt"), "linked.txt", IsDirectory: false, reason),
+                new RenameCandidate(Path.Combine(Root, "a.txt"), "a.txt", IsDirectory: false, SourceOrder: 1),
+                new RenameCandidate(
+                    Path.Combine(Root, "linked.txt"),
+                    "linked.txt",
+                    IsDirectory: false,
+                    SourceOrder: 1,
+                    SkipReason: reason),
             ]);
 
         Assert.Single(plan.Entries);
@@ -181,6 +187,39 @@ public sealed class RenamePlannerTests
             [Folder("A/B")]);
 
         Assert.Equal(Path.Combine(Root, "A", "x-B"), Assert.Single(plan.Entries).TargetFullPath);
+    }
+
+    [Fact]
+    public void Build_GivenSeveralSources_NumbersBySourceThenNaturalOrder()
+    {
+        RenamePlan plan = Build(
+            RenameRule.CreateTemplate("{index}-{name}{ext}"),
+            [
+                new RenameCandidate(Path.Combine(Root, "two", "10.txt"), "10.txt", IsDirectory: false, SourceOrder: 2),
+                new RenameCandidate(Path.Combine(Root, "one", "2.txt"), "2.txt", IsDirectory: false, SourceOrder: 1),
+                new RenameCandidate(Path.Combine(Root, "two", "2.txt"), "2.txt", IsDirectory: false, SourceOrder: 2),
+                new RenameCandidate(Path.Combine(Root, "one", "10.txt"), "10.txt", IsDirectory: false, SourceOrder: 1),
+            ]);
+
+        Assert.Equal(
+            ["1-2.txt", "2-10.txt", "3-2.txt", "4-10.txt"],
+            plan.Entries.Select(entry => entry.TargetName));
+        Assert.Equal([1, 2, 3, 4], plan.Entries.Select(entry => entry.Index));
+    }
+
+    [Fact]
+    public void Build_GivenTheSameNameInDifferentDirectories_DoesNotReportADuplicate()
+    {
+        RenamePlan plan = Build(
+            RenameRule.CreateTemplate("same{ext}"),
+            [
+                new RenameCandidate(Path.Combine(Root, "one", "a.txt"), "a.txt", IsDirectory: false, SourceOrder: 1),
+                new RenameCandidate(Path.Combine(Root, "two", "b.txt"), "b.txt", IsDirectory: false, SourceOrder: 2),
+            ]);
+
+        Assert.Equal(2, plan.Entries.Count);
+        Assert.Equal(0, plan.ConflictCount);
+        Assert.All(plan.Entries, entry => Assert.Equal("same.txt", entry.TargetName));
     }
 
     [Fact]
@@ -288,14 +327,19 @@ public sealed class RenamePlannerTests
         RenamePlanner.Build(rule, candidates, _today, pathExists);
 
     private static IReadOnlyList<RenameCandidate> Files(params string[] names) =>
+        Files(sourceOrder: 1, names);
+
+    private static IReadOnlyList<RenameCandidate> Files(int sourceOrder, params string[] names) =>
         [.. names.Select(name => new RenameCandidate(
             Path.Combine(Root, name),
             name,
-            IsDirectory: false))];
+            IsDirectory: false,
+            sourceOrder))];
 
-    private static RenameCandidate Folder(string relativePath) =>
+    private static RenameCandidate Folder(string relativePath, int sourceOrder = 1) =>
         new(
             Path.Combine(Root, relativePath.Replace('/', Path.DirectorySeparatorChar)),
             relativePath,
-            IsDirectory: true);
+            IsDirectory: true,
+            sourceOrder);
 }
