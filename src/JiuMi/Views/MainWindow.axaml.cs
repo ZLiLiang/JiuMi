@@ -42,7 +42,7 @@ public partial class MainWindow : FAAppWindow
         TitleBarIcon.Source = mark;
 
         // The mark carries its own rounded corners; a gradient behind it would show through them.
-        TitleBarMark.Background = null;
+        TitleBarMark.Background = Brushes.Transparent;
     }
 
     private void OnFirstActivated(object? sender, EventArgs e)
