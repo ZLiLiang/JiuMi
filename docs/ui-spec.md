@@ -134,7 +134,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
-3. **窗口**（`Settings.Window.Section`）：一行「关闭窗口时」（`Settings.Window.Label` / `Settings.Window.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，选项依次为每次询问 / 最小化到托盘 / 退出应用（`Settings.Window.Ask` / `.MinimizeToTray` / `.Exit`），默认「每次询问」；切换即时生效并保存。
+3. **窗口**（`Settings.Window.Section`）：一行「关闭窗口时」（`Settings.Window.Label` / `Settings.Window.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，选项依次为每次询问 / 隐藏到托盘 / 退出应用（`Settings.Window.Ask` / `.HideToTray` / `.Exit`），默认「每次询问」；切换即时生效并保存。
 4. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
    - 第一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
    - 第二行「世界时钟目录」（`Settings.Data.Catalog.Title` / `Settings.Data.Catalog.Hint`），说明下方依次是「上次检查」与目录版本两行（11.5px / `TextFillColorSecondaryBrush`，行距 2）；右侧是 `Button`「立即检查」（`Settings.Data.Catalog.Check`，高 32、圆角 4、13px，最小宽 96）。检查进行中按钮禁用，检查行显示「正在检查…」（`Settings.Data.Catalog.Checking`）；从未检查显示「上次检查：无」（`Settings.Data.Catalog.NeverChecked`），否则「上次检查：yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.LastChecked`，本地时间）；版本行在已下载时显示「目录更新于 yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.Updated`），内置时显示「目录为内置版本」（`Settings.Data.Catalog.Bundled`）。
@@ -706,7 +706,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 隐藏与恢复
 
 - 最小化保留任务栏：主窗口缩到任务栏，不从任务栏或 Alt+Tab 消失，也不隐藏到托盘。
-- 只有从关闭询问框选择「最小化到托盘」才隐藏：主窗口从任务栏与 Alt+Tab 消失，只剩托盘图标；恢复入口是托盘（单击图标、菜单「显示主窗口」，或系统通知）。
+- 只有从关闭询问框选择「隐藏到托盘」才隐藏：主窗口从任务栏与 Alt+Tab 消失，只剩托盘图标；恢复入口是托盘（单击图标、菜单「显示主窗口」，或系统通知）。
 - 恢复后回到隐藏前的尺寸、位置与窗口状态（最大化仍是最大化）。
 - 隐藏与恢复都不做过渡动画。
 
@@ -734,34 +734,38 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 | 项 | 值 |
 | --- | --- |
-| 尺寸 | 420 × 240，固定 |
-| 可缩放 | 否 |
+| 尺寸 | 宽 420，高度随内容（`SizeToContent=Height`） |
+| 可缩放 / 可拖动 | 否 |
 | 位置 | 主窗口居中（`CenterOwner`） |
 | 任务栏 | 不显示 |
-| 系统装饰 | 默认标题栏，可拖动，带关闭 X；标题用应用名 |
+| 系统装饰 | 无（`WindowDecorations=None`）：没有标题栏、最小化 / 最大化 / 关闭按钮 |
 | 模态 | 主窗口的模态子窗口 |
-| 主题 | 内容跟随应用主题；标题栏由系统绘制 |
+| 主题 | 内容跟随应用主题 |
+
+- 窗口背景透明，卡片自带投影；透明区不画内容，也不额外加边框。
 
 ### 布局与排版
 
-- 内容整体内缩 8，包在一层圆角 12 的岛里（`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + 投影，与错误窗口同款）；系统标题栏与边框保留。
-- 岛内边距 24。
+- 卡片外边距 24（容纳投影），圆角 12，内边距 22,20,22,22。
+- 卡片背景用 `JiuMiWindowBackdropBrush` 渐变 + `JiuMiWindowHighlightBrush` 高光 + 1px `JiuMiIslandBorderBrush` + `JiuMiIslandShadow`，与主窗口同一套语言。
+- 卡片顶部不显示应用名、应用图标或拖动区；内容从标题开始。
 - 标题「关闭 JiuMi 窗口？」20px / SemiBold / `TextFillColorPrimaryBrush`，行高 28。
-- 正文「最小化到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。」14px / Regular / `TextFillColorSecondaryBrush`，行高 20，与标题间距 8。
-- 复选框「不再询问」13px，与正文间距 14。
-- 按钮组右对齐，高 32，间距 8，与复选框间距 16：`取消`（默认次要）、`退出应用`（危险次要）、`最小化到托盘`（强调填充）。
+- 正文「隐藏到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。」14px / Regular / `TextFillColorSecondaryBrush`，行高 20，与标题间距 6。
+- 复选框「不再询问」13px，与正文间距 12。
+- 按钮组右对齐，高 32，间距 8，与复选框间距 14：`取消`（默认次要）、`退出应用`（危险次要）、`隐藏到托盘`（强调填充）。
+- 高度随内容收紧，不保留固定高度的空白区。
 
 ### 按钮与键盘
 
 | 项 | 值 |
 | --- | --- |
-| 默认 / 回车 | 最小化到托盘 |
-| Esc / 关闭 X / Alt+F4 | 取消 |
+| 默认 / 回车 | 隐藏到托盘 |
+| Esc / Alt+F4 | 取消（无标题栏关闭 X） |
 | 取消 | 默认次要按钮，无填充、主文字色 |
 | 退出应用 | `SystemFillColorCriticalBackgroundBrush` 底 + `SystemFillColorCriticalBrush` 文字，悬停略深；样式只在本对话框内定义 |
-| 最小化到托盘 | `AccentButtonStyle` |
+| 隐藏到托盘 | `AccentButtonStyle` |
 
-- 打开即聚焦「最小化到托盘」；`Tab` 在复选框与三个按钮之间循环。
+- 打开即聚焦「隐藏到托盘」；`Tab` 在复选框与三个按钮之间循环。
 - 点「取消」时忽略「不再询问」的勾选，不写设置。
 - 已最小化的主窗口先还原再弹出本框；本框只出现在主窗口可见时。
 
@@ -770,17 +774,17 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 键 | 文案 |
 | --- | --- |
 | `Shell.Close.Title` | 关闭 {0} 窗口？ |
-| `Shell.Close.Body` | 最小化到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。 |
+| `Shell.Close.Body` | 隐藏到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。 |
 | `Shell.Close.DontAsk` | 不再询问 |
 | `Shell.Close.Cancel` | 取消 |
 | `Shell.Close.Exit` | 退出应用 |
-| `Shell.Close.MinimizeToTray` | 最小化到托盘 |
+| `Shell.Close.HideToTray` | 隐藏到托盘 |
 
-- `Shell.Close.Title` 的 `{0}` 是应用名；对话框标题栏仍用应用名，不重复拼装。
+- `Shell.Close.Title` 的 `{0}` 是应用名；窗口没有可见标题栏，应用名只出现在这句问题里。
 - 文案不做动态判断：不检测当前是否有转换 / 改名任务。
 
 ### 可访问性
 
-- 对话框打开即聚焦主按钮；Esc 与关闭 X 的语义一致。
+- 对话框打开即聚焦主按钮；Esc、Alt+F4 与「取消」语义一致。
 - 复选框与三个按钮都有可读名称；颜色不是唯一区分手段：危险动作使用红色文字，且按键文本本身写明动作。
 - 全部颜色取自主题资源，不做额外覆盖；高对比度跟随主题。

@@ -98,7 +98,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ## 单实例与窗口生命周期
 
-同一个 exe 副本在同一用户会话里只跑一个进程：第二次启动不建窗口，只把已有窗口叫到前台。**最小化保留在任务栏**；用户关闭主窗口时按设置询问是否最小化到托盘，托盘承接隐藏与唤回。决议见 [#7 单实例与初版托盘](https://github.com/ZLiLiang/JiuMi/issues/7) 与 [#71 最小化与托盘行为调整](https://github.com/ZLiLiang/JiuMi/issues/71)。
+同一个 exe 副本在同一用户会话里只跑一个进程：第二次启动不建窗口，只把已有窗口叫到前台。**最小化保留在任务栏**；用户关闭主窗口时按设置询问是否隐藏到托盘，托盘承接隐藏与唤回。决议见 [#7 单实例与初版托盘](https://github.com/ZLiLiang/JiuMi/issues/7) 与 [#71 最小化与托盘行为调整](https://github.com/ZLiLiang/JiuMi/issues/71)。
 
 ### 单实例
 
@@ -141,7 +141,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | splash 关闭 | 不结束进程（`ShutdownMode = OnMainWindowClose`，`MainWindow` 已赋值） |
 | 主窗口最小化 | 保留在任务栏与 Alt+Tab；不隐藏、不移除任务栏按钮 |
 | 主窗口关闭（用户触发） | 托盘可用且 `closeAction = "ask"` 时先弹关闭询问框；其余情况按设置直接隐藏或退出 |
-| 关闭时选择「最小化到托盘」 | 隐藏窗口并从任务栏与 Alt+Tab 移除，进程继续运行；记住隐藏前的普通 / 最大化状态 |
+| 关闭时选择「隐藏到托盘」 | 隐藏窗口并从任务栏与 Alt+Tab 移除，进程继续运行；记住隐藏前的普通 / 最大化状态 |
 | 关闭时选择「退出应用」 | 退出进程（码 `0`）；托盘菜单「退出」走同一条路径且不弹询问框 |
 | 主窗口从托盘恢复 | 显示 → 还原到隐藏前的尺寸与窗口状态 → 激活 |
 | 进程退出 | 销毁托盘图标，关闭管道监听并释放互斥量 |
@@ -155,7 +155,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 项 | 规则 |
 | --- | --- |
 | 触发 | 用户关闭主窗口（标题栏 X、Alt+F4 或等效关闭命令），且托盘可用 |
-| 动作 | 取消 / 退出应用 / 最小化到托盘；询问框自身的 X、Esc、Alt+F4 等同取消 |
+| 动作 | 取消 / 退出应用 / 隐藏到托盘；询问框的 Esc、Alt+F4 等同取消 |
 | 记住 | 「不再询问」复选框；选择后两个动作之一时把该动作写入 `closeAction`，点取消不记 |
 | 免问 | 托盘「退出」、系统关机 / 注销（`WindowCloseReason.OSShutdown`）、应用 Shutdown（`ApplicationShutdown`）直接退出 |
 | 托盘不可用 | 不弹询问框，关闭即退出；已存 `closeAction = "minimizeToTray"` 同样回退为退出 |
@@ -175,7 +175,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 「设置」项 | 恢复并激活窗口后，走导航栏「设置」同一条导航命令 |
 | 平台 | 只在 Windows 实现；其他平台为 no-op，其最小化行为随跨平台分发另行决定 |
 
-- 最小化不再隐藏到托盘，因此没有首次最小化提示；从关闭询问框选择「最小化到托盘」时也不投递通知，询问框本身已经解释过后台状态。
+- 最小化不再隐藏到托盘，因此没有首次最小化提示；从关闭询问框选择「隐藏到托盘」时也不投递通知，询问框本身已经解释过后台状态。
 - 三个 `Shell.Tray.*` 键与关闭询问的 `Shell.Close.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
 - 托盘与单实例的实现放 Infrastructure；`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
 
@@ -455,7 +455,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 - 窗口尺寸、位置、最大化与还原尺寸**不记忆**：每次启动按 1200 × 760 打开，位置由系统决定（见 UI 规格）。理由见 [ADR-0005](./adr/0005-window-state-memory.md)。
 - `navExpanded` **只在主窗口实际关闭时写一次**；被询问框取消的关闭不写，用户点展开/收起按钮也不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
-- `closeAction` 在设置页切换时立即写；询问框的「不再询问」只在选择「最小化到托盘」或「退出应用」时写，点取消不记。
+- `closeAction` 在设置页切换时立即写；询问框的「不再询问」只在选择「隐藏到托盘」或「退出应用」时写，点取消不记。界面文案用「隐藏到托盘」，存储值沿用 `minimizeToTray`。
 - 关闭时写入失败**静默**：记一条不带 `code` 的 Warning 日志（操作 `Settings.SaveOnExit`），不进详情缓冲、不弹 InfoBar。此时窗口正在关，用户无从处理；「保存失败必须可见」的契约针对用户主动修改的设置。
 - 两个键都属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
 
@@ -518,7 +518,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | `Shell.Nav.Home` / `Shell.Nav.Settings` | 导航项 |
 | `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单 |
-| `Shell.Close.Title` / `.Body` / `.DontAsk` / `.Cancel` / `.Exit` / `.MinimizeToTray` | 关闭询问框 |
+| `Shell.Close.Title` / `.Body` / `.DontAsk` / `.Cancel` / `.Exit` / `.HideToTray` | 关闭询问框 |
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
@@ -545,7 +545,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
 | `Settings.Window.Section` / `Settings.Window.Label` / `Settings.Window.Hint` | 「窗口」分区标题与关闭行为行 |
-| `Settings.Window.Ask` / `Settings.Window.MinimizeToTray` / `Settings.Window.Exit` | 关闭行为三选项 |
+| `Settings.Window.Ask` / `Settings.Window.HideToTray` / `Settings.Window.Exit` | 关闭行为三选项 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
 | `Settings.About.ExportDiagnostics` / `Settings.About.DiagnosticsFileType` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮、保存对话框的文件类型标签与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
