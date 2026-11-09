@@ -31,6 +31,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _scanTimer;
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly FileRenamePickerDirectory _pickerMemory = new();
     private readonly List<RenameSource> _sources = [];
     private RenameScanResult? _scan;
     private RenamePlan _plan = new([], [], 0);
@@ -200,6 +201,12 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the add-folders menu label. The flyout binds through the page data context.</summary>
     public string AddFoldersText => _localization["Tool.FileRename.Add.Folders"];
+
+    /// <summary>
+    /// Gets the directory the system pickers open at: the last directory the user chose in this
+    /// session, or <see langword="null"/> for the system default.
+    /// </summary>
+    public string? PickerStartDirectory => _pickerMemory.Directory;
 
     /// <summary>Gets a value indicating whether files are renamed.</summary>
     public bool IsFilesMode => _target == RenameTarget.Files;
@@ -804,6 +811,24 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     /// <returns><see langword="true"/> when the path is an existing folder.</returns>
     public bool IsDirectory(string path) =>
         !string.IsNullOrWhiteSpace(path) && _pathProbe.IsDirectory(path);
+
+    /// <summary>
+    /// Remembers a folder the user chose for this session, so the next picker opens there.
+    /// </summary>
+    /// <param name="directory">The chosen folder.</param>
+    public void RememberPickerDirectory(string? directory) => _pickerMemory.Remember(directory);
+
+    /// <summary>
+    /// Remembers the folder holding a file the user chose for this session.
+    /// </summary>
+    /// <param name="filePath">The chosen file.</param>
+    public void RememberPickerFile(string? filePath)
+    {
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            RememberPickerDirectory(Path.GetDirectoryName(filePath));
+        }
+    }
 
     /// <summary>
     /// Records a failure raised by a page action without breaking the page.
