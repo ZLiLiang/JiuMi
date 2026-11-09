@@ -1,6 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using FluentAvalonia.UI.Windowing;
 using JiuMi.ViewModels;
 
@@ -27,7 +28,7 @@ public partial class WorldClockManageWindow : FAAppWindow
         {
             Icon = mark;
             TitleBarIcon.Source = mark;
-            TitleBarMark.Background = null;
+            TitleBarMark.Background = Brushes.Transparent;
         }
     }
 
