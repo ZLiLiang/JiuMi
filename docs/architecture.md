@@ -98,7 +98,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ## 单实例与窗口生命周期
 
-同一个 exe 副本在同一用户会话里只跑一个进程：第二次启动不建窗口，只把已有窗口叫到前台。托盘只承接「最小化」，**关闭仍然是退出**。决议见 [本期是否实现单实例与托盘行为？](https://github.com/ZLiLiang/JiuMi/issues/7)。
+同一个 exe 副本在同一用户会话里只跑一个进程：第二次启动不建窗口，只把已有窗口叫到前台。**最小化保留在任务栏**；用户关闭主窗口时按设置询问是否最小化到托盘，托盘承接隐藏与唤回。决议见 [#7 单实例与初版托盘](https://github.com/ZLiLiang/JiuMi/issues/7) 与 [#71 最小化与托盘行为调整](https://github.com/ZLiLiang/JiuMi/issues/71)。
 
 ### 单实例
 
@@ -139,13 +139,30 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 事件 | 行为 |
 | --- | --- |
 | splash 关闭 | 不结束进程（`ShutdownMode = OnMainWindowClose`，`MainWindow` 已赋值） |
-| 主窗口最小化 | 隐藏窗口并从任务栏移除，常驻托盘；每会话第一次投递一条系统通知 |
-| 主窗口从托盘恢复 | 显示 → 还原到最小化前的尺寸与窗口状态 → 激活 |
-| 主窗口关闭 | 退出进程（码 `0`）；托盘菜单「退出」走同一条路径 |
+| 主窗口最小化 | 保留在任务栏与 Alt+Tab；不隐藏、不移除任务栏按钮 |
+| 主窗口关闭（用户触发） | 托盘可用且 `closeAction = "ask"` 时先弹关闭询问框；其余情况按设置直接隐藏或退出 |
+| 关闭时选择「最小化到托盘」 | 隐藏窗口并从任务栏与 Alt+Tab 移除，进程继续运行；记住隐藏前的普通 / 最大化状态 |
+| 关闭时选择「退出应用」 | 退出进程（码 `0`）；托盘菜单「退出」走同一条路径且不弹询问框 |
+| 主窗口从托盘恢复 | 显示 → 还原到隐藏前的尺寸与窗口状态 → 激活 |
 | 进程退出 | 销毁托盘图标，关闭管道监听并释放互斥量 |
 
-- **关闭按钮不隐藏到托盘**，`ShutdownMode` 不变（与启动序列章节一致）。
-- 最小化到托盘只针对主窗口；splash 不可最小化（见启动序列章节），因此启动期没有托盘入口。
+- **关闭按钮不再直接退出**：托盘可用时先按关闭询问规则处理；`ShutdownMode` 不变（与启动序列章节一致）。
+- 已最小化时触发关闭（任务栏右键关闭、Alt+F4）：先还原到最小化前的状态，再显示询问框；选「取消」后保持还原。
+- 隐藏到托盘只针对主窗口；splash 不可最小化或关闭（见启动序列章节），因此启动期没有关闭询问与托盘入口。
+
+### 关闭询问
+
+| 项 | 规则 |
+| --- | --- |
+| 触发 | 用户关闭主窗口（标题栏 X、Alt+F4 或等效关闭命令），且托盘可用 |
+| 动作 | 取消 / 退出应用 / 最小化到托盘；询问框自身的 X、Esc、Alt+F4 等同取消 |
+| 记住 | 「不再询问」复选框；选择后两个动作之一时把该动作写入 `closeAction`，点取消不记 |
+| 免问 | 托盘「退出」、系统关机 / 注销（`WindowCloseReason.OSShutdown`）、应用 Shutdown（`ApplicationShutdown`）直接退出 |
+| 托盘不可用 | 不弹询问框，关闭即退出；已存 `closeAction = "minimizeToTray"` 同样回退为退出 |
+| 设置 | `closeAction` 取 `"ask"` / `"minimizeToTray"` / `"exit"`，缺键或非法值按 `"ask"`；设置页可改回「每次询问」 |
+
+- 询问期间关闭事件被取消；用户选择后再执行隐藏或退出，不会出现「先退出又弹框」的竞态。
+- 询问框是主窗口的模态子窗口；视觉与文案见 [`docs/ui-spec.md`](./ui-spec.md) 的「关闭询问框」章节。
 
 ### 托盘
 
@@ -158,8 +175,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 「设置」项 | 恢复并激活窗口后，走导航栏「设置」同一条导航命令 |
 | 平台 | 只在 Windows 实现；其他平台为 no-op，其最小化行为随跨平台分发另行决定 |
 
-- 首次最小化提示的文案取 `Shell.Tray.MinimizedHint`，经错误呈现章节的 `IUserNotification` 端口投递，界面代码不直接调用托盘 API。
-- 四个 `Shell.Tray.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
+- 最小化不再隐藏到托盘，因此没有首次最小化提示；从关闭询问框选择「最小化到托盘」时也不投递通知，询问框本身已经解释过后台状态。
+- 三个 `Shell.Tray.*` 键与关闭询问的 `Shell.Close.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
 - 托盘与单实例的实现放 Infrastructure；`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
 
 ### 隐藏期间的错误投递
@@ -267,9 +284,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 系统通知
 
 - 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现复用托盘图标的气泡通道（`Shell_NotifyIcon` 的 `NIF_INFO`），其他平台 no-op。
-- **触发**：仅当应用没有可见窗口（关闭或最小化到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
+- **触发**：仅当应用没有可见窗口（隐藏到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
 - **内容**：标题为应用名，正文只用本地化短句、不带技术细节；点击激活主窗口并呈现对应 InfoBar。
-- 托盘图标本身归单实例与窗口生命周期章节；端口不要求托盘存在，但本期唯一的触发点（最小化提示、隐藏期错误）都发生在托盘已显示之后。本期没有后台任务，触发点只有这两处。
+- 托盘图标本身归单实例与窗口生命周期章节；端口不要求托盘存在，但本期唯一的触发点（隐藏到托盘期间的错误）发生在托盘已显示之后。本期没有后台任务，触发点只有这一处。
 - 平台专属 API 允许使用，但必须隔离在 Infrastructure（经 Application 抽象暴露）；`#if WINDOWS` 只允许出现在 Infrastructure 与 Desktop 组合根，UI / Application 只认抽象。
 
 ## 日志与诊断
@@ -326,7 +343,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 配置探针结果与生效落点
 - 设置保存结果
 - 语言切换、主题切换
-- 主窗口显示 / 关闭、过渡到托盘
+- 主窗口显示 / 关闭、隐藏到托盘与恢复、关闭询问结果
 - 所有异常路径（钩子分工见错误呈现章节）
 
 页面内部细节（导航切换、控件状态）走 `Debug`。**禁止散落的 `Debug.WriteLine`**：全部走 Serilog，DEBUG 构建由 `Serilog.Sinks.Debug` 汇入同一条事件流。
@@ -429,16 +446,18 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 窗口与导航状态
 
-本期只持久化**一比特** UI 状态：导航栏是展开还是收起。窗口几何不进配置。
+本期持久化的 UI 偏好：导航栏展开态与关闭行为。窗口几何不进配置。
 
 | 键 | 类型 | 缺省 | 含义 |
 | --- | --- | --- | --- |
 | `navExpanded` | boolean | `true` | 导航栏展开（`true`）还是收起（`false`） |
+| `closeAction` | `"ask"` / `"minimizeToTray"` / `"exit"` | `"ask"` | 主窗口关闭时的行为 |
 
 - 窗口尺寸、位置、最大化与还原尺寸**不记忆**：每次启动按 1200 × 760 打开，位置由系统决定（见 UI 规格）。理由见 [ADR-0005](./adr/0005-window-state-memory.md)。
-- `navExpanded` **只在主窗口关闭时写一次**；用户点展开/收起按钮不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
+- `navExpanded` **只在主窗口关闭事件触发时写一次**（即使随后被询问框取消）；用户点展开/收起按钮不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
+- `closeAction` 在设置页切换时立即写；询问框的「不再询问」只在选择「最小化到托盘」或「退出应用」时写，点取消不记。
 - 关闭时写入失败**静默**：记一条不带 `code` 的 Warning 日志（操作 `Settings.SaveOnExit`），不进详情缓冲、不弹 InfoBar。此时窗口正在关，用户无从处理；「保存失败必须可见」的契约针对用户主动修改的设置。
-- 该键属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
+- 两个键都属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
 
 ### 世界工作时间状态
 
@@ -499,7 +518,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | `Shell.Nav.Home` / `Shell.Nav.Settings` | 导航项 |
 | `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单 |
-| `Shell.Tray.MinimizedHint` | 首次最小化的系统通知 |
+| `Shell.Close.Title` / `.Body` / `.DontAsk` / `.Cancel` / `.Exit` / `.MinimizeToTray` | 关闭询问框 |
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
@@ -525,6 +544,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
+| `Settings.Window.Section` / `Settings.Window.Label` / `Settings.Window.Hint` | 「窗口」分区标题与关闭行为行 |
+| `Settings.Window.Ask` / `Settings.Window.MinimizeToTray` / `Settings.Window.Exit` | 关闭行为三选项 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
 | `Settings.About.ExportDiagnostics` / `Settings.About.DiagnosticsFileType` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮、保存对话框的文件类型标签与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
@@ -766,8 +787,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0009 图片格式转换：PSD 解码选型与批量转换管线](./adr/0009-image-conversion.md)
 - [ADR-0010 批量重命名：一份规则模型、预检不修补、撤销而非备份](./adr/0010-batch-rename.md)
 - [ADR-0011 批量重命名：文件模式的多来源批次](./adr/0011-multi-source-rename-batch.md)
+- [ADR-0012 最小化与关闭：最小化留在任务栏，关闭时询问](./adr/0012-minimize-and-close.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
 - [决议：各类错误发生时用户应该看到什么？](https://github.com/ZLiLiang/JiuMi/issues/6)
 - [决议：单实例与托盘（`Shell.Tray.*` 键名）](https://github.com/ZLiLiang/JiuMi/issues/7)
+- [决议：调整最小化与托盘行为](https://github.com/ZLiLiang/JiuMi/issues/71)

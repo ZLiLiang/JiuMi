@@ -134,11 +134,12 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
-3. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
+3. **窗口**（`Settings.Window.Section`）：一行「关闭窗口时」（`Settings.Window.Label` / `Settings.Window.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，选项依次为每次询问 / 最小化到托盘 / 退出应用（`Settings.Window.Ask` / `.MinimizeToTray` / `.Exit`），默认「每次询问」；切换即时生效并保存。
+4. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
    - 第一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
    - 第二行「世界时钟目录」（`Settings.Data.Catalog.Title` / `Settings.Data.Catalog.Hint`），说明下方依次是「上次检查」与目录版本两行（11.5px / `TextFillColorSecondaryBrush`，行距 2）；右侧是 `Button`「立即检查」（`Settings.Data.Catalog.Check`，高 32、圆角 4、13px，最小宽 96）。检查进行中按钮禁用，检查行显示「正在检查…」（`Settings.Data.Catalog.Checking`）；从未检查显示「上次检查：无」（`Settings.Data.Catalog.NeverChecked`），否则「上次检查：yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.LastChecked`，本地时间）；版本行在已下载时显示「目录更新于 yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.Updated`），内置时显示「目录为内置版本」（`Settings.Data.Catalog.Bundled`）。
    - 「立即检查」忽略每日一次的限制，但仍受「允许在线获取数据」开关约束：开关关闭时按钮禁用。检查失败不弹提示、不显示错误，只记 Warning 日志；结果由上述两行状态文字体现。
-4. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
+5. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
 
 - 修改**即时生效并自动保存**：没有「保存」按钮、没有确认对话框、没有「已保存」提示。
 - 「导出诊断包」走系统保存对话框：默认文件名 `JiuMi-diagnostics-yyyyMMdd-HHmmss.zip`，默认目录为当前生效的 `logs\`。导出期间按钮禁用，结束后恢复；打包内容与失败处理见 [`docs/architecture.md`](./architecture.md) 的日志与诊断章节。
@@ -702,25 +703,19 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 用与主窗口任务栏图标同一份 `Assets/app-icon.png`（母版 `Assets/app-icon.svg`），不改画单色剪影、不做 16 / 20 / 24 多尺寸打包；托盘区按自身逻辑尺寸缩放。
 - 不显示状态叠加：无错误角标、无进度、不闪烁、不因状态变化弹气泡（系统通知端口见下）。
 
-### 最小化与恢复
+### 隐藏与恢复
 
-- 最小化即隐藏：主窗口从任务栏与 Alt+Tab 中消失，只剩托盘图标；恢复的唯一入口是托盘（单击图标、菜单「显示主窗口」，或系统通知）。
-- 恢复后回到最小化前的尺寸、位置与窗口状态（最大化仍是最大化）。
-- 最小化与恢复都不做过渡动画。
+- 最小化保留任务栏：主窗口缩到任务栏，不从任务栏或 Alt+Tab 消失，也不隐藏到托盘。
+- 只有从关闭询问框选择「最小化到托盘」才隐藏：主窗口从任务栏与 Alt+Tab 消失，只剩托盘图标；恢复入口是托盘（单击图标、菜单「显示主窗口」，或系统通知）。
+- 恢复后回到隐藏前的尺寸、位置与窗口状态（最大化仍是最大化）。
+- 隐藏与恢复都不做过渡动画。
 
 ### 右键菜单
 
 - 项顺序固定：显示主窗口（`Shell.Tray.Show`）／设置（`Shell.Tray.Settings`）／退出（`Shell.Tray.Exit`），不追加其他项。
 - 用系统托盘的**原生菜单**（Avalonia 托盘菜单即 `NativeMenu`，Windows 上是 Win32 弹出菜单）：字体、行高与圆角跟随系统，不自定义配色；键盘上下移动与 `Enter` 触发按系统默认行为。
 - 「设置」= 先恢复并激活主窗口，再执行导航栏「设置」的**同一条**导航命令；已在设置页时不重复导航，因此返回行为与手动点击导航完全一致。
-- 「退出」与关闭按钮同一条退出路径，不额外确认。
-
-### 首次最小化提示
-
-- 每会话最多一次：第一次最小化到托盘时投递系统通知，此后不再提示。
-- 正文取 `Shell.Tray.MinimizedHint`，只一句、不带技术细节；标题为应用名（沿用错误呈现的通知内容规则）。
-- 通过 `IUserNotification` 投递（Windows 实现复用托盘图标的气泡通道，界面代码不直接调用托盘 API）；点击通知等同于单击托盘图标。
-- 不阻塞、不抢焦点、不改变窗口的隐藏状态。
+- 「退出」不弹关闭询问框，直接退出；与关闭按钮选择「退出应用」走同一条退出路径。
 
 ### 隐藏期间的提示
 
@@ -730,4 +725,62 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 ### 可访问性
 
 - 托盘菜单项是系统标准菜单项，键盘与读屏行为由操作系统提供，不另设可访问名。
-- 首次最小化提示只出现一次，且不携带必须完成的操作，不构成阻断。
+
+## 关闭询问框
+
+触发条件、`closeAction` 持久化与免问路径见 [`docs/architecture.md`](./architecture.md) 的「关闭询问」章节。本节只定呈现、交互与文案。
+
+### 窗口属性
+
+| 项 | 值 |
+| --- | --- |
+| 尺寸 | 420 × 240，固定 |
+| 可缩放 | 否 |
+| 位置 | 主窗口居中（`CenterOwner`） |
+| 任务栏 | 不显示 |
+| 系统装饰 | 默认标题栏，可拖动，带关闭 X；标题用应用名 |
+| 模态 | 主窗口的模态子窗口 |
+| 主题 | 跟随应用主题 |
+
+### 布局与排版
+
+- 内容整体内缩 8，包在一层圆角 12 的岛里（`JiuMiIslandBackgroundBrush` + 1px `JiuMiIslandBorderBrush` + 投影，与错误窗口同款）；系统标题栏与边框保留。
+- 岛内边距 24。
+- 标题「关闭 JiuMi 窗口？」20px / SemiBold / `TextFillColorPrimaryBrush`，行高 28。
+- 正文「最小化到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。」14px / Regular / `TextFillColorSecondaryBrush`，行高 20，与标题间距 8。
+- 复选框「不再询问」13px，与正文间距 14。
+- 按钮组右对齐，高 32，间距 8，与复选框间距 16：`取消`（默认次要）、`退出应用`（危险次要）、`最小化到托盘`（强调填充）。
+
+### 按钮与键盘
+
+| 项 | 值 |
+| --- | --- |
+| 默认 / 回车 | 最小化到托盘 |
+| Esc / 关闭 X / Alt+F4 | 取消 |
+| 取消 | 默认次要按钮，无填充、主文字色 |
+| 退出应用 | `SystemFillColorCriticalBackgroundBrush` 底 + `SystemFillColorCriticalBrush` 文字，悬停略深；样式只在本对话框内定义 |
+| 最小化到托盘 | `AccentButtonStyle` |
+
+- 打开即聚焦「最小化到托盘」；`Tab` 在复选框与三个按钮之间循环。
+- 点「取消」时忽略「不再询问」的勾选，不写设置。
+- 已最小化的主窗口先还原再弹出本框；本框只出现在主窗口可见时。
+
+### 文案
+
+| 键 | 文案 |
+| --- | --- |
+| `Shell.Close.Title` | 关闭 {0} 窗口？ |
+| `Shell.Close.Body` | 最小化到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。 |
+| `Shell.Close.DontAsk` | 不再询问 |
+| `Shell.Close.Cancel` | 取消 |
+| `Shell.Close.Exit` | 退出应用 |
+| `Shell.Close.MinimizeToTray` | 最小化到托盘 |
+
+- `Shell.Close.Title` 的 `{0}` 是应用名；对话框标题栏仍用应用名，不重复拼装。
+- 文案不做动态判断：不检测当前是否有转换 / 改名任务。
+
+### 可访问性
+
+- 对话框打开即聚焦主按钮；Esc 与关闭 X 的语义一致。
+- 复选框与三个按钮都有可读名称；颜色不是唯一区分手段：危险动作使用红色文字，且按键文本本身写明动作。
+- 全部颜色取自主题资源，不做额外覆盖；高对比度跟随主题。
