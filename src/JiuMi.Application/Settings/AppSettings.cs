@@ -55,6 +55,15 @@ public sealed record AppSettings
     } = true;
 
     /// <summary>
+    /// Gets what closing the main window does.
+    /// </summary>
+    public CloseAction CloseAction
+    {
+        get;
+        init;
+    } = CloseAction.Ask;
+
+    /// <summary>
     /// Gets the persisted world clock view and places.
     /// </summary>
     public WorldClockSettings WorldClock

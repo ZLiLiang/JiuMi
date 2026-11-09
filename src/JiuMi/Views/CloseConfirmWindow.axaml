@@ -1,0 +1,83 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:JiuMi.ViewModels"
+        x:Class="JiuMi.Views.CloseConfirmWindow"
+        x:DataType="vm:CloseConfirmWindowViewModel"
+        Title="{Binding AppName}"
+        Width="420"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+  <Window.Styles>
+    <Style Selector="TextBlock.headline">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LineHeight" Value="28" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.body">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.dialog">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="12,0" />
+    </Style>
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <Border Margin="24"
+          Padding="36,32,36,32"
+          CornerRadius="12"
+          Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+          BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+          BorderThickness="1"
+          BoxShadow="{DynamicResource JiuMiIslandShadow}">
+    <StackPanel>
+      <TextBlock Classes="headline"
+                 Text="{Binding Heading}" />
+
+      <TextBlock Margin="0,10,0,0"
+                 Classes="body"
+                 Text="{Binding Body}" />
+
+      <CheckBox Margin="0,16,0,0"
+                FontSize="13"
+                Content="{Binding DontAskText}"
+                IsChecked="{Binding DontAsk, Mode=TwoWay}" />
+
+      <StackPanel Margin="0,18,0,0"
+                  HorizontalAlignment="Right"
+                  Orientation="Horizontal"
+                  Spacing="8">
+        <Button Classes="dialog"
+                IsCancel="True"
+                Content="{Binding CancelText}"
+                Click="OnCancelClick" />
+        <Button Classes="dialog danger"
+                Content="{Binding ExitText}"
+                Click="OnExitClick" />
+        <Button Name="HideButton"
+                Classes="dialog accent"
+                IsDefault="True"
+                Content="{Binding HideToTrayText}"
+                Click="OnHideClick" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>
