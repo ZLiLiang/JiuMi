@@ -152,6 +152,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             Language = ReadLanguage(root),
             Theme = ReadTheme(root),
             NavExpanded = ReadNavExpanded(root),
+            CloseAction = ReadCloseAction(root),
             OnlineDataEnabled = ReadOnlineDataEnabled(root),
             WorldClock = worldClock,
             ImageConvert = ReadImageConvert(root),
@@ -210,6 +211,25 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         return !root.TryGetProperty("navExpanded", out JsonElement element) ||
             element.ValueKind != JsonValueKind.False;
+    }
+
+    private static CloseAction ReadCloseAction(JsonElement root)
+    {
+        if (!root.TryGetProperty("closeAction", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.String)
+        {
+            return CloseAction.Ask;
+        }
+
+        string? value = element.GetString();
+        if (string.Equals(value, "minimizeToTray", StringComparison.OrdinalIgnoreCase))
+        {
+            return CloseAction.MinimizeToTray;
+        }
+
+        return string.Equals(value, "exit", StringComparison.OrdinalIgnoreCase)
+            ? CloseAction.Exit
+            : CloseAction.Ask;
     }
 
     private static bool ReadOnlineDataEnabled(JsonElement root)
@@ -414,6 +434,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             Language = settings.Language,
             Theme = ToStorageValue(settings.Theme),
             NavExpanded = settings.NavExpanded,
+            CloseAction = ToStorageValue(settings.CloseAction),
             OnlineDataEnabled = settings.OnlineDataEnabled,
             ImageConvert = new ImageConvertDocument
             {
@@ -465,6 +486,16 @@ public sealed class JsonSettingsStore : ISettingsStore
             AppTheme.Light => "light",
             AppTheme.Dark => "dark",
             _ => "system",
+        };
+    }
+
+    private static string ToStorageValue(CloseAction action)
+    {
+        return action switch
+        {
+            CloseAction.MinimizeToTray => "minimizeToTray",
+            CloseAction.Exit => "exit",
+            _ => "ask",
         };
     }
 
@@ -533,6 +564,12 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public bool NavExpanded
+        {
+            get;
+            init;
+        }
+
+        public string? CloseAction
         {
             get;
             init;

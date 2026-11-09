@@ -7,6 +7,7 @@ using JiuMi.Application;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Notifications;
+using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
 using JiuMi.ViewModels;
 using JiuMi.Views;
@@ -30,6 +31,8 @@ public sealed class ShellLifecycle
     private readonly IUserNotification _notifications;
     private readonly IErrorReporter _errorReporter;
     private readonly IApplicationInfo _applicationInfo;
+    private readonly ISettingsStore _settingsStore;
+    private readonly ErrorRecordFactory _recordFactory;
     private readonly Serilog.ILogger _logger;
     private readonly object _pendingSync = new();
     private readonly HashSet<string> _notifiedCodes = new(StringComparer.Ordinal);
@@ -42,8 +45,9 @@ public sealed class ShellLifecycle
     private WindowState _restoreState = WindowState.Normal;
     private bool _hasPendingActivation;
     private bool _trayAvailable;
-    private bool _minimizedHintShown;
     private bool _running;
+    private bool _allowClose;
+    private bool _closeDialogOpen;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ShellLifecycle"/> class.
@@ -53,6 +57,8 @@ public sealed class ShellLifecycle
     /// <param name="notifications">Delivers the short system notifications.</param>
     /// <param name="errorReporter">Supplies the records that need a notification while hidden.</param>
     /// <param name="applicationInfo">Supplies the name shown by the tray tooltip and notifications.</param>
+    /// <param name="settingsStore">Supplies and stores the close behavior.</param>
+    /// <param name="recordFactory">Creates the records for a failed close-behavior save.</param>
     /// <param name="logger">Receives the lifecycle decisions.</param>
     public ShellLifecycle(
         ISingleInstanceCoordinator singleInstance,
@@ -60,6 +66,8 @@ public sealed class ShellLifecycle
         IUserNotification notifications,
         IErrorReporter errorReporter,
         IApplicationInfo applicationInfo,
+        ISettingsStore settingsStore,
+        ErrorRecordFactory recordFactory,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(singleInstance);
@@ -67,6 +75,8 @@ public sealed class ShellLifecycle
         ArgumentNullException.ThrowIfNull(notifications);
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(applicationInfo);
+        ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(logger);
 
         _singleInstance = singleInstance;
@@ -74,6 +84,8 @@ public sealed class ShellLifecycle
         _notifications = notifications;
         _errorReporter = errorReporter;
         _applicationInfo = applicationInfo;
+        _settingsStore = settingsStore;
+        _recordFactory = recordFactory;
         _logger = logger;
 
         _singleInstance.ActivationRequested += OnActivationRequested;
@@ -140,6 +152,7 @@ public sealed class ShellLifecycle
         }
 
         shell.PropertyChanged += OnShellPropertyChanged;
+        shell.Closing += OnShellClosing;
         _errorReporter.Reported += OnErrorReported;
         _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu());
 
@@ -149,7 +162,8 @@ public sealed class ShellLifecycle
         }
         else
         {
-            _logger.Debug("Tray icon is unavailable; minimizing keeps the window in the taskbar");
+            _logger.Debug(
+                "Tray icon is unavailable; closing the window exits and minimizing keeps it in the taskbar");
         }
 
         TryConsumePendingActivation();
@@ -236,7 +250,7 @@ public sealed class ShellLifecycle
         shell.WindowState = _restoreState;
         shell.Show();
         shell.Activate();
-        _logger.Information("Shell restored from the tray");
+        _logger.Information("Shell restored");
     }
 
     private void OnShellPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs change)
@@ -252,11 +266,6 @@ public sealed class ShellLifecycle
         _restoreState = change.GetOldValue<WindowState>() == WindowState.Maximized
             ? WindowState.Maximized
             : WindowState.Normal;
-
-        if (sender is MainWindow shell)
-        {
-            Dispatcher.UIThread.Post(() => HideToTray(shell));
-        }
     }
 
     private void HideToTray(MainWindow shell)
@@ -267,18 +276,146 @@ public sealed class ShellLifecycle
             return;
         }
 
+        // The close path can hide a normal or maximized window; a minimized window keeps the shape
+        // recorded when it was minimized.
+        if (shell.WindowState != WindowState.Minimized)
+        {
+            _restoreState = shell.WindowState == WindowState.Maximized
+                ? WindowState.Maximized
+                : WindowState.Normal;
+        }
+
         shell.ShowInTaskbar = false;
         shell.Hide();
         _logger.Information("Shell hidden to the tray");
+    }
 
-        if (_minimizedHintShown)
+    private void OnShellClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (sender is not MainWindow shell)
         {
             return;
         }
 
-        _minimizedHintShown = true;
-        ShowNotification(Localized("Shell.Tray.MinimizedHint"));
+        // An explicit exit, an OS shutdown or a missing tray bypasses the question.
+        if (_allowClose ||
+            e.CloseReason is WindowCloseReason.OSShutdown or WindowCloseReason.ApplicationShutdown ||
+            !_trayAvailable)
+        {
+            SaveOnExit();
+            return;
+        }
+
+        CloseAction action = _settingsStore.Current.CloseAction;
+        if (action == CloseAction.Exit)
+        {
+            SaveOnExit();
+            return;
+        }
+
+        // The window survives this pass: either it is hidden after the event, or the dialog decides.
+        e.Cancel = true;
+        if (action == CloseAction.MinimizeToTray)
+        {
+            Dispatcher.UIThread.Post(() => HideToTray(shell));
+            return;
+        }
+
+        if (_localization is not { } localization)
+        {
+            // Without text the question cannot be shown; letting the close through is the only way out.
+            e.Cancel = false;
+            SaveOnExit();
+            return;
+        }
+
+        if (_closeDialogOpen)
+        {
+            return;
+        }
+
+        _closeDialogOpen = true;
+        Dispatcher.UIThread.Post(() => _ = ShowCloseDialogAsync(shell, localization));
     }
+
+    private async Task ShowCloseDialogAsync(MainWindow shell, ILocalizationService localization)
+    {
+        try
+        {
+            if (!shell.IsVisible || shell.WindowState == WindowState.Minimized)
+            {
+                RestoreShell(shell);
+            }
+
+            var model = new CloseConfirmWindowViewModel(
+                _applicationInfo.Name,
+                localization.Format("Shell.Close.Title", _applicationInfo.Name),
+                localization["Shell.Close.Body"],
+                localization["Shell.Close.DontAsk"],
+                localization["Shell.Close.Cancel"],
+                localization["Shell.Close.Exit"],
+                localization["Shell.Close.MinimizeToTray"]);
+            var dialog = new CloseConfirmWindow { DataContext = model };
+
+            CloseConfirmResult? result = await dialog.ShowDialog<CloseConfirmResult>(shell);
+            ApplyCloseResult(shell, result);
+        }
+        catch (Exception exception)
+        {
+            // A dialog that cannot be shown must not take the window down.
+            _logger.Warning(exception, "The close confirmation failed; the window stays open");
+        }
+        finally
+        {
+            _closeDialogOpen = false;
+        }
+    }
+
+    private void ApplyCloseResult(MainWindow shell, CloseConfirmResult? result)
+    {
+        if (result is null || result.Action == CloseConfirmAction.Cancel)
+        {
+            return;
+        }
+
+        if (result.DontAsk)
+        {
+            SaveCloseAction(result.Action);
+        }
+
+        if (result.Action == CloseConfirmAction.Exit)
+        {
+            _allowClose = true;
+            shell.Close();
+            return;
+        }
+
+        HideToTray(shell);
+    }
+
+    private void SaveCloseAction(CloseConfirmAction action)
+    {
+        CloseAction stored = action == CloseConfirmAction.MinimizeToTray
+            ? CloseAction.MinimizeToTray
+            : CloseAction.Exit;
+        SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with
+        {
+            CloseAction = stored,
+        });
+
+        if (result.Error is { } error)
+        {
+            _errorReporter.Report(_recordFactory.Create(
+                ErrorCodes.SettingsSaveFailed,
+                "Settings.CloseAction",
+                error));
+            return;
+        }
+
+        _logger.Debug("Close action saved as {CloseAction}", stored);
+    }
+
+    private void SaveOnExit() => _viewModel?.SaveOnExit();
 
     private void OnTrayShowRequested(object? sender, EventArgs e) =>
         Dispatcher.UIThread.Post(() => TryActivate());
@@ -299,8 +436,8 @@ public sealed class ShellLifecycle
     {
         if (_shell is { } shell)
         {
-            // The close button is the exit path, so the tray reuses it instead of shutting down behind
-            // the window and skipping the save on exit.
+            // The tray exit is explicit: it skips the close question but still saves on the way out.
+            _allowClose = true;
             shell.Close();
             return;
         }

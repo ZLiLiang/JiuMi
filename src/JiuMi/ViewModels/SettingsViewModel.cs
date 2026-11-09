@@ -103,6 +103,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OpenConfigFolderCommand = new RelayCommand(OpenConfigFolder, () => CanOpenConfigFolder);
         OpenRepositoryCommand = new RelayCommand(OpenRepository);
         SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
+        SelectCloseActionCommand = new RelayCommand<CloseAction>(SelectCloseAction);
         CheckCatalogCommand = new AsyncRelayCommand(CheckCatalogAsync, () => CanCheckCatalog);
         _localization.PropertyChanged += OnLocalizationChanged;
         _themeService.PropertyChanged += OnThemeServiceChanged;
@@ -220,6 +221,22 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets a value indicating whether closing the main window asks every time.
+    /// </summary>
+    public bool IsAskCloseAction => _settingsStore.Current.CloseAction == CloseAction.Ask;
+
+    /// <summary>
+    /// Gets a value indicating whether closing the main window hides it to the tray.
+    /// </summary>
+    public bool IsMinimizeToTrayCloseAction =>
+        _settingsStore.Current.CloseAction == CloseAction.MinimizeToTray;
+
+    /// <summary>
+    /// Gets a value indicating whether closing the main window exits the process.
+    /// </summary>
+    public bool IsExitCloseAction => _settingsStore.Current.CloseAction == CloseAction.Exit;
+
+    /// <summary>
     /// Gets a value indicating whether the interface follows the operating system theme.
     /// </summary>
     public bool IsFollowSystemTheme => _themeService.Current == AppTheme.System;
@@ -320,6 +337,14 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets the command that switches what closing the main window does.
+    /// </summary>
+    public IRelayCommand<CloseAction> SelectCloseActionCommand
+    {
+        get;
+    }
+
+    /// <summary>
     /// Gets the command that opens the effective settings directory.
     /// </summary>
     public IRelayCommand OpenConfigFolderCommand
@@ -379,6 +404,22 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         {
             Theme = theme,
         });
+
+    private void SelectCloseAction(CloseAction action)
+    {
+        if (_settingsStore.Current.CloseAction == action)
+        {
+            return;
+        }
+
+        SaveSettings(_settingsStore.Current with
+        {
+            CloseAction = action,
+        });
+        OnPropertyChanged(nameof(IsAskCloseAction));
+        OnPropertyChanged(nameof(IsMinimizeToTrayCloseAction));
+        OnPropertyChanged(nameof(IsExitCloseAction));
+    }
 
     private void SaveSettings(AppSettings settings)
     {

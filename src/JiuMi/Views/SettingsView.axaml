@@ -116,6 +116,56 @@
                        FontSize="14"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Text="{loc:Localize Settings.Window.Section}" />
+            <Border CornerRadius="8"
+                    ClipToBounds="True"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+              <Grid Margin="18,14" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                  <TextBlock FontSize="13"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{loc:Localize Settings.Window.Label}" />
+                  <TextBlock Margin="0,2,0,0"
+                             FontSize="11.5"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                             Text="{loc:Localize Settings.Window.Hint}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="14"
+                            VerticalAlignment="Center">
+                  <RadioButton GroupName="CloseAction"
+                               FontSize="13"
+                               Content="{loc:Localize Settings.Window.Ask}"
+                               IsChecked="{Binding IsAskCloseAction, Mode=OneWay}"
+                               Command="{Binding SelectCloseActionCommand}"
+                               CommandParameter="{x:Static settings:CloseAction.Ask}" />
+                  <RadioButton GroupName="CloseAction"
+                               FontSize="13"
+                               Content="{loc:Localize Settings.Window.MinimizeToTray}"
+                               IsChecked="{Binding IsMinimizeToTrayCloseAction, Mode=OneWay}"
+                               Command="{Binding SelectCloseActionCommand}"
+                               CommandParameter="{x:Static settings:CloseAction.MinimizeToTray}" />
+                  <RadioButton GroupName="CloseAction"
+                               FontSize="13"
+                               Content="{loc:Localize Settings.Window.Exit}"
+                               IsChecked="{Binding IsExitCloseAction, Mode=OneWay}"
+                               Command="{Binding SelectCloseActionCommand}"
+                               CommandParameter="{x:Static settings:CloseAction.Exit}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <StackPanel>
+            <TextBlock Margin="0,0,0,8"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                        Text="{loc:Localize Settings.Data.Section}" />
             <Border CornerRadius="8"
                     ClipToBounds="True"
