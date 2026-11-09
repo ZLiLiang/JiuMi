@@ -109,12 +109,16 @@ public partial class FileRenameView : UserControl
             }
 
             var options = new FolderPickerOpenOptions { AllowMultiple = false };
-            await ApplyStartLocationAsync(options, topLevel, viewModel);
+            await PickerStartLocation.ApplyAsync(
+                options,
+                topLevel,
+                viewModel.ReportPageFailure,
+                viewModel.PickerStartDirectory);
 
             IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
             if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
             {
-                viewModel.RememberPickerDirectory(path);
+                viewModel.RememberSourceDirectory(path);
                 await viewModel.SetDirectoryAsync(path);
             }
         }
@@ -140,7 +144,11 @@ public partial class FileRenameView : UserControl
             }
 
             var options = new FilePickerOpenOptions { AllowMultiple = true };
-            await ApplyStartLocationAsync(options, topLevel, viewModel);
+            await PickerStartLocation.ApplyAsync(
+                options,
+                topLevel,
+                viewModel.ReportPageFailure,
+                viewModel.PickerStartDirectory);
 
             IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
             var paths = new List<string>(files.Count);
@@ -154,7 +162,7 @@ public partial class FileRenameView : UserControl
 
             if (paths.Count > 0)
             {
-                viewModel.RememberPickerFile(paths[0]);
+                viewModel.RememberSourceFile(paths[0]);
             }
 
             await viewModel.AddFilesAsync(paths);
@@ -181,7 +189,11 @@ public partial class FileRenameView : UserControl
             }
 
             var options = new FolderPickerOpenOptions { AllowMultiple = true };
-            await ApplyStartLocationAsync(options, topLevel, viewModel);
+            await PickerStartLocation.ApplyAsync(
+                options,
+                topLevel,
+                viewModel.ReportPageFailure,
+                viewModel.PickerStartDirectory);
 
             IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
             var paths = new List<string>(folders.Count);
@@ -195,7 +207,7 @@ public partial class FileRenameView : UserControl
 
             if (paths.Count > 0)
             {
-                viewModel.RememberPickerDirectory(paths[0]);
+                viewModel.RememberSourceDirectory(paths[0]);
             }
 
             await viewModel.AddFoldersAsync(paths);
@@ -335,20 +347,6 @@ public partial class FileRenameView : UserControl
         }
     }
 
-    private static async Task ApplyStartLocationAsync(
-        PickerOptions options,
-        TopLevel topLevel,
-        FileRenameViewModel viewModel)
-    {
-        if (await PickerStartLocation.ResolveAsync(
-                topLevel,
-                viewModel.ReportPageFailure,
-                viewModel.PickerStartDirectory) is { } startLocation)
-        {
-            options.SuggestedStartLocation = startLocation;
-        }
-    }
-
     private void OnDragEnter(object? sender, DragEventArgs e) => UpdateDragState(e);
 
     private void OnDragOver(object? sender, DragEventArgs e) => UpdateDragState(e);
@@ -383,7 +381,6 @@ public partial class FileRenameView : UserControl
                 var folders = new List<string>();
                 var files = new List<string>();
                 string? firstPath = null;
-                bool firstIsDirectory = false;
                 foreach (IStorageItem item in items)
                 {
                     if (item.TryGetLocalPath() is not { } path)
@@ -391,14 +388,8 @@ public partial class FileRenameView : UserControl
                         continue;
                     }
 
-                    bool isDirectory = viewModel.IsDirectory(path);
-                    if (firstPath is null)
-                    {
-                        firstPath = path;
-                        firstIsDirectory = isDirectory;
-                    }
-
-                    if (isDirectory)
+                    firstPath ??= path;
+                    if (viewModel.IsDirectory(path))
                     {
                         folders.Add(path);
                     }
@@ -408,17 +399,7 @@ public partial class FileRenameView : UserControl
                     }
                 }
 
-                if (firstPath is not null)
-                {
-                    if (firstIsDirectory)
-                    {
-                        viewModel.RememberPickerDirectory(firstPath);
-                    }
-                    else
-                    {
-                        viewModel.RememberPickerFile(firstPath);
-                    }
-                }
+                viewModel.RememberDroppedItem(firstPath);
 
                 if (folders.Count > 0 || files.Count > 0)
                 {
@@ -431,8 +412,7 @@ public partial class FileRenameView : UserControl
             }
 
             string? directory = null;
-            string? firstLocalPath = null;
-            bool firstLocalIsDirectory = false;
+            string? droppedPath = null;
             foreach (IStorageItem item in items)
             {
                 if (item.TryGetLocalPath() is not { } path)
@@ -440,14 +420,8 @@ public partial class FileRenameView : UserControl
                     continue;
                 }
 
-                bool isDirectory = viewModel.IsDirectory(path);
-                if (firstLocalPath is null)
-                {
-                    firstLocalPath = path;
-                    firstLocalIsDirectory = isDirectory;
-                }
-
-                if (isDirectory)
+                droppedPath ??= path;
+                if (viewModel.IsDirectory(path))
                 {
                     directory = path;
                     break;
@@ -459,17 +433,7 @@ public partial class FileRenameView : UserControl
                 return;
             }
 
-            if (firstLocalPath is { } first)
-            {
-                if (firstLocalIsDirectory)
-                {
-                    viewModel.RememberPickerDirectory(first);
-                }
-                else
-                {
-                    viewModel.RememberPickerFile(first);
-                }
-            }
+            viewModel.RememberDroppedItem(droppedPath);
 
             Dispatcher.UIThread.Post(
                 () => OpenDroppedFolder(viewModel, directory),

@@ -17,9 +17,8 @@ public sealed class FileRenamePickerDirectoryTests
     {
         var memory = new FileRenamePickerDirectory();
 
-        bool changed = memory.Remember(@"D:\a");
+        memory.Remember(@"D:\a");
 
-        Assert.True(changed);
         Assert.Equal(@"D:\a", memory.Directory);
     }
 
@@ -32,21 +31,19 @@ public sealed class FileRenamePickerDirectoryTests
         var memory = new FileRenamePickerDirectory();
         memory.Remember(@"D:\a");
 
-        bool changed = memory.Remember(blank);
+        memory.Remember(blank);
 
-        Assert.False(changed);
         Assert.Equal(@"D:\a", memory.Directory);
     }
 
     [Fact]
-    public void Remember_GivenTheSameDirectory_ReportsNoChange()
+    public void Remember_GivenTheSameDirectory_KeepsTheEarlierValue()
     {
         var memory = new FileRenamePickerDirectory();
         memory.Remember(@"D:\a");
 
-        bool changed = memory.Remember(@"d:\A");
+        memory.Remember(@"d:\A");
 
-        Assert.False(changed);
         Assert.Equal(@"D:\a", memory.Directory);
     }
 
@@ -56,9 +53,8 @@ public sealed class FileRenamePickerDirectoryTests
         var memory = new FileRenamePickerDirectory();
         memory.Remember(@"D:\a");
 
-        bool changed = memory.Remember(@"D:\b");
+        memory.Remember(@"D:\b");
 
-        Assert.True(changed);
         Assert.Equal(@"D:\b", memory.Directory);
     }
 }

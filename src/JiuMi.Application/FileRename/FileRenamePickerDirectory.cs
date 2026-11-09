@@ -19,21 +19,19 @@ public sealed class FileRenamePickerDirectory
     /// cleared during the session.
     /// </summary>
     /// <param name="directory">The chosen directory.</param>
-    /// <returns>Whether the remembered value changed.</returns>
-    public bool Remember(string? directory)
+    public void Remember(string? directory)
     {
         if (string.IsNullOrWhiteSpace(directory))
         {
-            return false;
+            return;
         }
 
         string normalized = directory.Trim();
         if (string.Equals(normalized, _directory, StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            return;
         }
 
         _directory = normalized;
-        return true;
     }
 }

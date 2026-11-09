@@ -813,20 +813,42 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         !string.IsNullOrWhiteSpace(path) && _pathProbe.IsDirectory(path);
 
     /// <summary>
-    /// Remembers a folder the user chose for this session, so the next picker opens there.
+    /// Remembers a folder the user chose through a picker or a drop, so the next picker opens
+    /// there.
     /// </summary>
     /// <param name="directory">The chosen folder.</param>
-    public void RememberPickerDirectory(string? directory) => _pickerMemory.Remember(directory);
+    internal void RememberSourceDirectory(string? directory) => _pickerMemory.Remember(directory);
 
     /// <summary>
-    /// Remembers the folder holding a file the user chose for this session.
+    /// Remembers the folder holding a file the user chose through a picker or a drop.
     /// </summary>
     /// <param name="filePath">The chosen file.</param>
-    public void RememberPickerFile(string? filePath)
+    internal void RememberSourceFile(string? filePath)
     {
         if (!string.IsNullOrWhiteSpace(filePath))
         {
-            RememberPickerDirectory(Path.GetDirectoryName(filePath));
+            RememberSourceDirectory(Path.GetDirectoryName(filePath));
+        }
+    }
+
+    /// <summary>
+    /// Remembers the folder a dropped item points at: the folder itself, or the parent of a file.
+    /// </summary>
+    /// <param name="path">The first local item of the drop.</param>
+    internal void RememberDroppedItem(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        if (IsDirectory(path))
+        {
+            RememberSourceDirectory(path);
+        }
+        else
+        {
+            RememberSourceFile(path);
         }
     }
 

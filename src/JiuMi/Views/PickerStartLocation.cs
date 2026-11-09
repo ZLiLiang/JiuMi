@@ -14,6 +14,28 @@ namespace JiuMi.Views;
 internal static class PickerStartLocation
 {
     /// <summary>
+    /// Sets a picker's suggested start location from a remembered directory, leaving the system
+    /// default when the directory is missing or cannot be opened.
+    /// </summary>
+    /// <param name="options">The picker options to update.</param>
+    /// <param name="topLevel">Supplies the storage provider that converts the path.</param>
+    /// <param name="onFailure">Receives a directory that could not be converted.</param>
+    /// <param name="candidate">The remembered directory.</param>
+    /// <returns>A task that completes when the options are updated.</returns>
+    public static async Task ApplyAsync(
+        PickerOptions options,
+        TopLevel topLevel,
+        Action<Exception> onFailure,
+        string? candidate)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (await ResolveAsync(topLevel, onFailure, candidate) is { } startLocation)
+        {
+            options.SuggestedStartLocation = startLocation;
+        }
+    }
+
+    /// <summary>
     /// Returns the first candidate directory that exists and can be opened.
     /// </summary>
     /// <param name="topLevel">Supplies the storage provider that converts the path.</param>
