@@ -746,13 +746,13 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 布局与排版
 
-- 卡片外边距 24（容纳投影），圆角 12，内边距 30,26,30,26。
-- 卡片背景用 `JiuMiWindowBackdropBrush` 渐变 + `JiuMiWindowHighlightBrush` 高光 + 1px `JiuMiIslandBorderBrush` + `JiuMiIslandShadow`，与主窗口同一套语言。
+- 卡片外边距 24（容纳投影），圆角 12，内边距 36,32,36,32。
+- 卡片背景用 `SolidBackgroundFillColorBaseBrush` 实色 + 1px `CardStrokeColorDefaultBrush` 描边 + `JiuMiIslandShadow`，与主窗口内容卡片同一套表面语言。
 - 卡片顶部不显示应用名、应用图标或拖动区；内容从标题开始。
 - 标题「关闭 JiuMi 窗口？」20px / SemiBold / `TextFillColorPrimaryBrush`，行高 28。
-- 正文「隐藏到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。」14px / Regular / `TextFillColorSecondaryBrush`，行高 20，与标题间距 8。
-- 复选框「不再询问」13px，与正文间距 14。
-- 按钮组右对齐，高 32，间距 8，与复选框间距 16：`取消`（默认次要）、`退出应用`（危险次要）、`隐藏到托盘`（强调填充）。
+- 正文「隐藏到托盘后，应用会继续在后台运行；退出应用会停止正在进行的工作。」14px / Regular / `TextFillColorSecondaryBrush`，行高 20，与标题间距 10。
+- 复选框「不再询问」13px，与正文间距 16。
+- 按钮组右对齐，高 32，间距 8，与复选框间距 18：`取消`（默认次要）、`退出应用`（危险次要）、`隐藏到托盘`（强调填充）。
 - 高度随内容收紧，不保留固定高度的空白区。
 
 ### 按钮与键盘
