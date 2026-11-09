@@ -59,10 +59,11 @@
             IsHitTestVisible="False"
             IsVisible="False" />
 
+    <!-- The full-bleed wrapper keeps the side gutters draggable. -->
     <Grid Grid.Row="0"
           Background="Transparent"
           chrome:WindowDecorationProperties.ElementRole="TitleBar">
-      <Grid ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
+      <Grid ColumnDefinitions="Auto,*" Margin="16,0">
         <Border x:Name="TitleBarMark"
                 chrome:WindowDecorationProperties.ElementRole="User"
                 Width="18"
