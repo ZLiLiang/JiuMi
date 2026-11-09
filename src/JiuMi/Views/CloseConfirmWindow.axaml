@@ -42,48 +42,42 @@
   </Window.Styles>
 
   <Border Margin="24"
-          Padding="30,26,30,26"
+          Padding="36,32,36,32"
           CornerRadius="12"
-          Background="{DynamicResource JiuMiWindowBackdropBrush}"
-          BorderBrush="{DynamicResource JiuMiIslandBorderBrush}"
+          Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+          BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
           BorderThickness="1"
           BoxShadow="{DynamicResource JiuMiIslandShadow}">
-    <Grid>
-      <Border Background="{DynamicResource JiuMiWindowHighlightBrush}"
-              CornerRadius="12"
-              IsHitTestVisible="False" />
+    <StackPanel>
+      <TextBlock Classes="headline"
+                 Text="{Binding Heading}" />
 
-      <StackPanel>
-        <TextBlock Classes="headline"
-                   Text="{Binding Heading}" />
+      <TextBlock Margin="0,10,0,0"
+                 Classes="body"
+                 Text="{Binding Body}" />
 
-        <TextBlock Margin="0,8,0,0"
-                   Classes="body"
-                   Text="{Binding Body}" />
+      <CheckBox Margin="0,16,0,0"
+                FontSize="13"
+                Content="{Binding DontAskText}"
+                IsChecked="{Binding DontAsk, Mode=TwoWay}" />
 
-        <CheckBox Margin="0,14,0,0"
-                  FontSize="13"
-                  Content="{Binding DontAskText}"
-                  IsChecked="{Binding DontAsk, Mode=TwoWay}" />
-
-        <StackPanel Margin="0,16,0,0"
-                    HorizontalAlignment="Right"
-                    Orientation="Horizontal"
-                    Spacing="8">
-          <Button Classes="dialog"
-                  IsCancel="True"
-                  Content="{Binding CancelText}"
-                  Click="OnCancelClick" />
-          <Button Classes="dialog danger"
-                  Content="{Binding ExitText}"
-                  Click="OnExitClick" />
-          <Button Name="HideButton"
-                  Classes="dialog accent"
-                  IsDefault="True"
-                  Content="{Binding HideToTrayText}"
-                  Click="OnHideClick" />
-        </StackPanel>
+      <StackPanel Margin="0,18,0,0"
+                  HorizontalAlignment="Right"
+                  Orientation="Horizontal"
+                  Spacing="8">
+        <Button Classes="dialog"
+                IsCancel="True"
+                Content="{Binding CancelText}"
+                Click="OnCancelClick" />
+        <Button Classes="dialog danger"
+                Content="{Binding ExitText}"
+                Click="OnExitClick" />
+        <Button Name="HideButton"
+                Classes="dialog accent"
+                IsDefault="True"
+                Content="{Binding HideToTrayText}"
+                Click="OnHideClick" />
       </StackPanel>
-    </Grid>
+    </StackPanel>
   </Border>
 </Window>
