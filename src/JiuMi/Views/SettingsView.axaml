@@ -146,7 +146,7 @@
                                CommandParameter="{x:Static settings:CloseAction.Ask}" />
                   <RadioButton GroupName="CloseAction"
                                FontSize="13"
-                               Content="{loc:Localize Settings.Window.MinimizeToTray}"
+                               Content="{loc:Localize Settings.Window.HideToTray}"
                                IsChecked="{Binding IsMinimizeToTrayCloseAction, Mode=OneWay}"
                                Command="{Binding SelectCloseActionCommand}"
                                CommandParameter="{x:Static settings:CloseAction.MinimizeToTray}" />

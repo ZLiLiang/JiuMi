@@ -354,7 +354,7 @@ public sealed class ShellLifecycle
                 localization["Shell.Close.DontAsk"],
                 localization["Shell.Close.Cancel"],
                 localization["Shell.Close.Exit"],
-                localization["Shell.Close.MinimizeToTray"]);
+                localization["Shell.Close.HideToTray"]);
             var dialog = new CloseConfirmWindow { DataContext = model };
 
             CloseConfirmResult? result = await dialog.ShowDialog<CloseConfirmResult>(shell);
@@ -395,7 +395,7 @@ public sealed class ShellLifecycle
 
     private void SaveCloseAction(CloseConfirmAction action)
     {
-        CloseAction stored = action == CloseConfirmAction.MinimizeToTray
+        CloseAction stored = action == CloseConfirmAction.HideToTray
             ? CloseAction.MinimizeToTray
             : CloseAction.Exit;
         SettingsSaveResult result = _settingsStore.Save(_settingsStore.Current with

@@ -25,7 +25,7 @@ public partial class CloseConfirmWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        Dispatcher.UIThread.Post(() => MinimizeButton.Focus());
+        Dispatcher.UIThread.Post(() => HideButton.Focus());
     }
 
     /// <inheritdoc />
@@ -37,7 +37,7 @@ public partial class CloseConfirmWindow : Window
             return;
         }
 
-        // The title bar close button is another way to cancel.
+        // The borderless card has no close button; Esc, Alt+F4 and the card's cancel all agree.
         e.Cancel = true;
         Complete(CloseConfirmAction.Cancel);
     }
@@ -46,8 +46,8 @@ public partial class CloseConfirmWindow : Window
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Complete(CloseConfirmAction.Exit);
 
-    private void OnMinimizeClick(object? sender, RoutedEventArgs e) =>
-        Complete(CloseConfirmAction.MinimizeToTray);
+    private void OnHideClick(object? sender, RoutedEventArgs e) =>
+        Complete(CloseConfirmAction.HideToTray);
 
     private void Complete(CloseConfirmAction action)
     {
@@ -74,7 +74,7 @@ public enum CloseConfirmAction
     Exit,
 
     /// <summary>Hide the window to the tray.</summary>
-    MinimizeToTray,
+    HideToTray,
 }
 
 /// <summary>

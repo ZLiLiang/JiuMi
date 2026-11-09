@@ -16,7 +16,7 @@ public sealed class CloseConfirmWindowViewModel
     /// <param name="dontAsk">The label of the remember-this-choice checkbox.</param>
     /// <param name="cancel">The cancel button text.</param>
     /// <param name="exit">The exit button text.</param>
-    /// <param name="minimizeToTray">The hide-to-tray button text.</param>
+    /// <param name="hideToTray">The hide-to-tray button text.</param>
     public CloseConfirmWindowViewModel(
         string appName,
         string heading,
@@ -24,7 +24,7 @@ public sealed class CloseConfirmWindowViewModel
         string dontAsk,
         string cancel,
         string exit,
-        string minimizeToTray)
+        string hideToTray)
     {
         ArgumentNullException.ThrowIfNull(appName);
         ArgumentNullException.ThrowIfNull(heading);
@@ -32,7 +32,7 @@ public sealed class CloseConfirmWindowViewModel
         ArgumentNullException.ThrowIfNull(dontAsk);
         ArgumentNullException.ThrowIfNull(cancel);
         ArgumentNullException.ThrowIfNull(exit);
-        ArgumentNullException.ThrowIfNull(minimizeToTray);
+        ArgumentNullException.ThrowIfNull(hideToTray);
 
         AppName = appName;
         Heading = heading;
@@ -40,7 +40,7 @@ public sealed class CloseConfirmWindowViewModel
         DontAskText = dontAsk;
         CancelText = cancel;
         ExitText = exit;
-        MinimizeToTrayText = minimizeToTray;
+        HideToTrayText = hideToTray;
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ public sealed class CloseConfirmWindowViewModel
     /// <summary>
     /// Gets the hide-to-tray button text.
     /// </summary>
-    public string MinimizeToTrayText
+    public string HideToTrayText
     {
         get;
     }

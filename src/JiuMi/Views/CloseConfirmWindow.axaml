@@ -5,11 +5,13 @@
         x:DataType="vm:CloseConfirmWindowViewModel"
         Title="{Binding AppName}"
         Width="420"
-        Height="240"
+        SizeToContent="Height"
         CanResize="False"
+        WindowDecorations="None"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
   <Window.Styles>
     <Style Selector="TextBlock.headline">
       <Setter Property="FontSize" Value="20" />
@@ -39,41 +41,48 @@
     </Style>
   </Window.Styles>
 
-  <Border Classes="island" Margin="8" Padding="24">
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
-      <TextBlock Grid.Row="0"
-                 Classes="headline"
-                 Text="{Binding Heading}" />
+  <Border Margin="24"
+          Padding="22,20,22,22"
+          CornerRadius="12"
+          Background="{DynamicResource JiuMiWindowBackdropBrush}"
+          BorderBrush="{DynamicResource JiuMiIslandBorderBrush}"
+          BorderThickness="1"
+          BoxShadow="{DynamicResource JiuMiIslandShadow}">
+    <Grid>
+      <Border Background="{DynamicResource JiuMiWindowHighlightBrush}"
+              CornerRadius="12"
+              IsHitTestVisible="False" />
 
-      <TextBlock Grid.Row="1"
-                 Margin="0,8,0,0"
-                 Classes="body"
-                 Text="{Binding Body}" />
+      <StackPanel>
+        <TextBlock Classes="headline"
+                   Text="{Binding Heading}" />
 
-      <CheckBox Grid.Row="2"
-                Margin="0,14,0,0"
-                VerticalAlignment="Top"
-                FontSize="13"
-                Content="{Binding DontAskText}"
-                IsChecked="{Binding DontAsk, Mode=TwoWay}" />
+        <TextBlock Margin="0,6,0,0"
+                   Classes="body"
+                   Text="{Binding Body}" />
 
-      <StackPanel Grid.Row="3"
-                  Margin="0,16,0,0"
-                  HorizontalAlignment="Right"
-                  Orientation="Horizontal"
-                  Spacing="8">
-        <Button Classes="dialog"
-                IsCancel="True"
-                Content="{Binding CancelText}"
-                Click="OnCancelClick" />
-        <Button Classes="dialog danger"
-                Content="{Binding ExitText}"
-                Click="OnExitClick" />
-        <Button Name="MinimizeButton"
-                Classes="dialog accent"
-                IsDefault="True"
-                Content="{Binding MinimizeToTrayText}"
-                Click="OnMinimizeClick" />
+        <CheckBox Margin="0,12,0,0"
+                  FontSize="13"
+                  Content="{Binding DontAskText}"
+                  IsChecked="{Binding DontAsk, Mode=TwoWay}" />
+
+        <StackPanel Margin="0,14,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Spacing="8">
+          <Button Classes="dialog"
+                  IsCancel="True"
+                  Content="{Binding CancelText}"
+                  Click="OnCancelClick" />
+          <Button Classes="dialog danger"
+                  Content="{Binding ExitText}"
+                  Click="OnExitClick" />
+          <Button Name="HideButton"
+                  Classes="dialog accent"
+                  IsDefault="True"
+                  Content="{Binding HideToTrayText}"
+                  Click="OnHideClick" />
+        </StackPanel>
       </StackPanel>
     </Grid>
   </Border>
