@@ -31,7 +31,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _scanTimer;
     private readonly CancellationTokenSource _lifetime = new();
-    private string? _selectedDirectory;
+    private readonly List<RenameSource> _sources = [];
     private RenameScanResult? _scan;
     private RenamePlan _plan = new([], [], 0);
     private RenameBatch? _lastBatch;
@@ -156,11 +156,50 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         get;
     } = [];
 
-    /// <summary>Gets a value indicating whether a folder is selected.</summary>
-    public bool HasDirectory => _selectedDirectory is not null;
+    /// <summary>Gets the source chips shown above the preview in file mode.</summary>
+    public ObservableCollection<FileRenameSourceViewModel> SourceRows
+    {
+        get;
+    } = [];
+
+    /// <summary>Gets a value indicating whether the page holds at least one source.</summary>
+    public bool HasSources => _sources.Count > 0;
 
     /// <summary>Gets a value indicating whether the empty state replaces the card.</summary>
-    public bool ShowEmptyState => !HasDirectory;
+    public bool ShowEmptyState => !HasSources && !HasUndoableBatch;
+
+    /// <summary>Gets a value indicating whether the source row is shown.</summary>
+    public bool ShowSourceRow => IsFilesMode && HasSources;
+
+    /// <summary>Gets a value indicating whether the source list and the header entry may change.</summary>
+    public bool CanEditSources => !_isBusy && !_isScanning;
+
+    /// <summary>Gets a value indicating whether a scan is in progress.</summary>
+    public bool IsScanning => _isScanning;
+
+    /// <summary>Gets the note shown at the end of the source row while scanning.</summary>
+    public string SourceReadingText => _localization["Tool.FileRename.Source.Reading"];
+
+    /// <summary>Gets the empty-state title for the current mode.</summary>
+    public string EmptyTitle => _localization[IsFilesMode
+        ? "Tool.FileRename.Empty.Files"
+        : "Tool.FileRename.Empty"];
+
+    /// <summary>Gets the empty-state hint for the current mode.</summary>
+    public string EmptyHint => _localization[IsFilesMode
+        ? "Tool.FileRename.Empty.Hint.Files"
+        : "Tool.FileRename.Empty.Hint"];
+
+    /// <summary>Gets the drag overlay hint for the current mode.</summary>
+    public string DropHintText => _localization[IsFilesMode
+        ? "Tool.FileRename.Drop.Hint.Files"
+        : "Tool.FileRename.Drop.Hint"];
+
+    /// <summary>Gets the add-files menu label. The flyout binds through the page data context.</summary>
+    public string AddFilesText => _localization["Tool.FileRename.Add.Files"];
+
+    /// <summary>Gets the add-folders menu label. The flyout binds through the page data context.</summary>
+    public string AddFoldersText => _localization["Tool.FileRename.Add.Folders"];
 
     /// <summary>Gets a value indicating whether files are renamed.</summary>
     public bool IsFilesMode => _target == RenameTarget.Files;
@@ -208,6 +247,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
             OnPropertyChanged(nameof(IsIdle));
             RaisePlanProperties();
+            RaiseSourceProperties();
         }
     }
 
@@ -461,6 +501,11 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     {
         get
         {
+            if (!HasSources && HasUndoableBatch)
+            {
+                return _localization["Tool.FileRename.List.Empty.NoSources"];
+            }
+
             if (!HasRuleInput)
             {
                 return _localization[_level == RenameRuleLevel.Basic
@@ -542,16 +587,18 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     public bool CanRun =>
         !_isBusy &&
         !_isScanning &&
-        _selectedDirectory is not null &&
+        HasSources &&
         _scan is not null &&
         _plan.CanExecute &&
         !(_batchVisible && _lastBatch is { IsUndone: false, RenamedCount: > 0 });
 
     /// <summary>Gets a value indicating whether the last batch may be undone.</summary>
-    public bool CanUndo => !_isBusy && _lastBatch is { IsUndone: false, RenamedCount: > 0 };
+    public bool CanUndo => !_isBusy && HasUndoableBatch;
 
     /// <summary>Gets a value indicating whether the last batch may be exported.</summary>
     public bool CanExport => !_isBusy && _lastBatch is not null;
+
+    private bool HasUndoableBatch => _lastBatch is { IsUndone: false, RenamedCount: > 0 };
 
     /// <summary>Gets the confirmation title.</summary>
     public string ConfirmTitle => _localization["Tool.FileRename.Confirm.Title"];
@@ -622,7 +669,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Scans a folder and shows its first preview.
+    /// Scans a folder and shows its first preview in folder mode.
     /// </summary>
     /// <param name="path">The chosen folder; missing folders are ignored.</param>
     /// <returns>A task that completes when the preview is rebuilt.</returns>
@@ -633,14 +680,9 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        string fullPath;
-        try
+        string? fullPath = TryGetFullPath(path);
+        if (fullPath is null)
         {
-            fullPath = Path.GetFullPath(path.Trim().Trim('"'));
-        }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
-        {
-            _logger.Warning(exception, "The chosen rename folder is not a valid path");
             return;
         }
 
@@ -650,12 +692,109 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _selectedDirectory = fullPath;
+        _sources.Clear();
+        _sources.Add(new RenameSource(1, RenameSourceKind.Folder, [fullPath]));
         _batchVisible = false;
         _scanStale = false;
-        OnPropertyChanged(nameof(HasDirectory));
-        OnPropertyChanged(nameof(ShowEmptyState));
+        RaiseSourceProperties();
         await RescanAsync();
+    }
+
+    /// <summary>
+    /// Appends the files selected together as one direct-file source.
+    /// </summary>
+    /// <param name="paths">The absolute paths returned by the file picker or a drop.</param>
+    /// <returns>A task that completes when the preview is rebuilt.</returns>
+    public async Task AddFilesAsync(IReadOnlyList<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        if (_disposed || _target != RenameTarget.Files || !CanEditSources)
+        {
+            return;
+        }
+
+        if (AddFileSource(paths))
+        {
+            await RefreshSourcesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Appends each selected folder as its own scan container.
+    /// </summary>
+    /// <param name="paths">The absolute paths returned by the folder picker or a drop.</param>
+    /// <returns>A task that completes when the preview is rebuilt.</returns>
+    public async Task AddFoldersAsync(IReadOnlyList<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        if (_disposed || _target != RenameTarget.Files || !CanEditSources)
+        {
+            return;
+        }
+
+        if (AddFolderSources(paths))
+        {
+            await RefreshSourcesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Appends dropped folders and files in one step.
+    /// </summary>
+    /// <param name="folders">The dropped directories, each becoming a scan container.</param>
+    /// <param name="files">The dropped files, added together as one direct source.</param>
+    /// <returns>A task that completes when the preview is rebuilt.</returns>
+    public async Task AddDroppedAsync(IReadOnlyList<string> folders, IReadOnlyList<string> files)
+    {
+        ArgumentNullException.ThrowIfNull(folders);
+        ArgumentNullException.ThrowIfNull(files);
+        if (_disposed || _target != RenameTarget.Files || !CanEditSources)
+        {
+            return;
+        }
+
+        bool foldersAdded = AddFolderSources(folders);
+        bool filesAdded = AddFileSource(files);
+        if (foldersAdded || filesAdded)
+        {
+            await RefreshSourcesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Removes one source and renumbers the remaining sources.
+    /// </summary>
+    /// <param name="order">The one-based add order shown on the chip.</param>
+    /// <returns>A task that completes when the preview is rebuilt.</returns>
+    public async Task RemoveSourceAsync(int order)
+    {
+        if (_disposed || !CanEditSources)
+        {
+            return;
+        }
+
+        int index = _sources.FindIndex(source => source.Order == order);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _sources.RemoveAt(index);
+        RenumberSources();
+        await RefreshSourcesAsync();
+    }
+
+    /// <summary>
+    /// Removes every source and returns the page to the empty state.
+    /// </summary>
+    public void ClearSources()
+    {
+        if (_disposed || !CanEditSources)
+        {
+            return;
+        }
+
+        ClearSourcesCore();
     }
 
     /// <summary>
@@ -682,7 +821,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     /// <returns>A task that completes when the batch and the summary are shown.</returns>
     public async Task ExecuteAsync()
     {
-        if (!CanRun || _selectedDirectory is null)
+        if (!CanRun || _sources.Count == 0)
         {
             return;
         }
@@ -696,17 +835,23 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         IsBusy = true;
         try
         {
-            var renameSource = new RenameSource(1, RenameSourceKind.Folder, [_selectedDirectory]);
-            string backupGroup = _target == RenameTarget.Files ? renameSource.BackupGroup : string.Empty;
+            var items = new List<RenameExecutionItem>(entries.Length);
+            foreach (RenamePlanEntry entry in entries)
+            {
+                RenameSource? source = FindSource(entry.Candidate.SourceOrder);
+                string backupGroup = _target == RenameTarget.Files
+                    ? source?.BackupGroup ?? string.Empty
+                    : string.Empty;
+                items.Add(new RenameExecutionItem(
+                    entry.Candidate.FullPath,
+                    entry.TargetFullPath,
+                    entry.Candidate.IsDirectory,
+                    backupGroup));
+            }
+
             var request = new RenameExecutionRequest(
-                renameSource.BackupRoot ?? string.Empty,
-                [
-                    .. entries.Select(entry => new RenameExecutionItem(
-                        entry.Candidate.FullPath,
-                        entry.TargetFullPath,
-                        entry.Candidate.IsDirectory,
-                        backupGroup)),
-                ],
+                _sources[0].BackupRoot ?? string.Empty,
+                items,
                 _backupEnabled);
             RenameOperationResult result = await _executor.ExecuteAsync(
                 request,
@@ -764,7 +909,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
                 batchEntries);
             _batchVisible = true;
             _scanStale = true;
-            ShowExecutionSummary(renamed, failed);
+            ShowExecutionSummary(renamed, failed, entries);
         }
         catch (OperationCanceledException)
         {
@@ -942,9 +1087,11 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         }
 
         _target = target;
+        ClearSourcesCore();
         OnPropertyChanged(nameof(IsFilesMode));
         OnPropertyChanged(nameof(IsFoldersMode));
         OnPropertyChanged(nameof(ShowExtensionFilter));
+        RaiseSourceProperties();
         OnScopeChanged();
     }
 
@@ -1049,12 +1196,13 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     private void ScheduleRescan()
     {
-        if (_selectedDirectory is null)
+        if (!HasSources)
         {
             return;
         }
 
         _isScanning = true;
+        RaiseSourceProperties();
         RaisePlanProperties();
         _scanTimer.Stop();
         _scanTimer.Start();
@@ -1080,13 +1228,28 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
 
     private async Task RescanAsync()
     {
-        if (_disposed || _selectedDirectory is null)
+        if (_disposed)
         {
+            return;
+        }
+
+        if (!HasSources)
+        {
+            _scanVersion++;
+            _scan = null;
+            _plan = new RenamePlan([], [], 0);
+            _isScanning = false;
+            _scanStale = false;
+            PopulateRows();
+            PopulateSources();
+            RaisePlanProperties();
+            RaiseSourceProperties();
             return;
         }
 
         int version = ++_scanVersion;
         _isScanning = true;
+        RaiseSourceProperties();
         RaisePlanProperties();
         try
         {
@@ -1095,7 +1258,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             {
                 result = await _scanner.ScanAsync(
                     new RenameScanRequest(
-                        [new RenameSource(1, RenameSourceKind.Folder, [_selectedDirectory])],
+                        [.. _sources],
                         _target,
                         _includeSubdirectories,
                         _extensions),
@@ -1103,7 +1266,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             }
             catch (Exception exception)
             {
-                _logger.Warning(exception, "Scanning the rename folder failed");
+                _logger.Warning(exception, "Scanning the rename sources failed");
                 result = new RenameScanResult([], []);
             }
 
@@ -1115,7 +1278,9 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             _isScanning = false;
             _scan = result;
             _scanStale = false;
+            PopulateSources();
             RebuildPlan();
+            RaiseSourceProperties();
         }
         catch (Exception exception)
         {
@@ -1124,13 +1289,23 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             {
                 _isScanning = false;
                 RaisePlanProperties();
+                RaiseSourceProperties();
             }
         }
     }
 
+    private async Task RefreshSourcesAsync()
+    {
+        _batchVisible = false;
+        _scanStale = false;
+        PopulateSources();
+        RaiseSourceProperties();
+        await RescanAsync();
+    }
+
     private void RebuildPlan()
     {
-        if (_selectedDirectory is null || _scan is null)
+        if (!HasSources || _scan is null)
         {
             _plan = new RenamePlan([], [], 0);
             PopulateRows();
@@ -1180,12 +1355,19 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
     {
         Rows.Clear();
         bool folders = _target == RenameTarget.Folders;
+        string[] directories = EntryDirectories(_plan.Entries.Select(entry => entry.Candidate.FullPath));
+        bool showSource = !folders && directories.Length > 1;
         for (int index = 0; index < _plan.Entries.Count; index++)
         {
+            RenamePlanEntry entry = _plan.Entries[index];
+            string? sourceDirectory = showSource
+                ? FileRenameText.DirectoryLabel(Path.GetDirectoryName(entry.Candidate.FullPath))
+                : null;
             Rows.Add(new FileRenameRowViewModel(
-                _plan.Entries[index],
+                entry,
                 folders,
                 isLast: index == _plan.Entries.Count - 1,
+                sourceDirectory,
                 _localization));
         }
 
@@ -1193,6 +1375,28 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         foreach (RenameSkippedItem item in _plan.Skipped)
         {
             SkippedRows.Add(new FileRenameSkipRowViewModel(item, _localization));
+        }
+    }
+
+    private void PopulateSources()
+    {
+        SourceRows.Clear();
+        foreach (RenameSource source in _sources)
+        {
+            RenameSourceScanSummary? summary = null;
+            if (_scan is not null)
+            {
+                foreach (RenameSourceScanSummary item in _scan.Sources)
+                {
+                    if (item.Source.Equals(source))
+                    {
+                        summary = item;
+                        break;
+                    }
+                }
+            }
+
+            SourceRows.Add(new FileRenameSourceViewModel(source, summary, _localization));
         }
     }
 
@@ -1222,56 +1426,247 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void ShowExecutionSummary(int renamed, int failed)
+    private void ShowExecutionSummary(int renamed, int failed, IReadOnlyList<RenamePlanEntry> entries)
     {
-        _infoBar.ShowSummary(failed == 0
-            ? new InfoBarSummary(
-                _localization.Format("Tool.FileRename.InfoBar.Done", renamed),
-                IsWarning: false,
-                _selectedDirectory)
-            {
-                ActionText = _localization["Tool.FileRename.Action.OpenFolder"],
-            }
-            : new InfoBarSummary(
-                _localization.Format("Tool.FileRename.InfoBar.Partial", renamed, failed),
-                IsWarning: true,
-                FolderPath: null)
-            {
-                SecondaryMessage = _localization["Tool.FileRename.InfoBar.Partial.Detail"],
-                ActionText = _localization["Tool.FileRename.Action.Export"],
-                Action = ExportLogToDefaultPathAsync,
-            });
+        if (failed == 0)
+        {
+            ShowSuccessSummary(
+                "Tool.FileRename.InfoBar.Done",
+                "Tool.FileRename.InfoBar.Done.MultiSource",
+                renamed,
+                entries.Select(entry => entry.Candidate.FullPath));
+            return;
+        }
+
+        ShowFailureSummary(
+            "Tool.FileRename.InfoBar.Partial",
+            "Tool.FileRename.InfoBar.Partial.Detail",
+            failed);
     }
 
     private void ShowUndoSummary(int undone, int failed)
     {
-        _infoBar.ShowSummary(failed == 0
-            ? new InfoBarSummary(
-                _localization.Format("Tool.FileRename.InfoBar.Undone", undone),
+        if (failed == 0)
+        {
+            ShowSuccessSummary(
+                "Tool.FileRename.InfoBar.Undone",
+                "Tool.FileRename.InfoBar.Undone.MultiSource",
+                undone,
+                _lastBatch is null
+                    ? []
+                    : _lastBatch.Entries
+                        .Where(entry => entry.State == RenameBatchEntryState.Undone)
+                        .Select(entry => entry.OriginalPath));
+            return;
+        }
+
+        ShowFailureSummary(
+            "Tool.FileRename.InfoBar.UndoFailed",
+            "Tool.FileRename.InfoBar.UndoFailed.Detail",
+            failed);
+    }
+
+    private void ShowFailureSummary(string messageKey, string detailKey, int failed)
+    {
+        _infoBar.ShowSummary(new InfoBarSummary(
+            _localization.Format(messageKey, failed),
+            IsWarning: true,
+            FolderPath: null)
+        {
+            SecondaryMessage = _localization[detailKey],
+            ActionText = _localization["Tool.FileRename.Action.Export"],
+            Action = ExportLogToDefaultPathAsync,
+        });
+    }
+
+    private void ShowSuccessSummary(
+        string singleKey,
+        string multiKey,
+        int count,
+        IEnumerable<string> paths)
+    {
+        string[] directories = EntryDirectories(paths);
+        if (IsFilesMode && directories.Length > 1)
+        {
+            _infoBar.ShowSummary(new InfoBarSummary(
+                _localization.Format(multiKey, count, directories.Length),
                 IsWarning: false,
-                _selectedDirectory)
-            {
-                ActionText = _localization["Tool.FileRename.Action.OpenFolder"],
-            }
-            : new InfoBarSummary(
-                _localization.Format("Tool.FileRename.InfoBar.UndoFailed", failed),
-                IsWarning: true,
-                FolderPath: null)
-            {
-                SecondaryMessage = _localization["Tool.FileRename.InfoBar.UndoFailed.Detail"],
-                ActionText = _localization["Tool.FileRename.Action.Export"],
-                Action = ExportLogToDefaultPathAsync,
-            });
+                FolderPath: null));
+            return;
+        }
+
+        _infoBar.ShowSummary(new InfoBarSummary(
+            _localization.Format(singleKey, count),
+            IsWarning: false,
+            SingleFolder(directories))
+        {
+            ActionText = _localization["Tool.FileRename.Action.OpenFolder"],
+        });
     }
 
     private async Task ExportLogToDefaultPathAsync()
     {
-        if (_lastBatch is null || _selectedDirectory is null)
+        if (_lastBatch is null)
         {
             return;
         }
 
-        await ExportLogAsync(Path.Combine(_selectedDirectory, DefaultExportFileName));
+        string? directory = _sources.Count > 0
+            ? _sources[0].Directory
+            : _lastBatch.Entries.Count > 0
+                ? Path.GetDirectoryName(_lastBatch.Entries[0].OriginalPath)
+                : null;
+        if (directory is null)
+        {
+            return;
+        }
+
+        await ExportLogAsync(Path.Combine(directory, DefaultExportFileName));
+    }
+
+    private string? SingleFolder(string[] directories) =>
+        IsFilesMode
+            ? directories.Length == 1 ? directories[0] : null
+            : _sources.Count > 0 ? _sources[0].Directory : null;
+
+    private static string[] EntryDirectories(IEnumerable<string> paths)
+    {
+        var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in paths)
+        {
+            if (Path.GetDirectoryName(path) is { Length: > 0 } directory)
+            {
+                directories.Add(directory);
+            }
+        }
+
+        return [.. directories];
+    }
+
+    private RenameSource? FindSource(int order)
+    {
+        foreach (RenameSource source in _sources)
+        {
+            if (source.Order == order)
+            {
+                return source;
+            }
+        }
+
+        return null;
+    }
+
+    private bool AddFolderSources(IEnumerable<string> paths)
+    {
+        bool added = false;
+        foreach (string candidate in paths)
+        {
+            string? path = TryGetFullPath(candidate);
+            if (path is null || !_pathProbe.IsDirectory(path))
+            {
+                continue;
+            }
+
+            bool exists = false;
+            foreach (RenameSource source in _sources)
+            {
+                if (source.Kind == RenameSourceKind.Folder &&
+                    string.Equals(source.Paths[0], path, StringComparison.OrdinalIgnoreCase))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (exists)
+            {
+                continue;
+            }
+
+            _sources.Add(new RenameSource(
+                _sources.Count + 1,
+                RenameSourceKind.Folder,
+                [path]));
+            added = true;
+        }
+
+        return added;
+    }
+
+    private bool AddFileSource(IEnumerable<string> paths)
+    {
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (RenameSource source in _sources)
+        {
+            if (source.Kind != RenameSourceKind.Files)
+            {
+                continue;
+            }
+
+            foreach (string path in source.Paths)
+            {
+                existing.Add(path);
+            }
+        }
+
+        List<string> added = [];
+        foreach (string candidate in paths)
+        {
+            if (TryGetFullPath(candidate) is not { } path || !existing.Add(path))
+            {
+                continue;
+            }
+
+            added.Add(path);
+        }
+
+        if (added.Count == 0)
+        {
+            return false;
+        }
+
+        _sources.Add(new RenameSource(_sources.Count + 1, RenameSourceKind.Files, added));
+        return true;
+    }
+
+    private void RenumberSources()
+    {
+        for (int index = 0; index < _sources.Count; index++)
+        {
+            RenameSource source = _sources[index];
+            if (source.Order != index + 1)
+            {
+                _sources[index] = new RenameSource(index + 1, source.Kind, source.Paths);
+            }
+        }
+    }
+
+    private void ClearSourcesCore()
+    {
+        _scanVersion++;
+        _scanTimer.Stop();
+        _sources.Clear();
+        _scan = null;
+        _plan = new RenamePlan([], [], 0);
+        _isScanning = false;
+        _scanStale = false;
+        PopulateRows();
+        PopulateSources();
+        RaisePlanProperties();
+        RaiseSourceProperties();
+    }
+
+    private string? TryGetFullPath(string path)
+    {
+        try
+        {
+            return Path.GetFullPath(path.Trim().Trim('"'));
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
+        {
+            _logger.Warning(exception, "The rename path {Path} is not valid", path);
+            return null;
+        }
     }
 
     private void ReportItemFailure(string sourcePath, string operation, RenameFailure failure)
@@ -1323,6 +1718,19 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private void RaiseSourceProperties()
+    {
+        OnPropertyChanged(nameof(HasSources));
+        OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(ShowSourceRow));
+        OnPropertyChanged(nameof(CanEditSources));
+        OnPropertyChanged(nameof(IsScanning));
+        OnPropertyChanged(nameof(SourceReadingText));
+        OnPropertyChanged(nameof(EmptyTitle));
+        OnPropertyChanged(nameof(EmptyHint));
+        OnPropertyChanged(nameof(DropHintText));
+    }
+
     private void RaisePlanProperties()
     {
         OnPropertyChanged(nameof(HasRows));
@@ -1338,6 +1746,7 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanRun));
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanExport));
+        OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(ConfirmBody));
         OnPropertyChanged(nameof(ShowConfirmBackup));
         UndoCommand.NotifyCanExecuteChanged();
@@ -1378,6 +1787,13 @@ public sealed class FileRenameViewModel : ViewModelBase, IDisposable
             row.RefreshText();
         }
 
+        PopulateSources();
+        OnPropertyChanged(nameof(SourceReadingText));
+        OnPropertyChanged(nameof(EmptyTitle));
+        OnPropertyChanged(nameof(EmptyHint));
+        OnPropertyChanged(nameof(DropHintText));
+        OnPropertyChanged(nameof(AddFilesText));
+        OnPropertyChanged(nameof(AddFoldersText));
         OnPropertyChanged(nameof(BasicTaskNames));
         OnPropertyChanged(nameof(AdvancedKindNames));
         OnPropertyChanged(nameof(PadNames));

@@ -119,7 +119,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool HasAction =>
         IsOpen &&
-        (_notices.Current?.Action != ErrorNoticeAction.None ||
+        (_notices.Current is { Action: not ErrorNoticeAction.None } ||
             ActiveSummary is { } summary && (summary.FolderPath is not null || summary.Action is not null));
 
     /// <summary>

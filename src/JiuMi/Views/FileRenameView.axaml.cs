@@ -121,6 +121,100 @@ public partial class FileRenameView : UserControl
         }
     }
 
+    private async void OnAddFilesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel || !viewModel.CanEditSources)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(
+                new FilePickerOpenOptions { AllowMultiple = true });
+            var paths = new List<string>(files.Count);
+            foreach (IStorageFile file in files)
+            {
+                if (file.TryGetLocalPath() is { } path)
+                {
+                    paths.Add(path);
+                }
+            }
+
+            await viewModel.AddFilesAsync(paths);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private async void OnAddFoldersClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel || !viewModel.CanEditSources)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
+                new FolderPickerOpenOptions { AllowMultiple = true });
+            var paths = new List<string>(folders.Count);
+            foreach (IStorageFolder folder in folders)
+            {
+                if (folder.TryGetLocalPath() is { } path)
+                {
+                    paths.Add(path);
+                }
+            }
+
+            await viewModel.AddFoldersAsync(paths);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private async void OnRemoveSourceClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel ||
+            sender is not Button { CommandParameter: int order })
+        {
+            return;
+        }
+
+        try
+        {
+            await viewModel.RemoveSourceAsync(order);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private void OnClearSourcesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is FileRenameViewModel viewModel)
+        {
+            viewModel.ClearSources();
+        }
+    }
+
     private async void OnRunClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not FileRenameViewModel viewModel || !viewModel.CanRun)
@@ -238,7 +332,9 @@ public partial class FileRenameView : UserControl
     {
         DropOverlay.IsVisible = false;
         e.Handled = true;
-        if (DataContext is not FileRenameViewModel viewModel || e.DataTransfer is null)
+        if (DataContext is not FileRenameViewModel viewModel ||
+            e.DataTransfer is null ||
+            (viewModel.IsFilesMode && !viewModel.CanEditSources))
         {
             return;
         }
@@ -248,6 +344,37 @@ public partial class FileRenameView : UserControl
             IStorageItem[]? items = e.DataTransfer.TryGetFiles();
             if (items is null)
             {
+                return;
+            }
+
+            if (viewModel.IsFilesMode)
+            {
+                var folders = new List<string>();
+                var files = new List<string>();
+                foreach (IStorageItem item in items)
+                {
+                    if (item.TryGetLocalPath() is not { } path)
+                    {
+                        continue;
+                    }
+
+                    if (viewModel.IsDirectory(path))
+                    {
+                        folders.Add(path);
+                    }
+                    else
+                    {
+                        files.Add(path);
+                    }
+                }
+
+                if (folders.Count > 0 || files.Count > 0)
+                {
+                    Dispatcher.UIThread.Post(
+                        () => _ = AddDroppedSourcesCoreAsync(viewModel, folders, files),
+                        DispatcherPriority.ApplicationIdle);
+                }
+
                 return;
             }
 
@@ -276,6 +403,21 @@ public partial class FileRenameView : UserControl
         }
     }
 
+    private static async Task AddDroppedSourcesCoreAsync(
+        FileRenameViewModel viewModel,
+        IReadOnlyList<string> folders,
+        IReadOnlyList<string> files)
+    {
+        try
+        {
+            await viewModel.AddDroppedAsync(folders, files);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
     private static void OpenDroppedFolder(FileRenameViewModel viewModel, string directory) =>
         _ = SetDroppedFolderAsync(viewModel, directory);
 
@@ -293,22 +435,37 @@ public partial class FileRenameView : UserControl
 
     private void UpdateDragState(DragEventArgs e)
     {
-        bool hasDirectory = false;
+        bool accepts = false;
         if (DataContext is FileRenameViewModel viewModel &&
             e.DataTransfer?.TryGetFiles() is { Length: > 0 } items)
         {
+            bool filesMode = viewModel.IsFilesMode;
+            bool canAddFiles = viewModel.CanEditSources;
             foreach (IStorageItem item in items)
             {
-                if (item.TryGetLocalPath() is { } path && viewModel.IsDirectory(path))
+                if (item.TryGetLocalPath() is not { } path)
                 {
-                    hasDirectory = true;
+                    continue;
+                }
+
+                if (filesMode)
+                {
+                    if (canAddFiles)
+                    {
+                        accepts = true;
+                        break;
+                    }
+                }
+                else if (viewModel.IsDirectory(path))
+                {
+                    accepts = true;
                     break;
                 }
             }
         }
 
-        e.DragEffects = hasDirectory ? DragDropEffects.Copy : DragDropEffects.None;
-        DropOverlay.IsVisible = hasDirectory;
+        e.DragEffects = accepts ? DragDropEffects.Copy : DragDropEffects.None;
+        DropOverlay.IsVisible = accepts;
         e.Handled = true;
     }
 }

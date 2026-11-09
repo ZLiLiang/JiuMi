@@ -22,11 +22,16 @@ public sealed class FileRenameRowViewModel : ViewModelBase
     /// <param name="entry">The plan row.</param>
     /// <param name="useRelativePath">Whether the original column shows the path below the selected folder.</param>
     /// <param name="isLast">Whether this is the last row, which omits the bottom divider.</param>
+    /// <param name="sourceDirectory">
+    /// The last segment of the item's directory when the batch spans several directories, or
+    /// <see langword="null"/> when the row does not need it.
+    /// </param>
     /// <param name="localization">Supplies the row text.</param>
     public FileRenameRowViewModel(
         RenamePlanEntry entry,
         bool useRelativePath,
         bool isLast,
+        string? sourceDirectory,
         ILocalizationService localization)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -37,6 +42,7 @@ public sealed class FileRenameRowViewModel : ViewModelBase
         _originalPath = entry.Candidate.FullPath;
         _targetPath = entry.TargetFullPath;
         IsLast = isLast;
+        SourceDirectory = sourceDirectory ?? string.Empty;
         OriginalDisplay = useRelativePath ? entry.Candidate.RelativePath : entry.OriginalName;
         TargetDisplay = entry.TargetName;
         _diff = RenameTextDiff.Compute(OriginalDisplay, TargetDisplay);
@@ -54,6 +60,18 @@ public sealed class FileRenameRowViewModel : ViewModelBase
     {
         get;
     }
+
+    /// <summary>Gets the last segment of the item's directory, or an empty string.</summary>
+    public string SourceDirectory
+    {
+        get;
+    }
+
+    /// <summary>Gets a value indicating whether the source directory follows the original name.</summary>
+    public bool ShowSourceDirectory => SourceDirectory.Length > 0;
+
+    /// <summary>Gets the width the original name may use beside the source directory.</summary>
+    public double NameMaxWidth => ShowSourceDirectory ? 180 : 280;
 
     /// <summary>Gets the new name.</summary>
     public string TargetDisplay
