@@ -128,6 +128,7 @@
                    ItemsSource="{Binding PrimaryNavigationItems}"
                    ItemTemplate="{StaticResource NavigationItemTemplate}"
                    ItemContainerTheme="{StaticResource NavigationItemTheme}"
+                   PointerPressed="OnNavigationPointerPressed"
                    SelectedItem="{Binding SelectedPrimaryItem, Mode=TwoWay}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
@@ -151,6 +152,7 @@
                    ItemsSource="{Binding SettingsNavigationItems}"
                    ItemTemplate="{StaticResource NavigationItemTemplate}"
                    ItemContainerTheme="{StaticResource NavigationItemTheme}"
+                   PointerPressed="OnNavigationPointerPressed"
                    SelectedItem="{Binding SelectedSettingsItem, Mode=TwoWay}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
@@ -162,13 +164,21 @@
       </Border>
 
       <Border Grid.Column="2" Classes="island">
-        <DockPanel>
-          <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                        VerticalScrollBarVisibility="Auto">
-            <ContentControl Content="{Binding CurrentPage}" />
-          </ScrollViewer>
-        </DockPanel>
+        <Grid RowDefinitions="Auto,*">
+          <views:InfoBarView Grid.Row="0" DataContext="{Binding InfoBar}" />
+          <Grid x:Name="PageViewport"
+                Grid.Row="1"
+                ClipToBounds="True">
+            <ScrollViewer x:Name="PageScroller"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+              <ContentControl x:Name="PageHost" Content="{Binding CurrentPage}" />
+            </ScrollViewer>
+            <Canvas x:Name="TransitionLayer"
+                    ClipToBounds="True"
+                    IsHitTestVisible="False" />
+          </Grid>
+        </Grid>
       </Border>
     </Grid>
   </Grid>

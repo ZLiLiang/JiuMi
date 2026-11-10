@@ -144,6 +144,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Raised when navigation or a home tool card targets another page. The shell view may animate the
+    /// swap and then call <see cref="CommitPage"/>; without a handler the page changes immediately.
+    /// </summary>
+    public event EventHandler<PageNavigationRequestedEventArgs>? PageNavigationRequested;
+
+    /// <summary>
     /// Gets the navigation items pinned to the bottom of the rail.
     /// </summary>
     public IReadOnlyList<ShellNavigationItem> SettingsNavigationItems
@@ -165,7 +171,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             }
 
             SelectedSettingsItem = null;
-            NavigateTo(value.Page);
+            RequestNavigation(value.Page);
         }
     }
 
@@ -183,7 +189,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             }
 
             SelectedPrimaryItem = null;
-            NavigateTo(value.Page);
+            RequestNavigation(value.Page);
         }
     }
 
@@ -336,6 +342,50 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets whether <paramref name="page"/> is the page currently shown.
+    /// </summary>
+    /// <param name="page">The page to test.</param>
+    /// <returns><see langword="true"/> when the page already fills the content area.</returns>
+    public bool IsPageShown(ShellPage page) => ReferenceEquals(ResolvePage(page), CurrentPage);
+
+    /// <summary>
+    /// Gets the view model behind <paramref name="page"/>.
+    /// </summary>
+    /// <param name="page">The page to resolve.</param>
+    /// <returns>The page view model.</returns>
+    public ViewModelBase GetPage(ShellPage page) => ResolvePage(page);
+
+    /// <summary>
+    /// Swaps the content area to <paramref name="page"/> after any transition; the page already shown stays put.
+    /// </summary>
+    /// <param name="page">The page to show.</param>
+    public void CommitPage(ShellPage page)
+    {
+        ViewModelBase target = ResolvePage(page);
+        if (ReferenceEquals(target, CurrentPage))
+        {
+            return;
+        }
+
+        if (ReferenceEquals(target, _worldClockPage))
+        {
+            _worldClockPage.Activate();
+        }
+        else
+        {
+            _worldClockPage.Deactivate();
+        }
+
+        if (ReferenceEquals(target, _imageConvertPage))
+        {
+            _imageConvertPage.Activate();
+        }
+
+        CurrentPage = target;
+        _logger.Debug("Navigated to {Page}", page);
+    }
+
+    /// <summary>
     /// Opens the settings page through the same navigation the rail uses; an already open page stays put.
     /// </summary>
     public void ShowSettings()
@@ -382,48 +432,74 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _logger.Debug("Navigation expanded state changed to {IsExpanded}", IsNavigationExpanded);
     }
 
-    private void NavigateTo(ShellPage? page)
+    private void RequestNavigation(ShellPage? page)
     {
-        ViewModelBase target = page switch
+        if (page is not { } target)
         {
-            ShellPage.Settings => SettingsPage,
-            ShellPage.WorldClock => _worldClockPage,
-            ShellPage.ImageConvert => _imageConvertPage,
-            ShellPage.FileRename => _fileRenamePage,
-            _ => HomePage,
-        };
-
-        if (ReferenceEquals(target, _worldClockPage))
-        {
-            _worldClockPage.Activate();
-        }
-        else
-        {
-            _worldClockPage.Deactivate();
+            return;
         }
 
-        if (ReferenceEquals(target, _imageConvertPage))
+        var args = new PageNavigationRequestedEventArgs(target, fromCard: false);
+        PageNavigationRequested?.Invoke(this, args);
+        if (!args.Handled)
         {
-            _imageConvertPage.Activate();
+            CommitPage(target);
         }
-
-        CurrentPage = target;
-        _logger.Debug("Navigated to {Page}", page);
     }
+
+    private void ActivateCard(ShellPage page, ShellNavigationItem item)
+    {
+        var args = new PageNavigationRequestedEventArgs(page, fromCard: true);
+        PageNavigationRequested?.Invoke(this, args);
+        if (!args.Accepted)
+        {
+            return;
+        }
+
+        SelectPrimaryItem(item);
+        if (!args.Handled)
+        {
+            CommitPage(page);
+        }
+    }
+
+    private void SelectPrimaryItem(ShellNavigationItem item)
+    {
+        if (!ReferenceEquals(_selectedPrimaryItem, item))
+        {
+            _selectedPrimaryItem = item;
+            OnPropertyChanged(nameof(SelectedPrimaryItem));
+        }
+
+        if (_selectedSettingsItem is not null)
+        {
+            _selectedSettingsItem = null;
+            OnPropertyChanged(nameof(SelectedSettingsItem));
+        }
+    }
+
+    private ViewModelBase ResolvePage(ShellPage page) => page switch
+    {
+        ShellPage.Settings => SettingsPage,
+        ShellPage.WorldClock => _worldClockPage,
+        ShellPage.ImageConvert => _imageConvertPage,
+        ShellPage.FileRename => _fileRenamePage,
+        _ => HomePage,
+    };
 
     private void OpenWorldClock()
     {
-        SelectedPrimaryItem = _worldClockNavigationItem;
+        ActivateCard(ShellPage.WorldClock, _worldClockNavigationItem);
     }
 
     private void OpenImageConvert()
     {
-        SelectedPrimaryItem = _imageConvertNavigationItem;
+        ActivateCard(ShellPage.ImageConvert, _imageConvertNavigationItem);
     }
 
     private void OpenFileRename()
     {
-        SelectedPrimaryItem = _fileRenameNavigationItem;
+        ActivateCard(ShellPage.FileRename, _fileRenameNavigationItem);
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
