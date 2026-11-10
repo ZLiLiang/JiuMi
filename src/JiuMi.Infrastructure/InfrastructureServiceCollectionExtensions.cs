@@ -50,6 +50,7 @@ public static class InfrastructureServiceCollectionExtensions
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JiuMi")));
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
+        services.AddSingleton<ISystemAnimationSettings, SystemAnimationSettings>();
         services.AddSingleton<IImageProbe, MagickImageProbe>();
         services.AddSingleton<IImageConverter, MagickImageConverter>();
         services.AddSingleton<IRenameScanner, RenameScanner>();

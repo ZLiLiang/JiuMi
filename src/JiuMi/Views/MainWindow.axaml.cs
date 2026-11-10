@@ -1,7 +1,11 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FluentAvalonia.UI.Windowing;
+using JiuMi.Application;
 using JiuMi.Theming;
 using JiuMi.ViewModels;
 
@@ -12,7 +16,16 @@ namespace JiuMi.Views;
 /// </summary>
 public partial class MainWindow : FAAppWindow
 {
+    private static readonly ShellPage[] _preloadedPages =
+    [
+        ShellPage.FileRename,
+        ShellPage.ImageConvert,
+        ShellPage.WorldClock,
+        ShellPage.Settings,
+    ];
+
     private readonly Serilog.ILogger _logger = Serilog.Core.Logger.None;
+    private readonly PageTransitionAnimator? _transitions;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
@@ -67,14 +80,27 @@ public partial class MainWindow : FAAppWindow
     /// Initializes a new instance of the <see cref="MainWindow"/> class with its view model and logger.
     /// </summary>
     /// <param name="viewModel">The shell view model.</param>
+    /// <param name="animationSettings">The operating system preference for client-area animations.</param>
     /// <param name="logger">Receives the window show and close events.</param>
-    public MainWindow(MainWindowViewModel viewModel, Serilog.ILogger logger)
+    public MainWindow(
+        MainWindowViewModel viewModel,
+        ISystemAnimationSettings animationSettings,
+        Serilog.ILogger logger)
         : this()
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(animationSettings);
         ArgumentNullException.ThrowIfNull(logger);
         DataContext = viewModel;
         _logger = logger;
+        _transitions = new PageTransitionAnimator(
+            this,
+            PageScroller,
+            PageHost,
+            TransitionLayer,
+            viewModel,
+            () => animationSettings.AreClientAreaAnimationsEnabled);
+        SizeChanged += OnWindowSizeChanged;
     }
 
     /// <inheritdoc />
@@ -83,6 +109,11 @@ public partial class MainWindow : FAAppWindow
         base.OnOpened(e);
         UpdateBackdrop();
         _logger.Information("Shell main window shown");
+
+        if (_transitions is not null)
+        {
+            Dispatcher.UIThread.Post(WarmPageViews, DispatcherPriority.Background);
+        }
     }
 
     /// <inheritdoc />
@@ -90,6 +121,8 @@ public partial class MainWindow : FAAppWindow
     {
         _logger.Information("Shell main window closed");
         ActualThemeVariantChanged -= OnActualThemeVariantChanged;
+        SizeChanged -= OnWindowSizeChanged;
+        _transitions?.Detach();
         base.OnClosed(e);
     }
 
@@ -105,6 +138,26 @@ public partial class MainWindow : FAAppWindow
     }
 
     private void OnActualThemeVariantChanged(object? sender, EventArgs e) => UpdateBackdrop();
+
+    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        _transitions?.FinishImmediately();
+
+    private void WarmPageViews()
+    {
+        foreach (ShellPage page in _preloadedPages)
+        {
+            _transitions?.WarmPage(page);
+        }
+    }
+
+    private void OnNavigationPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        ListBoxItem? item = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>();
+        if (item?.DataContext is ShellNavigationItem navigationItem)
+        {
+            _transitions?.FinishCardFor(navigationItem.Page);
+        }
+    }
 
     private void UpdateBackdrop()
     {

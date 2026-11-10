@@ -285,7 +285,7 @@
     <div class="hint">
       <b>怎么试</b><br>
       · 点下方三张已启用卡：播放当前分镜（550ms）<br>
-      · 点导航岛：200ms 交叉淡变 + 8px 上移<br>
+      · 点导航岛：200ms 顺序淡变 + 8px 上移<br>
       · 动画中再点导航：立刻打断并落页<br>
       · 切 A / B 看「停顿」与「文字先溶解」的差别<br>
       · 勾「冻结在中间帧」可逐点检查两种动效
@@ -497,6 +497,7 @@
 
     const total = 200;
     const oldFade = 100;
+    const pageFade = total - oldFade;
     const oldScroll = scroller.scrollTop;
 
     const clone = page.cloneNode(true);
@@ -532,7 +533,7 @@
     function tick(now) {
       if (stopped) return;
       const t = Math.min(now - t0, cap);
-      const k = easeOut(clamp01(t / total));
+      const k = easeOut(clamp01((t - oldFade) / pageFade));
       page.style.opacity = String(k);
       page.style.transform = 'translateY(' + (8 * (1 - k)) + 'px)';
       clone.style.opacity = String(1 - clamp01(t / oldFade));
@@ -752,7 +753,7 @@
       text = '生长 <b>' + p.grow + '</b> · 淡入 <b>' + p.fade + '</b> ms<br>飞行内容只保留<b>徽标</b>，文字不参与动画';
     }
     if (state.freeze) text += '<br>已开启中间帧冻结：<b>' + state.freezePos + '%</b>（不换页）';
-    text += '<br>导航切页：<b>200 ms</b> 交叉淡变 + 8px 上移';
+    text += '<br>导航切页：<b>200 ms</b> 顺序淡变 + 8px 上移';
     document.getElementById('phases').innerHTML = text;
 
     document.getElementById('dur').value = state.duration;
