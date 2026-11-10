@@ -11,15 +11,31 @@ public sealed class SystemAnimationSettings : ISystemAnimationSettings
 {
     private const uint GetClientAreaAnimation = 0x1042;
 
+    private readonly Func<bool?> _readClientAreaAnimation;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SystemAnimationSettings"/> class.
+    /// </summary>
+    public SystemAnimationSettings()
+        : this(static () => OperatingSystem.IsWindows() ? ReadClientAreaAnimation() : null)
+    {
+    }
+
+    internal SystemAnimationSettings(Func<bool?> readClientAreaAnimation)
+    {
+        ArgumentNullException.ThrowIfNull(readClientAreaAnimation);
+        _readClientAreaAnimation = readClientAreaAnimation;
+    }
+
     /// <inheritdoc />
     public bool AreClientAreaAnimationsEnabled =>
-        !OperatingSystem.IsWindows() || ReadClientAreaAnimation();
+        !OperatingSystem.IsWindows() || (_readClientAreaAnimation() ?? true);
 
     [SupportedOSPlatform("windows")]
-    private static bool ReadClientAreaAnimation()
+    private static bool? ReadClientAreaAnimation()
     {
         // A failed read keeps the default: animations stay on.
-        return !SystemParametersInfo(GetClientAreaAnimation, 0, out bool enabled, 0) || enabled;
+        return SystemParametersInfo(GetClientAreaAnimation, 0, out bool enabled, 0) ? enabled : null;
     }
 
     [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", ExactSpelling = true)]

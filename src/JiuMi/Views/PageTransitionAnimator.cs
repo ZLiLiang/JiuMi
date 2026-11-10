@@ -166,6 +166,11 @@ internal sealed class PageTransitionAnimator
                 return;
             }
 
+            if (_navigation is not null)
+            {
+                AbortNavigation();
+            }
+
             e.Handled = true;
             if (!_isMotionEnabled() || !TryStartCard(e.Page))
             {
