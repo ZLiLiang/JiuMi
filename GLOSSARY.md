@@ -20,7 +20,8 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 | --- | --- | --- |
 | 桌宠 | DesktopPet / Pet | 常驻桌面的小猫功能；不是工具页，不参与导航，也不接工具状态。 |
 | 宠物窗口 | PetWindow | 承载桌宠的独立置顶透明窗口，160×160 DIP；生命周期长于主窗口，主窗口收进托盘时它继续在。 |
-| 宠物状态 | PetState | 桌宠动画状态：`Idle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`。 |
+| 宠物状态 | PetState | 桌宠动画状态：`Idle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `WalkOut`。 |
+| 入场 | PetEntrance | 启用/启动时宠物从内容页右下角（主窗口可见）或右侧屏幕边缘（主窗口隐藏/最小化）走到落点的一次性动效；只做进入，收起用 150ms 淡出。 |
 | 动画清单 | PetAnimationCatalog | 状态、帧序、逐帧时长与资源路径的唯一定义；UI 只按它换帧。 |
 | 宠物位置 | PetPosition | `petX` / `petY` 保存的物理像素坐标；拖动松手写入，启动恢复并夹回可见工作区。 |
 

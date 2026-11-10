@@ -202,14 +202,16 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 窗口 | `PetWindow`，160×160 DIP；`Topmost`、`WindowDecorations=None`、`TransparencyLevelHint=Transparent`、`Background=Transparent`、`ShowInTaskbar=false`、`CanResize=false`、`ShowActivated=false` |
 | 创建 | 首次启用时懒创建；关闭开关只隐藏并停表，不销毁，再次开启即时 |
 | 显示时机 | 启动时 `petEnabled=true` 且 splash 交接完成后显示；不覆盖 splash |
-| 初始位置 | 主屏工作区右下角，距右/下各 24 DIP |
+| 入场 | 主窗口可见时从内容页右下角走到落点；主窗口隐藏到托盘或最小化时从右侧屏幕边缘（落点同高）走进来；只做进入，收起用 150ms 淡出；宠物始终置顶，走路时覆盖在页面上、不被主窗口裁切 |
+| 入场路径 | 直线插值，按约 450 px/s 的统一速度计算时长（内容页约 1.6s，屏幕边缘约 0.8s，实际按路径长度）；窗口位移 60fps，走路帧 10fps 循环；入场中点击/拖拽立即打断并接管 |
+| 初始位置 | 主屏工作区右下角，距右/下各 24 DIP；这是落点，不是内容页起点 |
 | 位置恢复 | `petX`/`petY` 为物理像素；启动时按坐标恢复；找不到可见工作区、显示器/DPI 变化时夹回最近的可见工作区 |
 | 主窗口隐藏到托盘 | 桌宠保留，继续动画/睡眠 |
 | 应用退出 | 随进程关闭；宠物窗口关闭不触发 `ShutdownMode`（它不是 `MainWindow`） |
 | 透明/资源降级 | 透明层级不可用或帧缺失/加载失败：不显示桌宠，保留 `petEnabled`，记 Warning；不弹模态、不画黑框 |
-| 已知限制 | 160×160 矩形命中区，透明角落也可能接点击；置顶会盖住全屏应用；v1 不处理自动让位/点击穿透 |
+| 已知限制 | 160×160 矩形命中区，透明角落也可能接点击；置顶会盖住全屏应用；点击/拖拽会把宠物窗口带到前台（`WS_EX_NOACTIVATE` 等方案已实测无效）；v1 不处理自动让位/点击穿透/裁切交接 |
 
-- `PetWindowController` 负责创建、位置、置顶、显隐与设置订阅；窗口本身只负责渲染和指针事件，不读配置文件。
+- `PetWindowController` 负责创建、位置、置顶、入场路径/起点、150ms 淡出与设置订阅；窗口本身只负责渲染和指针事件，不读配置文件。
 - 用户关闭宠物窗口（Alt+F4/系统关闭）等同「隐藏小猫」：写 `petEnabled=false` 并取消关闭；系统关机/应用退出不拦，随进程关闭。
 - 设置/托盘/右键三处读写同一个 `petEnabled`；隐藏与显示不做过渡动画。
 - 宠物窗口永远不是 `MainWindow`：主窗口隐藏到托盘时进程继续，桌宠也继续；退出应用走既有退出路径。
@@ -229,22 +231,24 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `SleepIn` | 4 | 120ms/帧 | 趴下/蜷起；不循环 |
 | `Sleep` | 4 | 300ms/帧 | 慢呼吸；循环；`Zzz` 矢量叠加 |
 | `Wake` | 2 | 100ms/帧 | 伸懒腰/站起；回 `Idle` |
+| `WalkOut` | 8 | 100ms/帧 | 侧/3-4 走路循环；入场时随窗口路径播放，结束回 `Idle` |
 
 - 资源：`src/JiuMi/Assets/Pet/<state>/<nn>.png`，384×384 透明 PNG；同一画布/脚底基线；C# 动画清单定义帧序与时长；按状态按需加载。
 - 调度：`DispatcherTimer` 约 50ms 检查 + `Stopwatch` 计算逐帧截止时间；约 10fps；隐藏时停表，显示时从 `Idle` 开始。
 - 眨眼：只在 `Idle`，随机 4–8 秒；`React`/`Drag`/`Sleep` 中不眨眼。
+- 入场：`WalkOut` 播放 8 帧走路循环，窗口按路径插值到落点；走完才开始 5 分钟睡眠计时；入场中点击/拖拽立即打断并接管，隐藏时中止入场；入场动画不改变 `petEnabled`。
 - 睡眠：任意单击/拖拽/右键重置 5 分钟计时，悬停不算；到点 `Idle → SleepIn → Sleep`；睡着单击先 `Wake` 不冒爱心；睡着拖拽直接 `Drag`；双击 `Wake` + 打开主窗口；右键 `Wake` + 打开菜单。
-- 交互可打断 `Blink`/`React`/`SleepIn`/`Wake`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
+- 交互可打断 `Blink`/`React`/`SleepIn`/`Wake`/`WalkOut`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
 - 爱心/`Zzz`：矢量叠加，不烘焙进帧；无声音。
 - 状态机注入时间与随机源，单测不依赖真实计时。
 
 ### 交互与入口
 
-- 单击：竖耳 + 小爱心；双击：打开主窗口；单击反应延迟 250ms，双击命中时取消。
+- 单击：竖耳 + 小爱心；双击：打开主窗口。单击爱心延迟 300ms；双击判定用系统 `GetDoubleClickTime()`（通常 500ms），命中时隐藏爱心并打开主窗口。
 - 拖拽：手动跟踪指针并修改窗口 `Position`；4px 阈值区分点击；松手保存位置并夹回可见工作区。
 - 右键：菜单「隐藏小猫」/「打开设置」；隐藏写入 `petEnabled=false`，与设置开关同一状态。
 - 悬停：ToolTip「双击打开 JiuMi」；不唤醒、不重置计时。
-- 焦点：`ShowActivated=false` 只避免首次显示抢焦点；点击是否仍激活宠物窗口由原型确认，必要时在 Infrastructure 加 `WS_EX_NOACTIVATE`，不为 Win10/11 分叉。
+- 焦点：`ShowActivated=false` 只避免首次显示抢焦点；原型已验证 `WS_EX_NOACTIVATE` + `WS_EX_TOOLWINDOW` + `WM_MOUSEACTIVATE` 钩子 + `Focusable=false` 仍会激活宠物窗口。v1 接受这个已知限制；无焦点宿主窗口另开 spike，不为 Win10/11 分叉。
 - 可访问性：宠物本身不做键盘交互；显示/隐藏可通过设置页与托盘完成；根元素设 `AutomationProperties.Name`（`Shell.Pet.AutomationName`）。
 
 ### 设置与托盘
@@ -258,9 +262,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 分层与测试
 
 - UI：`PetWindow`、`PetWindowController`、帧渲染与叠加层；`PetWindowController` 使用 `ISettingsStore` 与 Avalonia `Screens`。
-- Application：`PetAnimationStateMachine`、`PetAnimationCatalog`、`PetState`；纯逻辑，注入时间/随机源。
+- Application：`PetAnimationStateMachine`、`PetAnimationCatalog`、`PetState`（含 `WalkOut`）；纯逻辑，注入时间/随机源；入场路径/起点由 controller 计算，状态机只接收“入场结束/被打断”。
 - Infrastructure：托盘契约新增可勾选项与 `TrayMenuText` 字段；Win32 菜单实现与 `WS_EX_NOACTIVATE`（如需要）留在现有 `#if WINDOWS` 边界。
-- 测试：`JiuMi.Application.Tests` 覆盖状态迁移、睡眠计时、眨眼调度、位置夹取；`JiuMi.Infrastructure.Tests` 覆盖设置默认值与托盘菜单文案；UI 用实机验收，不新建 UI 测试项目。
+- 测试：`JiuMi.Application.Tests` 覆盖状态迁移、睡眠计时、眨眼调度、位置夹取与入场打断；`JiuMi.Infrastructure.Tests` 覆盖设置默认值与托盘菜单文案；UI 用实机验收，不新建 UI 测试项目。
+- 性能：原型矢量占位在 Release 下可见约 1.56% 系统、隐藏 0%；最终 384 PNG 换帧在 feat-3 实测，目标仍是 <1% 系统，超过再优化（降帧/减少重绘/差异帧）。
 - Win10/11：同一套 API；Win10 19045 + 100% 缩放为实机基线；Win11 按手动清单验证透明/置顶/焦点/DPI/多屏/任务栏。行为有差异时在 controller/interop 层适配，不污染动画与美术。
 
 ## 错误呈现与诊断
