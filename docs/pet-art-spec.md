@@ -71,7 +71,7 @@
 | --- | --- |
 | 格式 | PNG（RGBA，8 位/通道）；不用 GIF/APNG/WebP/JPEG |
 | 尺寸 | 384×384 |
-| 目录 | `src/JiuMi/Assets/Pet/<state>/`，状态名小写连字符：`idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` |
+| 目录 | `src/JiuMi/Assets/Pet/<state>/`，状态名小写连字符：`idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `walk` |
 | 文件名 | 两位序号，从 `00.png` 开始；按播放顺序编号 |
 | 清单 | 由代码中的动画清单定义帧序与时长；导出时同时给出 `状态 → 帧数 → 时长` 表 |
 | 源文件 | PSD/Krita/AI 源文件不进 git；仓库只放导出 PNG |
