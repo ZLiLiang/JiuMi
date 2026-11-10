@@ -13,13 +13,13 @@ namespace JiuMi.Views;
 
 /// <summary>
 /// Plays the shell's content transitions: the home tool card growing into the page area (550 ms) and
-/// the cross-fade used by the navigation rail (200 ms). The page swap happens inside the transition.
+/// the sequential page fade used by the navigation rail (200 ms). The page swap happens inside the transition.
 /// </summary>
 internal sealed class PageTransitionAnimator
 {
     private static readonly TimeSpan _cardGrowthDuration = TimeSpan.FromMilliseconds(413);
     private static readonly TimeSpan _cardFadeDuration = TimeSpan.FromMilliseconds(137);
-    private static readonly TimeSpan _navigationFadeInDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan _navigationFadeInDuration = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan _navigationFadeOutDuration = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan _frameInterval = TimeSpan.FromMilliseconds(16);
 
@@ -292,27 +292,14 @@ internal sealed class PageTransitionAnimator
     {
         WarmPage(page);
 
-        ViewportSnapshot? snapshot = CaptureViewport();
-        if (snapshot is null)
+        var offset = new TranslateTransform(0, 0);
+        _pageHost.Opacity = 1;
+        _pageHost.RenderTransform = offset;
+        _navigation = new NavigationRun
         {
-            return false;
-        }
-
-        _viewModel.CommitPage(page);
-        _scroller.Offset = default;
-
-        var offset = new TranslateTransform(0, NavigationPageOffset);
-        var run = new NavigationRun
-        {
-            Snapshot = snapshot.Image,
-            SnapshotBitmap = snapshot.Bitmap,
+            Target = page,
             PageOffset = offset,
         };
-
-        _layer.Children.Add(snapshot.Image);
-        _pageHost.RenderTransform = offset;
-        _navigation = run;
-        ApplyNavigationFrame(run, 0);
         _timer.Start();
         return true;
     }
@@ -368,15 +355,7 @@ internal sealed class PageTransitionAnimator
 
         if (_navigation is { } navigation)
         {
-            double elapsed = Math.Min(
-                navigation.Clock.Elapsed.TotalMilliseconds,
-                _navigationFadeInDuration.TotalMilliseconds);
-            ApplyNavigationFrame(navigation, elapsed);
-
-            if (elapsed >= _navigationFadeInDuration.TotalMilliseconds)
-            {
-                FinishNavigation();
-            }
+            UpdateNavigation(navigation);
         }
     }
 
@@ -396,15 +375,44 @@ internal sealed class PageTransitionAnimator
             CardStartCornerRadius + ((CardEndCornerRadius - CardStartCornerRadius) * eased));
     }
 
-    private void ApplyNavigationFrame(NavigationRun run, double elapsedMilliseconds)
+    private void UpdateNavigation(NavigationRun run)
     {
-        double fadeIn = EaseOutCubic(elapsedMilliseconds / _navigationFadeInDuration.TotalMilliseconds);
+        double fadeOut = _navigationFadeOutDuration.TotalMilliseconds;
+        double elapsed = run.Clock.Elapsed.TotalMilliseconds;
+
+        if (!run.PageCommitted)
+        {
+            if (elapsed < fadeOut)
+            {
+                _pageHost.Opacity = 1 - (elapsed / fadeOut);
+                return;
+            }
+
+            // The swap builds and lays out the next page; it runs at zero opacity so the fade-in keeps
+            // its duration instead of jumping past the hidden layout pass.
+            _pageHost.Opacity = 0;
+            _viewModel.CommitPage(run.Target);
+            _scroller.Offset = default;
+            run.PageCommitted = true;
+            run.PageOffset.Y = NavigationPageOffset;
+            run.FadeInStartedAt = Math.Max(fadeOut, run.Clock.Elapsed.TotalMilliseconds);
+            return;
+        }
+
+        if (elapsed < run.FadeInStartedAt)
+        {
+            return;
+        }
+
+        double fadeIn = EaseOutCubic(
+            (elapsed - run.FadeInStartedAt) / _navigationFadeInDuration.TotalMilliseconds);
         _pageHost.Opacity = fadeIn;
         run.PageOffset.Y = NavigationPageOffset * (1 - fadeIn);
-        run.Snapshot.Opacity = Math.Clamp(
-            1 - (elapsedMilliseconds / _navigationFadeOutDuration.TotalMilliseconds),
-            0,
-            1);
+
+        if (fadeIn >= 1)
+        {
+            FinishNavigation();
+        }
     }
 
     private void FinishCard()
@@ -457,6 +465,13 @@ internal sealed class PageTransitionAnimator
 
         _navigation = null;
         _timer.Stop();
+
+        if (!navigation.PageCommitted)
+        {
+            _viewModel.CommitPage(navigation.Target);
+            _scroller.Offset = default;
+        }
+
         CleanupNavigation(navigation);
         FocusFirstFocusable();
     }
@@ -475,8 +490,6 @@ internal sealed class PageTransitionAnimator
 
     private void CleanupNavigation(NavigationRun navigation)
     {
-        _layer.Children.Remove(navigation.Snapshot);
-        navigation.SnapshotBitmap.Dispose();
         _pageHost.Opacity = 1;
         _pageHost.RenderTransform = null;
     }
@@ -497,37 +510,6 @@ internal sealed class PageTransitionAnimator
                 control.Focusable && control.IsEffectivelyVisible && control.IsEffectivelyEnabled);
 
         target?.Focus();
-    }
-
-    private ViewportSnapshot? CaptureViewport()
-    {
-        Size viewport = _scroller.Bounds.Size;
-        RenderTargetBitmap? bitmap = Capture(_scroller, viewport);
-        try
-        {
-            if (bitmap is null)
-            {
-                return null;
-            }
-
-            var image = new Image
-            {
-                Source = bitmap,
-                Width = viewport.Width,
-                Height = viewport.Height,
-                Stretch = Stretch.Fill,
-            };
-
-            Canvas.SetLeft(image, 0);
-            Canvas.SetTop(image, 0);
-            var snapshot = new ViewportSnapshot(image, bitmap);
-            bitmap = null;
-            return snapshot;
-        }
-        finally
-        {
-            bitmap?.Dispose();
-        }
     }
 
     private RenderTargetBitmap? CaptureBadge(Border badge) => Capture(badge, badge.Bounds.Size);
@@ -642,13 +624,7 @@ internal sealed class PageTransitionAnimator
 
     private sealed class NavigationRun
     {
-        public required Image Snapshot
-        {
-            get;
-            init;
-        }
-
-        public required RenderTargetBitmap SnapshotBitmap
+        public required ShellPage Target
         {
             get;
             init;
@@ -660,28 +636,21 @@ internal sealed class PageTransitionAnimator
             init;
         }
 
+        public bool PageCommitted
+        {
+            get;
+            set;
+        }
+
+        public double FadeInStartedAt
+        {
+            get;
+            set;
+        }
+
         public Stopwatch Clock
         {
             get;
         } = Stopwatch.StartNew();
-    }
-
-    private sealed class ViewportSnapshot
-    {
-        public ViewportSnapshot(Image image, RenderTargetBitmap bitmap)
-        {
-            Image = image;
-            Bitmap = bitmap;
-        }
-
-        public Image Image
-        {
-            get;
-        }
-
-        public RenderTargetBitmap Bitmap
-        {
-            get;
-        }
     }
 }
