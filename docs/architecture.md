@@ -142,9 +142,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 主窗口最小化 | 保留在任务栏与 Alt+Tab；不隐藏、不移除任务栏按钮 |
 | 主窗口关闭（用户触发） | 托盘可用且 `closeAction = "ask"` 时先弹关闭询问框；其余情况按设置直接隐藏或退出 |
 | 关闭时选择「隐藏到托盘」 | 隐藏窗口并从任务栏与 Alt+Tab 移除，进程继续运行；记住隐藏前的普通 / 最大化状态 |
+| 主窗口隐藏到托盘 | 桌宠窗口保留并继续动画/睡眠；恢复主窗口不影响桌宠（见桌宠章节） |
 | 关闭时选择「退出应用」 | 退出进程（码 `0`）；托盘菜单「退出」走同一条路径且不弹询问框 |
 | 主窗口从托盘恢复 | 显示 → 还原到隐藏前的尺寸与窗口状态 → 激活 |
-| 进程退出 | 销毁托盘图标，关闭管道监听并释放互斥量 |
+| 进程退出 | 销毁托盘图标，关闭管道监听并释放互斥量；桌宠随进程关闭 |
 
 - **关闭按钮不再直接退出**：托盘可用时先按关闭询问规则处理；`ShutdownMode` 不变（与启动序列章节一致）。
 - 已最小化时触发关闭（任务栏右键关闭、Alt+F4）：先还原到最小化前的状态，再显示询问框；选「取消」后保持还原。
@@ -171,12 +172,13 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 创建时机 | 主窗口第一次显示后（进入 `Running`）创建；进程退出时销毁 |
 | 图标 | exe 内嵌的 `app.ico`（与 `Assets/app-icon.png` 同一母版），与主窗口任务栏图标同一份 |
 | 左键单击 | 显示并激活主窗口（同激活规则） |
-| 右键菜单 | 显示主窗口 / 设置 / 退出，文案键 `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` |
+| 右键菜单 | 显示主窗口 / 显示小猫（可勾选） / 设置 / 退出，文案键 `Shell.Tray.Show` / `Shell.Tray.ShowPet` / `Shell.Tray.Settings` / `Shell.Tray.Exit` |
+| 「显示小猫」项 | 勾选状态 = `petEnabled`；切换即时显示/隐藏桌宠并保存；与设置页开关同一状态 |
 | 「设置」项 | 恢复并激活窗口后，走导航栏「设置」同一条导航命令 |
 | 平台 | 只在 Windows 实现；其他平台为 no-op，其最小化行为随跨平台分发另行决定 |
 
 - 最小化不再隐藏到托盘，因此没有首次最小化提示；从关闭询问框选择「隐藏到托盘」时也不投递通知，询问框本身已经解释过后台状态。
-- 三个 `Shell.Tray.*` 键与关闭询问的 `Shell.Close.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
+- 四个 `Shell.Tray.*` 键、`Shell.Pet.*` 与 `Settings.Pet.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
 - 托盘与单实例的实现放 Infrastructure；`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
 
 ### 隐藏期间的错误投递
@@ -188,6 +190,83 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 与并发写的关系
 
 - 单实例锁只覆盖「同一用户会话 + 同一 exe 路径」。不同用户会话、或共享盘上两台机器仍可能同时写同一个 `config\settings.json`：接受最后写入者胜，不加跨进程文件锁（见配置与外置文件章节）。
+
+## 桌宠
+
+桌宠是用户家中橘猫的常驻桌面形态：一个独立的置顶透明窗口，不参与主窗口导航，也不接工具状态。取舍见 [ADR-0014](./adr/0014-desktop-pet.md)；视觉与动画帧见 [`docs/ui-spec.md`](./ui-spec.md) 与 [`docs/pet-art-spec.md`](./pet-art-spec.md)。
+
+### 窗口与生命周期
+
+| 项 | 规则 |
+| --- | --- |
+| 窗口 | `PetWindow`，160×160 DIP；`Topmost`、`WindowDecorations=None`、`TransparencyLevelHint=Transparent`、`Background=Transparent`、`ShowInTaskbar=false`、`CanResize=false`、`ShowActivated=false` |
+| 创建 | 首次启用时懒创建；关闭开关只隐藏并停表，不销毁，再次开启即时 |
+| 显示时机 | 启动时 `petEnabled=true` 且 splash 交接完成后显示；不覆盖 splash |
+| 入场 | 主窗口可见时从内容页右下角走到落点；主窗口隐藏到托盘或最小化时从右侧屏幕边缘（落点同高）走进来；只做进入，收起用 150ms 淡出；宠物始终置顶，走路时覆盖在页面上、不被主窗口裁切 |
+| 入场路径 | 直线插值，按约 450 px/s 的统一速度计算时长（内容页约 1.6s，屏幕边缘约 0.8s，实际按路径长度）；窗口位移 60fps，走路帧 10fps 循环；入场中点击/拖拽立即打断并接管 |
+| 初始位置 | 主屏工作区右下角，距右/下各 24 DIP；这是落点，不是内容页起点 |
+| 位置恢复 | `petX`/`petY` 为物理像素；启动时按坐标恢复；找不到可见工作区、显示器/DPI 变化时夹回最近的可见工作区 |
+| 主窗口隐藏到托盘 | 桌宠保留，继续动画/睡眠 |
+| 应用退出 | 随进程关闭；宠物窗口关闭不触发 `ShutdownMode`（它不是 `MainWindow`） |
+| 透明/资源降级 | 透明层级不可用或帧缺失/加载失败：不显示桌宠，保留 `petEnabled`，记 Warning；不弹模态、不画黑框 |
+| 已知限制 | 160×160 矩形命中区，透明角落也可能接点击；置顶会盖住全屏应用；点击/拖拽会把宠物窗口带到前台（`WS_EX_NOACTIVATE` 等方案已实测无效）；v1 不处理自动让位/点击穿透/裁切交接 |
+
+- `PetWindowController` 负责创建、位置、置顶、入场路径/起点、150ms 淡出与设置订阅；窗口本身只负责渲染和指针事件，不读配置文件。
+- 用户关闭宠物窗口（Alt+F4/系统关闭）等同「隐藏小猫」：写 `petEnabled=false` 并取消关闭；系统关机/应用退出不拦，随进程关闭。
+- 设置/托盘/右键三处读写同一个 `petEnabled`；隐藏与显示不做过渡动画。
+- 宠物窗口永远不是 `MainWindow`：主窗口隐藏到托盘时进程继续，桌宠也继续；退出应用走既有退出路径。
+- 透明窗口先走 Avalonia 的 `TransparencyLevelHint=Transparent`；Win10/Win11 不依赖 Mica、圆角或阴影。
+
+### 动画与状态
+
+- 状态机在 `JiuMi.Application`：`Idle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`；UI 只按状态换帧。
+- 帧表与逐帧时长：
+
+| 状态 | 帧数 | 时长 | 说明 |
+| --- | --- | --- | --- |
+| `Idle` | 12 | 100–120ms/帧 | 呼吸 + 尾巴轻摆；循环 |
+| `Blink` | 3 | 80ms/帧 | 半闭/闭/睁；身体中性；仅在 `Idle` 随机 4–8 秒触发 |
+| `React` | 3 | 80ms/帧 | 竖耳/睁眼；结束回 `Idle`；爱心叠加 800ms |
+| `Drag` | 2 | 150ms/帧 | 被拎起的悬垂姿势；拖动时循环 |
+| `SleepIn` | 4 | 120ms/帧 | 趴下/蜷起；不循环 |
+| `Sleep` | 4 | 300ms/帧 | 慢呼吸；循环；`Zzz` 矢量叠加 |
+| `Wake` | 2 | 100ms/帧 | 伸懒腰/站起；回 `Idle` |
+| `WalkOut` | 8 | 100ms/帧 | 侧/3-4 走路循环；入场时随窗口路径播放，结束回 `Idle` |
+
+- 资源：`src/JiuMi/Assets/Pet/<state>/<nn>.png`，384×384 透明 PNG；同一画布/脚底基线；C# 动画清单定义帧序与时长；按状态按需加载。
+- 调度：`DispatcherTimer` 约 50ms 检查 + `Stopwatch` 计算逐帧截止时间；约 10fps；隐藏时停表，显示时从 `Idle` 开始。
+- 眨眼：只在 `Idle`，随机 4–8 秒；`React`/`Drag`/`Sleep` 中不眨眼。
+- 入场：`WalkOut` 播放 8 帧走路循环，窗口按路径插值到落点；走完才开始 5 分钟睡眠计时；入场中点击/拖拽立即打断并接管，隐藏时中止入场；入场动画不改变 `petEnabled`。
+- 睡眠：任意单击/拖拽/右键重置 5 分钟计时，悬停不算；到点 `Idle → SleepIn → Sleep`；睡着单击先 `Wake` 不冒爱心；睡着拖拽直接 `Drag`；双击 `Wake` + 打开主窗口；右键 `Wake` + 打开菜单。
+- 交互可打断 `Blink`/`React`/`SleepIn`/`Wake`/`WalkOut`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
+- 爱心/`Zzz`：矢量叠加，不烘焙进帧；无声音。
+- 状态机注入时间与随机源，单测不依赖真实计时。
+
+### 交互与入口
+
+- 单击：竖耳 + 小爱心；双击：打开主窗口。单击爱心延迟 300ms；双击判定用系统 `GetDoubleClickTime()`（通常 500ms），命中时隐藏爱心并打开主窗口。
+- 拖拽：手动跟踪指针并修改窗口 `Position`；4px 阈值区分点击；松手保存位置并夹回可见工作区。
+- 右键：菜单「隐藏小猫」/「打开设置」；隐藏写入 `petEnabled=false`，与设置开关同一状态。
+- 悬停：ToolTip「双击打开 JiuMi」；不唤醒、不重置计时。
+- 焦点：`ShowActivated=false` 只避免首次显示抢焦点；原型已验证 `WS_EX_NOACTIVATE` + `WS_EX_TOOLWINDOW` + `WM_MOUSEACTIVATE` 钩子 + `Focusable=false` 仍会激活宠物窗口。v1 接受这个已知限制；无焦点宿主窗口另开 spike，不为 Win10/11 分叉。
+- 可访问性：宠物本身不做键盘交互；显示/隐藏可通过设置页与托盘完成；根元素设 `AutomationProperties.Name`（`Shell.Pet.AutomationName`）。
+
+### 设置与托盘
+
+- 设置键见配置章节的桌宠小节：`petEnabled` 默认 `false`，`petX`/`petY` 缺省；`schemaVersion` 保持 `1`。
+- 设置页新增「桌宠」分区（在「窗口」之后）：ToggleSwitch「显示小猫」+ 说明；切换即时显隐并保存；不做尺寸/重置位置。
+- 托盘菜单顺序：显示主窗口 / 显示小猫（可勾选）/ 设置 / 退出；勾选状态 = `petEnabled`；切换即时显隐并保存。托盘图标仍不承担状态角标/闪烁。
+- 右键菜单两项；隐藏后可从托盘或设置恢复。
+- 文案键：`Shell.Tray.ShowPet`；`Shell.Pet.Hide` / `.Settings` / `.ToolTip` / `.AutomationName`；`Settings.Pet.Section` / `.Label` / `.Hint`。全部在现有顶层命名空间内，不新增白名单。
+
+### 分层与测试
+
+- UI：`PetWindow`、`PetWindowController`、帧渲染与叠加层；`PetWindowController` 使用 `ISettingsStore` 与 Avalonia `Screens`。
+- Application：`PetAnimationStateMachine`、`PetAnimationCatalog`、`PetState`（含 `WalkOut`）；纯逻辑，注入时间/随机源；入场路径/起点由 controller 计算，状态机只接收“入场结束/被打断”。
+- Infrastructure：托盘契约新增可勾选项与 `TrayMenuText` 字段；Win32 菜单实现与 `WS_EX_NOACTIVATE`（如需要）留在现有 `#if WINDOWS` 边界。
+- 测试：`JiuMi.Application.Tests` 覆盖状态迁移、睡眠计时、眨眼调度、位置夹取与入场打断；`JiuMi.Infrastructure.Tests` 覆盖设置默认值与托盘菜单文案；UI 用实机验收，不新建 UI 测试项目。
+- 性能：原型矢量占位在 Release 下可见约 1.56% 系统、隐藏 0%；最终 384 PNG 换帧在 feat-3 实测，目标仍是 <1% 系统，超过再优化（降帧/减少重绘/差异帧）。
+- Win10/11：同一套 API；Win10 19045 + 100% 缩放为实机基线；Win11 按手动清单验证透明/置顶/焦点/DPI/多屏/任务栏。行为有差异时在 controller/interop 层适配，不污染动画与美术。
 
 ## 错误呈现与诊断
 
@@ -446,18 +525,32 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 窗口与导航状态
 
-本期持久化的 UI 偏好：导航栏展开态与关闭行为。窗口几何不进配置。
+本期持久化的 UI 偏好：导航栏展开态、关闭行为与桌宠开关/位置。主窗口几何不进配置；桌宠位置见下方小节。
 
 | 键 | 类型 | 缺省 | 含义 |
 | --- | --- | --- | --- |
 | `navExpanded` | boolean | `true` | 导航栏展开（`true`）还是收起（`false`） |
 | `closeAction` | `"ask"` / `"minimizeToTray"` / `"exit"` | `"ask"` | 主窗口关闭时的行为 |
 
-- 窗口尺寸、位置、最大化与还原尺寸**不记忆**：每次启动按 1200 × 760 打开，位置由系统决定（见 UI 规格）。理由见 [ADR-0005](./adr/0005-window-state-memory.md)。
+- 主窗口尺寸、位置、最大化与还原尺寸**不记忆**：每次启动按 1200 × 760 打开，位置由系统决定（见 UI 规格）。理由见 [ADR-0005](./adr/0005-window-state-memory.md)。
 - `navExpanded` **只在主窗口实际关闭时写一次**；被询问框取消的关闭不写，用户点展开/收起按钮也不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
 - `closeAction` 在设置页切换时立即写；询问框的「不再询问」只在选择「隐藏到托盘」或「退出应用」时写，点取消不记。界面文案用「隐藏到托盘」，存储值沿用 `minimizeToTray`。
 - 关闭时写入失败**静默**：记一条不带 `code` 的 Warning 日志（操作 `Settings.SaveOnExit`），不进详情缓冲、不弹 InfoBar。此时窗口正在关，用户无从处理；「保存失败必须可见」的契约针对用户主动修改的设置。
 - 两个键都属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
+
+### 桌宠
+
+| 键 | 类型 | 缺省 | 含义 |
+| --- | --- | --- | --- |
+| `petEnabled` | boolean | `false` | 是否显示桌宠 |
+| `petX` / `petY` | number | 缺省 | 桌宠左上角的物理像素坐标；缺省时用主屏工作区右下角默认位置 |
+
+- 设置页开关、托盘「显示小猫」、右键「隐藏小猫」写入同一 `petEnabled`；切换即时生效并整文件写。
+- `petX`/`petY` 只在拖动松手时写一次；启动恢复时夹回可见工作区，夹取不自动改写已存值，用户再次拖动才写。
+- 显示器/DPI 变化只做夹取；不因此重写坐标。
+- 透明/资源降级不改变 `petEnabled`，只隐藏并记 Warning。
+- `petEnabled` 的开关写盘失败走既有「保存失败必须可见」路径；`petX`/`petY` 在拖动松手写入，失败记 Warning、不弹提示，下次拖动重试。
+- 三个键都是新增键，缺键补默认，`schemaVersion` 保持 `1`。
 
 ### 世界工作时间状态
 
@@ -517,7 +610,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 键 | 含义 |
 | --- | --- |
 | `Shell.Nav.Home` / `Shell.Nav.Settings` | 导航项 |
-| `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单 |
+| `Shell.Tray.Show` / `Shell.Tray.ShowPet` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单；`ShowPet` 是可勾选的「显示小猫」 |
+| `Shell.Pet.Hide` / `.Settings` / `.ToolTip` / `.AutomationName` | 桌宠右键菜单、悬停提示与可访问名 |
 | `Shell.Close.Title` / `.Body` / `.DontAsk` / `.Cancel` / `.Exit` / `.HideToTray` | 关闭询问框 |
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
@@ -546,6 +640,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
 | `Settings.Window.Section` / `Settings.Window.Label` / `Settings.Window.Hint` | 「窗口」分区标题与关闭行为行 |
 | `Settings.Window.Ask` / `Settings.Window.HideToTray` / `Settings.Window.Exit` | 关闭行为三选项 |
+| `Settings.Pet.Section` / `Settings.Pet.Label` / `Settings.Pet.Hint` | 「桌宠」分区标题、开关行与说明 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
 | `Settings.About.ExportDiagnostics` / `Settings.About.DiagnosticsFileType` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮、保存对话框的文件类型标签与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |

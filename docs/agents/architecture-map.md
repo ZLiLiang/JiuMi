@@ -14,14 +14,15 @@
 | Topic | Read | Related |
 | --- | --- | --- |
 | 启动序列 | `启动序列` (lines 5–98): state machine, splash timing, degradation ladder, handoff, startup failures | [ADR-0002](../adr/0002-splash-startup-sequence.md) |
-| 单实例与窗口生命周期 | `单实例与窗口生命周期` (99–174): mutex/pipe, activation, tray, hidden-window errors | [#7](https://github.com/ZLiLiang/JiuMi/issues/7) |
-| 错误呈现与诊断 | `错误呈现与诊断` (175–273): levels, carriers, `ErrorRecord`, global hooks, notifications | [ADR-0003](../adr/0003-error-presentation.md) |
-| 日志与诊断 | `日志与诊断` (274–382): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
-| 配置与外置文件 | `配置与外置文件` (383–466): locations, startup probe, file contract, atomic write, world clock state | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
-| 本地化 | `本地化` (467–566): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
-| 工具模块 | `工具模块` (lines 585–644): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
-| 图片格式转换 | `图片格式转换` (646–700): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
-| 批量重命名 | `批量重命名` (702–755): rule model and numbering, sources/scope/skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md), [ADR-0011](../adr/0011-multi-source-rename-batch.md) |
+| 单实例与窗口生命周期 | `单实例与窗口生命周期` (99–193): mutex/pipe, activation, tray, hidden-window errors | [#7](https://github.com/ZLiLiang/JiuMi/issues/7) |
+| 桌宠 | `桌宠` (194–270): window layer, entrance path, position memory, animation state machine, settings/tray entries, Win10/11 compatibility | [ADR-0014](../adr/0014-desktop-pet.md), [art spec](../pet-art-spec.md) |
+| 错误呈现与诊断 | `错误呈现与诊断` (271–370): levels, carriers, `ErrorRecord`, global hooks, notifications | [ADR-0003](../adr/0003-error-presentation.md) |
+| 日志与诊断 | `日志与诊断` (371–479): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
+| 配置与外置文件 | `配置与外置文件` (480–580): locations, startup probe, file contract, atomic write, world clock state | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
+| 本地化 | `本地化` (581–701): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
+| 工具模块 | `工具模块` (702–761): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
+| 图片格式转换 | `图片格式转换` (762–817): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
+| 批量重命名 | `批量重命名` (818–871): rule model and numbering, sources/scope/skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md), [ADR-0011](../adr/0011-multi-source-rename-batch.md) |
 
 ## Stop rules
 
