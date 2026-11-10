@@ -28,15 +28,12 @@ public sealed class SystemAnimationSettings : ISystemAnimationSettings
     }
 
     /// <inheritdoc />
-    public bool AreClientAreaAnimationsEnabled =>
-        !OperatingSystem.IsWindows() || (_readClientAreaAnimation() ?? true);
+    /// <remarks>A failed or unavailable read keeps animations on.</remarks>
+    public bool AreClientAreaAnimationsEnabled => _readClientAreaAnimation() ?? true;
 
     [SupportedOSPlatform("windows")]
-    private static bool? ReadClientAreaAnimation()
-    {
-        // A failed read keeps the default: animations stay on.
-        return SystemParametersInfo(GetClientAreaAnimation, 0, out bool enabled, 0) ? enabled : null;
-    }
+    private static bool? ReadClientAreaAnimation() =>
+        SystemParametersInfo(GetClientAreaAnimation, 0, out bool enabled, 0) ? enabled : null;
 
     [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

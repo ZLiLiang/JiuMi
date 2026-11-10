@@ -166,10 +166,7 @@ internal sealed class PageTransitionAnimator
                 return;
             }
 
-            if (_navigation is not null)
-            {
-                AbortNavigation();
-            }
+            AbortNavigation();
 
             e.Handled = true;
             if (!_isMotionEnabled() || !TryStartCard(e.Page))
@@ -189,10 +186,7 @@ internal sealed class PageTransitionAnimator
             return;
         }
 
-        if (_navigation is not null)
-        {
-            AbortNavigation();
-        }
+        AbortNavigation();
 
         if (_viewModel.IsPageShown(e.Page))
         {

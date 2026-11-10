@@ -15,11 +15,6 @@ public sealed class SystemAnimationSettingsTests
     [InlineData(false)]
     public void AreClientAreaAnimationsEnabled_GivenReaderValue_ReturnsReaderValue(bool enabled)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
         var settings = new SystemAnimationSettings(() => enabled);
 
         Assert.Equal(enabled, settings.AreClientAreaAnimationsEnabled);
@@ -28,11 +23,6 @@ public sealed class SystemAnimationSettingsTests
     [Fact]
     public void AreClientAreaAnimationsEnabled_GivenFailedRead_ReturnsTrue()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
         var settings = new SystemAnimationSettings(() => null);
 
         Assert.True(settings.AreClientAreaAnimationsEnabled);
