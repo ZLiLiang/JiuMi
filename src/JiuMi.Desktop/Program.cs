@@ -163,6 +163,7 @@ internal static class Program
         services.AddSingleton<WorldClockViewModel>();
         services.AddSingleton(new OutputPathPlanner(File.Exists));
         services.AddSingleton<ImageConvertViewModel>();
+        services.AddSingleton<FileRenameViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();

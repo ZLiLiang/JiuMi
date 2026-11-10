@@ -1,5 +1,6 @@
 <fa:FAAppWindow xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:chrome="using:Avalonia.Controls.Chrome"
                  xmlns:fa="using:FluentAvalonia.UI.Windowing"
                  xmlns:fac="using:FluentAvalonia.UI.Controls"
                  xmlns:loc="using:JiuMi.Localization"
@@ -58,28 +59,34 @@
             IsHitTestVisible="False"
             IsVisible="False" />
 
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="16,0" Background="Transparent">
-      <Border x:Name="TitleBarMark"
-              Width="18"
-              Height="18"
-              CornerRadius="4"
-              VerticalAlignment="Center">
-        <Border.Background>
-          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-            <GradientStop Offset="0" Color="{DynamicResource SystemAccentColorLight1}" />
-            <GradientStop Offset="1" Color="{DynamicResource SystemAccentColorDark1}" />
-          </LinearGradientBrush>
-        </Border.Background>
-        <Image x:Name="TitleBarIcon"
-               Stretch="UniformToFill"
-               RenderOptions.BitmapInterpolationMode="HighQuality" />
-      </Border>
-      <TextBlock Grid.Column="1"
-                 Margin="8,0,0,0"
-                 VerticalAlignment="Center"
-                 FontSize="12"
-                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                 Text="{Binding AppName}" />
+    <!-- The full-bleed wrapper keeps the side gutters draggable. -->
+    <Grid Grid.Row="0"
+          Background="Transparent"
+          chrome:WindowDecorationProperties.ElementRole="TitleBar">
+      <Grid ColumnDefinitions="Auto,*" Margin="16,0">
+        <Border x:Name="TitleBarMark"
+                chrome:WindowDecorationProperties.ElementRole="User"
+                Width="18"
+                Height="18"
+                CornerRadius="4"
+                VerticalAlignment="Center">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+              <GradientStop Offset="0" Color="{DynamicResource SystemAccentColorLight1}" />
+              <GradientStop Offset="1" Color="{DynamicResource SystemAccentColorDark1}" />
+            </LinearGradientBrush>
+          </Border.Background>
+          <Image x:Name="TitleBarIcon"
+                 Stretch="UniformToFill"
+                 RenderOptions.BitmapInterpolationMode="HighQuality" />
+        </Border>
+        <TextBlock Grid.Column="1"
+                   Margin="8,0,0,0"
+                   VerticalAlignment="Center"
+                   FontSize="12"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="{Binding AppName}" />
+      </Grid>
     </Grid>
 
     <Grid Grid.Row="1" Margin="14" ColumnDefinitions="Auto,14,*">
@@ -121,6 +128,7 @@
                    ItemsSource="{Binding PrimaryNavigationItems}"
                    ItemTemplate="{StaticResource NavigationItemTemplate}"
                    ItemContainerTheme="{StaticResource NavigationItemTheme}"
+                   PointerPressed="OnNavigationPointerPressed"
                    SelectedItem="{Binding SelectedPrimaryItem, Mode=TwoWay}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
@@ -144,6 +152,7 @@
                    ItemsSource="{Binding SettingsNavigationItems}"
                    ItemTemplate="{StaticResource NavigationItemTemplate}"
                    ItemContainerTheme="{StaticResource NavigationItemTheme}"
+                   PointerPressed="OnNavigationPointerPressed"
                    SelectedItem="{Binding SelectedSettingsItem, Mode=TwoWay}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
@@ -155,13 +164,21 @@
       </Border>
 
       <Border Grid.Column="2" Classes="island">
-        <DockPanel>
-          <views:InfoBarView DockPanel.Dock="Top" DataContext="{Binding InfoBar}" />
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                        VerticalScrollBarVisibility="Auto">
-            <ContentControl Content="{Binding CurrentPage}" />
-          </ScrollViewer>
-        </DockPanel>
+        <Grid RowDefinitions="Auto,*">
+          <views:InfoBarView Grid.Row="0" DataContext="{Binding InfoBar}" />
+          <Grid x:Name="PageViewport"
+                Grid.Row="1"
+                ClipToBounds="True">
+            <ScrollViewer x:Name="PageScroller"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+              <ContentControl x:Name="PageHost" Content="{Binding CurrentPage}" />
+            </ScrollViewer>
+            <Canvas x:Name="TransitionLayer"
+                    ClipToBounds="True"
+                    IsHitTestVisible="False" />
+          </Grid>
+        </Grid>
       </Border>
     </Grid>
   </Grid>

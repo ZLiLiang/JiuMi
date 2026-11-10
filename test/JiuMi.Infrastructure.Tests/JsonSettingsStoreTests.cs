@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Settings;
 using JiuMi.Infrastructure.Settings;
@@ -58,6 +59,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Null(result.Settings.Language);
         Assert.Equal(AppTheme.System, result.Settings.Theme);
         Assert.True(result.Settings.NavExpanded);
+        Assert.Equal(CloseAction.Ask, result.Settings.CloseAction);
         Assert.Equal(SettingsContract.SchemaVersion, result.Settings.SchemaVersion);
         Assert.False(File.Exists(_settingsPath));
     }
@@ -73,6 +75,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
             Language = "en-US",
             Theme = AppTheme.Dark,
             NavExpanded = false,
+            CloseAction = CloseAction.MinimizeToTray,
         });
 
         Assert.True(result.Persisted);
@@ -82,12 +85,14 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Contains("\"language\": \"en-US\"", json);
         Assert.Contains("\"theme\": \"dark\"", json);
         Assert.Contains("\"navExpanded\": false", json);
+        Assert.Contains("\"closeAction\": \"minimizeToTray\"", json);
         Assert.False(File.Exists(_tempPath));
 
         SettingsLoadResult reloaded = CreateStore().Load();
         Assert.Equal("en-US", reloaded.Settings.Language);
         Assert.Equal(AppTheme.Dark, reloaded.Settings.Theme);
         Assert.False(reloaded.Settings.NavExpanded);
+        Assert.Equal(CloseAction.MinimizeToTray, reloaded.Settings.CloseAction);
         Assert.Equal(SettingsLoadIssue.None, reloaded.Issues);
     }
 
@@ -131,6 +136,49 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Equal(AppTheme.System, CreateStore().Load().Settings.Theme);
     }
 
+    [Theory]
+    [InlineData(CloseAction.Ask, "ask")]
+    [InlineData(CloseAction.MinimizeToTray, "minimizeToTray")]
+    [InlineData(CloseAction.Exit, "exit")]
+    public void Save_GivenCloseAction_WritesStorageValueAndRoundTrips(
+        CloseAction action,
+        string storageValue)
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+
+        SettingsSaveResult result = store.Save(new AppSettings { CloseAction = action });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        Assert.Equal(storageValue, document.RootElement.GetProperty("closeAction").GetString());
+        Assert.Equal(action, CreateStore().Load().Settings.CloseAction);
+    }
+
+    [Theory]
+    [InlineData("ask", CloseAction.Ask)]
+    [InlineData("minimizeToTray", CloseAction.MinimizeToTray)]
+    [InlineData("exit", CloseAction.Exit)]
+    [InlineData("EXIT", CloseAction.Exit)]
+    [InlineData("hide", CloseAction.Ask)]
+    [InlineData("", CloseAction.Ask)]
+    public void Load_GivenCloseActionString_UsesKnownValueOrFallsBackToAsk(
+        string storedValue,
+        CloseAction expected)
+    {
+        WriteSettings($$"""{ "closeAction": "{{storedValue}}" }""");
+
+        Assert.Equal(expected, CreateStore().Load().Settings.CloseAction);
+    }
+
+    [Fact]
+    public void Load_GivenNonStringCloseAction_FallsBackToAsk()
+    {
+        WriteSettings("""{ "closeAction": 1 }""");
+
+        Assert.Equal(CloseAction.Ask, CreateStore().Load().Settings.CloseAction);
+    }
+
     [Fact]
     public void Load_GivenMissingKeys_UsesDefaults()
     {
@@ -142,6 +190,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.Equal("en-US", result.Settings.Language);
         Assert.Equal(AppTheme.System, result.Settings.Theme);
         Assert.True(result.Settings.NavExpanded);
+        Assert.Equal(CloseAction.Ask, result.Settings.CloseAction);
         Assert.Equal(SettingsContract.SchemaVersion, result.Settings.SchemaVersion);
     }
 
@@ -217,6 +266,78 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
         Assert.Null(settings.OutputDirectory);
         Assert.Equal(ImageRgbColor.White, settings.JpegBackgroundColor);
+    }
+
+    [Fact]
+    public void Save_GivenFileRenameSettings_RoundTrips()
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+        var settings = new FileRenameSettings
+        {
+            RuleLevel = RenameRuleLevel.Advanced,
+            BasicTask = RenameBasicTask.Sequence,
+            BasicFind = "old",
+            BasicReplace = "new",
+            AffixPosition = RenameAffixPosition.Suffix,
+            AffixText = "-copy",
+            SequenceName = "素材",
+            SequencePadWidth = 3,
+            AdvancedKind = RenameRuleKind.Template,
+            AdvancedFind = @"\d+",
+            AdvancedReplace = "{index}",
+            AdvancedUseRegex = true,
+            Template = "{index:00}-{name}{ext}",
+            AdvancedEdited = true,
+            IncludeSubdirectories = true,
+            Extensions = ".png .jpg",
+            BackupEnabled = true,
+        };
+
+        SettingsSaveResult result = store.Save(new AppSettings { FileRename = settings });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        JsonElement fileRename = document.RootElement.GetProperty("fileRename");
+        Assert.Equal("advanced", fileRename.GetProperty("ruleLevel").GetString());
+        Assert.Equal("sequence", fileRename.GetProperty("basicTask").GetString());
+        Assert.Equal("suffix", fileRename.GetProperty("affixPosition").GetString());
+        Assert.Equal(3, fileRename.GetProperty("sequencePadWidth").GetInt32());
+        Assert.Equal("template", fileRename.GetProperty("advancedKind").GetString());
+        Assert.True(fileRename.GetProperty("advancedUseRegex").GetBoolean());
+        Assert.True(fileRename.GetProperty("advancedEdited").GetBoolean());
+        Assert.True(fileRename.GetProperty("includeSubdirectories").GetBoolean());
+        Assert.True(fileRename.GetProperty("backupEnabled").GetBoolean());
+        Assert.DoesNotContain("directory", fileRename.GetRawText(), StringComparison.OrdinalIgnoreCase);
+
+        Assert.Equal(settings, CreateStore().Load().Settings.FileRename);
+    }
+
+    [Fact]
+    public void Load_GivenMissingFileRename_UsesDefaults()
+    {
+        WriteSettings("""{ "language": "en-US" }""");
+
+        FileRenameSettings settings = CreateStore().Load().Settings.FileRename;
+
+        Assert.Equal(FileRenameSettings.CreateDefault(), settings);
+    }
+
+    [Theory]
+    [InlineData("""{ "fileRename": { "ruleLevel": "weird", "basicTask": 5, "affixPosition": "middle" } }""")]
+    [InlineData("""{ "fileRename": { "sequencePadWidth": 9, "advancedKind": "nope" } }""")]
+    [InlineData("""{ "fileRename": "not an object" }""")]
+    public void Load_GivenInvalidFileRename_FallsBackToDefaults(string json)
+    {
+        WriteSettings(json);
+
+        FileRenameSettings settings = CreateStore().Load().Settings.FileRename;
+
+        Assert.Equal(RenameRuleLevel.Basic, settings.RuleLevel);
+        Assert.Equal(RenameBasicTask.Replace, settings.BasicTask);
+        Assert.Equal(RenameAffixPosition.Prefix, settings.AffixPosition);
+        Assert.Equal(RenameRuleKind.Replace, settings.AdvancedKind);
+        Assert.Equal(0, settings.SequencePadWidth);
     }
 
     [Fact]

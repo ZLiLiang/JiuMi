@@ -9,6 +9,7 @@ public sealed class HomeViewModel : ViewModelBase
 {
     private IRelayCommand? _openWorldClockCommand;
     private IRelayCommand? _openImageConvertCommand;
+    private IRelayCommand? _openFileRenameCommand;
 
     /// <summary>
     /// Gets or sets the command that opens the world clock page from its tool card.
@@ -26,5 +27,14 @@ public sealed class HomeViewModel : ViewModelBase
     {
         get => _openImageConvertCommand;
         set => SetProperty(ref _openImageConvertCommand, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the command that opens the batch rename page from its tool card.
+    /// </summary>
+    public IRelayCommand? OpenFileRenameCommand
+    {
+        get => _openFileRenameCommand;
+        set => SetProperty(ref _openFileRenameCommand, value);
     }
 }

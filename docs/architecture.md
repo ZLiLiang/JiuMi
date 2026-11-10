@@ -98,7 +98,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ## 单实例与窗口生命周期
 
-同一个 exe 副本在同一用户会话里只跑一个进程：第二次启动不建窗口，只把已有窗口叫到前台。托盘只承接「最小化」，**关闭仍然是退出**。决议见 [本期是否实现单实例与托盘行为？](https://github.com/ZLiLiang/JiuMi/issues/7)。
+同一个 exe 副本在同一用户会话里只跑一个进程：第二次启动不建窗口，只把已有窗口叫到前台。**最小化保留在任务栏**；用户关闭主窗口时按设置询问是否隐藏到托盘，托盘承接隐藏与唤回。决议见 [#7 单实例与初版托盘](https://github.com/ZLiLiang/JiuMi/issues/7) 与 [#71 最小化与托盘行为调整](https://github.com/ZLiLiang/JiuMi/issues/71)。
 
 ### 单实例
 
@@ -139,13 +139,30 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 事件 | 行为 |
 | --- | --- |
 | splash 关闭 | 不结束进程（`ShutdownMode = OnMainWindowClose`，`MainWindow` 已赋值） |
-| 主窗口最小化 | 隐藏窗口并从任务栏移除，常驻托盘；每会话第一次投递一条系统通知 |
-| 主窗口从托盘恢复 | 显示 → 还原到最小化前的尺寸与窗口状态 → 激活 |
-| 主窗口关闭 | 退出进程（码 `0`）；托盘菜单「退出」走同一条路径 |
+| 主窗口最小化 | 保留在任务栏与 Alt+Tab；不隐藏、不移除任务栏按钮 |
+| 主窗口关闭（用户触发） | 托盘可用且 `closeAction = "ask"` 时先弹关闭询问框；其余情况按设置直接隐藏或退出 |
+| 关闭时选择「隐藏到托盘」 | 隐藏窗口并从任务栏与 Alt+Tab 移除，进程继续运行；记住隐藏前的普通 / 最大化状态 |
+| 关闭时选择「退出应用」 | 退出进程（码 `0`）；托盘菜单「退出」走同一条路径且不弹询问框 |
+| 主窗口从托盘恢复 | 显示 → 还原到隐藏前的尺寸与窗口状态 → 激活 |
 | 进程退出 | 销毁托盘图标，关闭管道监听并释放互斥量 |
 
-- **关闭按钮不隐藏到托盘**，`ShutdownMode` 不变（与启动序列章节一致）。
-- 最小化到托盘只针对主窗口；splash 不可最小化（见启动序列章节），因此启动期没有托盘入口。
+- **关闭按钮不再直接退出**：托盘可用时先按关闭询问规则处理；`ShutdownMode` 不变（与启动序列章节一致）。
+- 已最小化时触发关闭（任务栏右键关闭、Alt+F4）：先还原到最小化前的状态，再显示询问框；选「取消」后保持还原。
+- 隐藏到托盘只针对主窗口；splash 不可最小化或关闭（见启动序列章节），因此启动期没有关闭询问与托盘入口。
+
+### 关闭询问
+
+| 项 | 规则 |
+| --- | --- |
+| 触发 | 用户关闭主窗口（标题栏 X、Alt+F4 或等效关闭命令），且托盘可用 |
+| 动作 | 取消 / 退出应用 / 隐藏到托盘；询问框的 Esc、Alt+F4 等同取消 |
+| 记住 | 「不再询问」复选框；选择后两个动作之一时把该动作写入 `closeAction`，点取消不记 |
+| 免问 | 托盘「退出」、系统关机 / 注销（`WindowCloseReason.OSShutdown`）、应用 Shutdown（`ApplicationShutdown`）直接退出 |
+| 托盘不可用 | 不弹询问框，关闭即退出；已存 `closeAction = "minimizeToTray"` 同样回退为退出 |
+| 设置 | `closeAction` 取 `"ask"` / `"minimizeToTray"` / `"exit"`，缺键或非法值按 `"ask"`；设置页可改回「每次询问」 |
+
+- 询问期间关闭事件被取消；用户选择后再执行隐藏或退出，不会出现「先退出又弹框」的竞态。
+- 询问框是主窗口的模态子窗口；视觉与文案见 [`docs/ui-spec.md`](./ui-spec.md) 的「关闭询问框」章节。
 
 ### 托盘
 
@@ -158,8 +175,8 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 「设置」项 | 恢复并激活窗口后，走导航栏「设置」同一条导航命令 |
 | 平台 | 只在 Windows 实现；其他平台为 no-op，其最小化行为随跨平台分发另行决定 |
 
-- 首次最小化提示的文案取 `Shell.Tray.MinimizedHint`，经错误呈现章节的 `IUserNotification` 端口投递，界面代码不直接调用托盘 API。
-- 四个 `Shell.Tray.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
+- 最小化不再隐藏到托盘，因此没有首次最小化提示；从关闭询问框选择「隐藏到托盘」时也不投递通知，询问框本身已经解释过后台状态。
+- 三个 `Shell.Tray.*` 键与关闭询问的 `Shell.Close.*` 键已登记在本地化章节的已登记键表，顶层白名单不变。
 - 托盘与单实例的实现放 Infrastructure；`#if WINDOWS` 只出现在 Infrastructure 与 Desktop 组合根。
 
 ### 隐藏期间的错误投递
@@ -214,6 +231,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置落点回退到 AppData | Warning（每会话一次） | `Config.FallbackToAppData` | InfoBar | 打开文件夹 |
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
+| 批量重命名单项失败或日志导出失败 | Warning | `FileRename.Failed` | 仅日志 | —（批次结束另发一条 InfoBar 汇总） |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
 | 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
@@ -266,9 +284,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 系统通知
 
 - 抽象 `IUserNotification` 在 `JiuMi.Application`；Windows 实现复用托盘图标的气泡通道（`Shell_NotifyIcon` 的 `NIF_INFO`），其他平台 no-op。
-- **触发**：仅当应用没有可见窗口（关闭或最小化到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
+- **触发**：仅当应用没有可见窗口（隐藏到托盘）时投递非阻断 Error；窗口可见或最小化到任务栏只走 in-app。
 - **内容**：标题为应用名，正文只用本地化短句、不带技术细节；点击激活主窗口并呈现对应 InfoBar。
-- 托盘图标本身归单实例与窗口生命周期章节；端口不要求托盘存在，但本期唯一的触发点（最小化提示、隐藏期错误）都发生在托盘已显示之后。本期没有后台任务，触发点只有这两处。
+- 托盘图标本身归单实例与窗口生命周期章节；端口不要求托盘存在，但本期唯一的触发点（隐藏到托盘期间的错误）发生在托盘已显示之后。本期没有后台任务，触发点只有这一处。
 - 平台专属 API 允许使用，但必须隔离在 Infrastructure（经 Application 抽象暴露）；`#if WINDOWS` 只允许出现在 Infrastructure 与 Desktop 组合根，UI / Application 只认抽象。
 
 ## 日志与诊断
@@ -325,7 +343,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 配置探针结果与生效落点
 - 设置保存结果
 - 语言切换、主题切换
-- 主窗口显示 / 关闭、过渡到托盘
+- 主窗口显示 / 关闭、隐藏到托盘与恢复、关闭询问结果
 - 所有异常路径（钩子分工见错误呈现章节）
 
 页面内部细节（导航切换、控件状态）走 `Debug`。**禁止散落的 `Debug.WriteLine`**：全部走 Serilog，DEBUG 构建由 `Serilog.Sinks.Debug` 汇入同一条事件流。
@@ -428,16 +446,18 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 窗口与导航状态
 
-本期只持久化**一比特** UI 状态：导航栏是展开还是收起。窗口几何不进配置。
+本期持久化的 UI 偏好：导航栏展开态与关闭行为。窗口几何不进配置。
 
 | 键 | 类型 | 缺省 | 含义 |
 | --- | --- | --- | --- |
 | `navExpanded` | boolean | `true` | 导航栏展开（`true`）还是收起（`false`） |
+| `closeAction` | `"ask"` / `"minimizeToTray"` / `"exit"` | `"ask"` | 主窗口关闭时的行为 |
 
 - 窗口尺寸、位置、最大化与还原尺寸**不记忆**：每次启动按 1200 × 760 打开，位置由系统决定（见 UI 规格）。理由见 [ADR-0005](./adr/0005-window-state-memory.md)。
-- `navExpanded` **只在主窗口关闭时写一次**；用户点展开/收起按钮不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
+- `navExpanded` **只在主窗口实际关闭时写一次**；被询问框取消的关闭不写，用户点展开/收起按钮也不触发写盘，拖动、缩放、频繁切换都不会引起整文件重写。
+- `closeAction` 在设置页切换时立即写；询问框的「不再询问」只在选择「隐藏到托盘」或「退出应用」时写，点取消不记。界面文案用「隐藏到托盘」，存储值沿用 `minimizeToTray`。
 - 关闭时写入失败**静默**：记一条不带 `code` 的 Warning 日志（操作 `Settings.SaveOnExit`），不进详情缓冲、不弹 InfoBar。此时窗口正在关，用户无从处理；「保存失败必须可见」的契约针对用户主动修改的设置。
-- 该键属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
+- 两个键都属新增键，`schemaVersion` 保持 `1`：缺键补默认即可，不是迁移。
 
 ### 世界工作时间状态
 
@@ -498,11 +518,11 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | `Shell.Nav.Home` / `Shell.Nav.Settings` | 导航项 |
 | `Shell.Tray.Show` / `Shell.Tray.Settings` / `Shell.Tray.Exit` | 托盘右键菜单 |
-| `Shell.Tray.MinimizedHint` | 首次最小化的系统通知 |
+| `Shell.Close.Title` / `.Body` / `.DontAsk` / `.Cancel` / `.Exit` / `.HideToTray` | 关闭询问框 |
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
-| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `BatchRename` / `ImageConvert` / `WorldClock` |
+| `Tool.*.Name` / `Tool.*.Description` | 四张工具卡与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock` |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
 | `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |
@@ -517,12 +537,15 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Weekday.Mon` … `.Sun` | 星期名，共七键 |
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
+| `Tool.FileRename.*` | 批量重命名页：页头与空态、入口与来源列表、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
 | `Settings.Subtitle` | 设置页副标题 |
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
 | `Settings.Appearance.FollowSystem` / `Settings.Appearance.Light` / `Settings.Appearance.Dark` | 主题三选项 |
+| `Settings.Window.Section` / `Settings.Window.Label` / `Settings.Window.Hint` | 「窗口」分区标题与关闭行为行 |
+| `Settings.Window.Ask` / `Settings.Window.HideToTray` / `Settings.Window.Exit` | 关闭行为三选项 |
 | `Settings.About.Section` / `Settings.About.Version` / `Settings.About.Repository` | 「关于」分区标题、版本行与仓库链接；`Version` 含 `{0}` |
 | `Settings.About.ExportDiagnostics` / `Settings.About.DiagnosticsFileType` / `Settings.About.LoggingUnavailable` | 「关于」区的「导出诊断包」按钮、保存对话框的文件类型标签与「日志不可用」状态 |
 | `Common.ComingSoon` | 工具卡与导航项上的「即将推出」 |
@@ -672,6 +695,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 输出与命名
 
 - 默认写回源文件同目录；可切换到用户选定目录，并跨会话记住上次选择。
+- 两个选择器的起点只在进程内记忆：记忆值是最后一次添加文件或拖放指定的来源目录，选择输出目录不更新它。输出选择器优先用自定义输出目录，其次用该记忆值；文件选择器用该记忆值；都不可用时用系统默认。起点不进设置段，也不新增设置字段。
 - 命名为 `原名.<新后缀>`；目标已存在时追加序号（`a-1.png`、`a-2.png`），**绝不覆盖已有文件或源文件**。
 - 输出目录不可写时该行失败，不静默改写到别处。
 
@@ -694,7 +718,61 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 2. Infrastructure：用 Magick.NET 在测试里自行写出的小 PSD/PSB 夹具，验证读合成图、sRGB 转换、元数据剥离、JPG 底色合成、等比缩放；坏文件返回可读原因而不抛未处理异常。
 3. UI 的拖拽、进度与汇总文案不设自动化测试。
 
-相关：[ADR-0009](./adr/0009-image-conversion.md)、[#59](https://github.com/ZLiLiang/JiuMi/issues/59)、[#60](https://github.com/ZLiLiang/JiuMi/issues/60)。
+相关：[ADR-0009](./adr/0009-image-conversion.md)、[#59](https://github.com/ZLiLiang/JiuMi/issues/59)、[#60](https://github.com/ZLiLiang/JiuMi/issues/60)、[#79](https://github.com/ZLiLiang/JiuMi/issues/79)。
+
+## 批量重命名
+
+工具页的外壳、页头与导航复用「工具模块」章节；本节只记该工具的领域规则、接缝与降级。选型依据见 [ADR-0010](./adr/0010-batch-rename.md)。
+
+### 分层
+
+| 层 | 内容 | 约束 |
+| --- | --- | --- |
+| `JiuMi.Application` | `FileRename/`：`RenameRule`、普通任务换算、`RenamePlanner`、预检错误、来源模型（`RenameSource`）、批次与 JSON 日志模型；`FileNames/` 共享文件名规则 | 纯函数、无文件系统 I/O |
+| `JiuMi.Infrastructure` | `RenameScanner`、`RenameExecutor`、`SystemRenamePathProbe`、`RenameBatchLogWriter` | 只做文件系统与 JSON 写入，不含规则判定 |
+| `JiuMi`（UI） | `FileRenameViewModel`、`FileRenameRowViewModel`、`FileRenameView`、确认框、拖放与日志保存对话框 | 绑定与编组，文案走 i18n |
+
+### 规则与编号
+
+- 业务层只有一份 `RenameRule`：`Replace` 写查找与替换（可勾正则），`Template` 写整名模板。正则替换串按字面量展开 `{index}` / `{index:00}`，不解释 `$1`；非法正则按「无匹配」处理，不抛异常。
+- 普通三个任务只做输入换算：替换文字 → 字面量查找替换（不展开 `{index}`）；加前缀 / 后缀 → `{文本}{name}{ext}` / `{name}{文本}{ext}`；按序号 → `{名称}{index}{ext}`，补零写成 `{index:000}`。
+- 文件按相对路径自然排序（数字按数值、字母不分大小写）；文件夹先深后浅。编号与预览同序，从 1 开始；`{index:00}` 的补零宽度取显式宽度与本批条目数的较大值。
+- 扩展名参与查找替换；模板模式允许通过省略 `{ext}` 改扩展名，不做格式校验。
+
+### 来源、范围与跳过
+
+- 文件模式维护来源列表：文件夹来源只作扫描容器、贡献其中的文件，容器本身永不被改名；直接添加的文件直接入批；两者可来自不同目录甚至不同盘符，只存在会话内。文件夹模式仍只有一个根目录。
+- 来源按添加顺序决定编号分组；同一路径（大小写不敏感）只进批一次，直接文件优先于扫描结果；父子来源并存时重复文件只保留一份。
+- 默认只取来源第一层，「包含子目录」开启后对所有文件夹来源遍历整棵子树；扩展名筛选作用于本批所有文件，包括直接添加的文件，支持空格 / 逗号 / 分号分隔、带不带点均可、大小写不敏感；它是筛选，不改扩展名。
+- 隐藏与系统属性项、符号链接、目录联接进入跳过列表且不跟进；只读项照常改名。
+- 扫描不到任何项或规则未匹配时显示 0 项受影响并禁用执行，不产生错误记录。
+- 模式切换清空来源并回到空态，必须重新选择。
+
+### 预检
+
+- 每条目标名依次检查：空、非法字符与控制字符、尾部空格或点、Windows 保留名、名字 / 路径长度、批内重名、目标已存在。任一命中即标红该行并在页内汇总，禁用执行；不修补、不加序号、不跳过。
+- 目标占用由 `IRenamePathProbe` 回答，`RenamePlanner` 保持纯函数；大小写变化不算占用自己的原名。
+
+### 执行、撤销与备份
+
+- 执行前确认一次，文案只写变更数；进阶模式追加扩展名变化数。
+- 执行期逐项改名，单文件失败不中断；失败项生成未登记呈现的 `ErrorRecord`（只进日志与详情缓冲），结束时汇总一条 InfoBar。
+- 只保留最近一次批次的内存撤销；撤销逆序逐项复验文件或文件夹仍在、类型一致、文件长度与最后写入时间未变（文件夹只比最后写入时间）、原名未被占用。失败的项保留改名后的状态。
+- 备份默认关闭；开启时在第一个来源所在目录的父目录建一个 `JiuMi-backup-<yyyyMMdd-HHmmss>`（已存在时追加序号），内部按来源序号分子目录，跨盘来源照样复制进去；备份失败的那一项不改名。复制时跳过内部链接。
+- 批次可导出为缩进 JSON（`schemaVersion`、执行时间、备份目录、逐项 from / to / 类型 / 状态 / 失败原因）。
+
+### 设置
+
+- `fileRename` 段保存规则层级、两套规则参数、含子目录、扩展名筛选与备份开关；来源列表与所选目录不保存。
+- 对话框起点只在进程内记忆：`FileRenameViewModel` 持有一个目录字符串，选择器返回或拖放成功时覆盖，失效时由 View 静默跳过；不进设置段，也不新增设置字段。
+
+### 测试缝
+
+1. `JiuMi.Application` 纯函数：文件名规则、自然排序、令牌展开、普通任务换算、预检各条错误、目标重名与占用、排序与先深后浅、来源去重与分组编号、跳过列表、扩展名变化、日志序列化。
+2. Infrastructure：临时目录验证多来源扫描、去重、隐藏项、扩展名筛选；验证改名、占用与缺失、备份根与按来源分组、撤销复验；验证 JSON 日志写入。
+3. UI 的确认框、拖放、来源行、跳过面板与汇总文案不设自动化测试。
+
+相关：[ADR-0010](./adr/0010-batch-rename.md)、[ADR-0011](./adr/0011-multi-source-rename-batch.md)、[#67](https://github.com/ZLiLiang/JiuMi/issues/67)、[#74](https://github.com/ZLiLiang/JiuMi/issues/74)。
 
 ## 参考
 
@@ -707,8 +785,12 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0007 世界时钟节假日：Nager.Date、缓存与失败降级](./adr/0007-holiday-network.md)
 - [ADR-0008 世界时钟目录：内置快照、双粒度与代表时区](./adr/0008-world-clock-catalog.md)
 - [ADR-0009 图片格式转换：PSD 解码选型与批量转换管线](./adr/0009-image-conversion.md)
+- [ADR-0010 批量重命名：一份规则模型、预检不修补、撤销而非备份](./adr/0010-batch-rename.md)
+- [ADR-0011 批量重命名：文件模式的多来源批次](./adr/0011-multi-source-rename-batch.md)
+- [ADR-0012 最小化与关闭：最小化留在任务栏，关闭时询问](./adr/0012-minimize-and-close.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
 - [决议：各类错误发生时用户应该看到什么？](https://github.com/ZLiLiang/JiuMi/issues/6)
 - [决议：单实例与托盘（`Shell.Tray.*` 键名）](https://github.com/ZLiLiang/JiuMi/issues/7)
+- [决议：调整最小化与托盘行为](https://github.com/ZLiLiang/JiuMi/issues/71)

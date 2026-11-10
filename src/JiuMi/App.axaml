@@ -19,6 +19,7 @@
           <SolidColorBrush x:Key="JiuMiComingSoonBackgroundBrush" Color="{DynamicResource SubtleFillColorSecondary}" />
           <SolidColorBrush x:Key="JiuMiIslandBackgroundBrush" Color="#9EFFFFFF" />
           <SolidColorBrush x:Key="JiuMiIslandBorderBrush" Color="#B3FFFFFF" />
+          <SolidColorBrush x:Key="JiuMiFlySurfaceBrush" Color="#F9FAFB" />
           <BoxShadows x:Key="JiuMiIslandShadow">0 6 22 0 #24141E32</BoxShadows>
           <LinearGradientBrush x:Key="JiuMiWindowBackdropBrush"
                                StartPoint="21.8%,-21.4%"
@@ -94,6 +95,7 @@
                            Opacity="0.14" />
           <SolidColorBrush x:Key="JiuMiIslandBackgroundBrush" Color="#8C2E3038" />
           <SolidColorBrush x:Key="JiuMiIslandBorderBrush" Color="#1AFFFFFF" />
+          <SolidColorBrush x:Key="JiuMiFlySurfaceBrush" Color="#2C2F36" />
           <BoxShadows x:Key="JiuMiIslandShadow">0 8 26 0 #73000000</BoxShadows>
           <LinearGradientBrush x:Key="JiuMiWindowBackdropBrush"
                                StartPoint="21.8%,-21.4%"
@@ -162,6 +164,7 @@
         <ResourceDictionary x:Key="{x:Static styling:FluentAvaloniaTheme.HighContrastTheme}">
           <SolidColorBrush x:Key="JiuMiIslandBackgroundBrush" Color="{DynamicResource SolidBackgroundFillColorBase}" />
           <SolidColorBrush x:Key="JiuMiIslandBorderBrush" Color="{DynamicResource ControlStrokeColorDefault}" />
+          <SolidColorBrush x:Key="JiuMiFlySurfaceBrush" Color="{DynamicResource SolidBackgroundFillColorBase}" />
           <BoxShadows x:Key="JiuMiIslandShadow">0 0 0 0 #00000000</BoxShadows>
           <SolidColorBrush x:Key="JiuMiWindowBackdropBrush" Color="{DynamicResource SolidBackgroundFillColorBase}" />
           <SolidColorBrush x:Key="JiuMiWindowHighlightBrush" Color="Transparent" />

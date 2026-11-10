@@ -25,8 +25,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ShellNavigationItem _settingsNavigationItem;
     private readonly ShellNavigationItem _worldClockNavigationItem;
     private readonly ShellNavigationItem _imageConvertNavigationItem;
+    private readonly ShellNavigationItem _fileRenameNavigationItem;
     private readonly WorldClockViewModel _worldClockPage;
     private readonly ImageConvertViewModel _imageConvertPage;
+    private readonly FileRenameViewModel _fileRenamePage;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
@@ -42,6 +44,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
     /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="imageConvertPage">The image conversion page.</param>
+    /// <param name="fileRenamePage">The batch rename page.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
     /// <param name="catalogUpdater">Checks the published world clock catalog after the shell is up.</param>
@@ -52,6 +55,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         SettingsViewModel settingsPage,
         WorldClockViewModel worldClockPage,
         ImageConvertViewModel imageConvertPage,
+        FileRenameViewModel fileRenamePage,
         InfoBarViewModel infoBar,
         ISettingsStore settingsStore,
         IWorldClockCatalogUpdater catalogUpdater,
@@ -62,6 +66,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(settingsPage);
         ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(imageConvertPage);
+        ArgumentNullException.ThrowIfNull(fileRenamePage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(catalogUpdater);
@@ -75,11 +80,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _logger = logger;
         _worldClockPage = worldClockPage;
         _imageConvertPage = imageConvertPage;
+        _fileRenamePage = fileRenamePage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
         HomePage.OpenWorldClockCommand = new RelayCommand(OpenWorldClock);
         HomePage.OpenImageConvertCommand = new RelayCommand(OpenImageConvert);
+        HomePage.OpenFileRenameCommand = new RelayCommand(OpenFileRename);
         SettingsPage = settingsPage;
         InfoBar = infoBar;
         _currentPage = HomePage;
@@ -88,11 +95,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             "world-clock", "Tool.WorldClock.Name", "Clock", "ClockFilled", ShellPage.WorldClock, isEnabled: true);
         _imageConvertNavigationItem = CreateItem(
             "image-convert", "Tool.ImageConvert.Name", "Image", "ImageFilled", ShellPage.ImageConvert, isEnabled: true);
+        _fileRenameNavigationItem = CreateItem(
+            "file-rename", "Tool.FileRename.Name", "Rename", "Rename", ShellPage.FileRename, isEnabled: true);
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
             CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
-            CreateItem("batch-rename", "Tool.BatchRename.Name", "Rename", "Rename", page: null, isEnabled: false),
+            _fileRenameNavigationItem,
             _imageConvertNavigationItem,
             _worldClockNavigationItem,
         ];
@@ -135,6 +144,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Raised when navigation or a home tool card targets another page. The shell view may animate the
+    /// swap and then call <see cref="CommitPage"/>; without a handler the page changes immediately.
+    /// </summary>
+    public event EventHandler<PageNavigationRequestedEventArgs>? PageNavigationRequested;
+
+    /// <summary>
     /// Gets the navigation items pinned to the bottom of the rail.
     /// </summary>
     public IReadOnlyList<ShellNavigationItem> SettingsNavigationItems
@@ -156,7 +171,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             }
 
             SelectedSettingsItem = null;
-            NavigateTo(value.Page);
+            RequestNavigation(value.Page);
         }
     }
 
@@ -174,7 +189,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             }
 
             SelectedPrimaryItem = null;
-            NavigateTo(value.Page);
+            RequestNavigation(value.Page);
         }
     }
 
@@ -253,6 +268,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public ImageConvertViewModel ImageConvertPage => _imageConvertPage;
 
     /// <summary>
+    /// Gets the page that hosts the batch rename content.
+    /// </summary>
+    public FileRenameViewModel FileRenamePage => _fileRenamePage;
+
+    /// <summary>
     /// Gets the application-wide error notice shown above the content.
     /// </summary>
     public InfoBarViewModel InfoBar
@@ -322,6 +342,50 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets whether <paramref name="page"/> is the page currently shown.
+    /// </summary>
+    /// <param name="page">The page to test.</param>
+    /// <returns><see langword="true"/> when the page already fills the content area.</returns>
+    public bool IsPageShown(ShellPage page) => ReferenceEquals(ResolvePage(page), CurrentPage);
+
+    /// <summary>
+    /// Gets the view model behind <paramref name="page"/>.
+    /// </summary>
+    /// <param name="page">The page to resolve.</param>
+    /// <returns>The page view model.</returns>
+    public ViewModelBase GetPage(ShellPage page) => ResolvePage(page);
+
+    /// <summary>
+    /// Swaps the content area to <paramref name="page"/> after any transition; the page already shown stays put.
+    /// </summary>
+    /// <param name="page">The page to show.</param>
+    public void CommitPage(ShellPage page)
+    {
+        ViewModelBase target = ResolvePage(page);
+        if (ReferenceEquals(target, CurrentPage))
+        {
+            return;
+        }
+
+        if (ReferenceEquals(target, _worldClockPage))
+        {
+            _worldClockPage.Activate();
+        }
+        else
+        {
+            _worldClockPage.Deactivate();
+        }
+
+        if (ReferenceEquals(target, _imageConvertPage))
+        {
+            _imageConvertPage.Activate();
+        }
+
+        CurrentPage = target;
+        _logger.Debug("Navigated to {Page}", page);
+    }
+
+    /// <summary>
     /// Opens the settings page through the same navigation the rail uses; an already open page stays put.
     /// </summary>
     public void ShowSettings()
@@ -340,6 +404,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _localization.PropertyChanged -= OnLocalizationChanged;
         _worldClockPage.Dispose();
         _imageConvertPage.Dispose();
+        _fileRenamePage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
     }
@@ -367,42 +432,74 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _logger.Debug("Navigation expanded state changed to {IsExpanded}", IsNavigationExpanded);
     }
 
-    private void NavigateTo(ShellPage? page)
+    private void RequestNavigation(ShellPage? page)
     {
-        ViewModelBase target = page switch
+        if (page is not { } target)
         {
-            ShellPage.Settings => SettingsPage,
-            ShellPage.WorldClock => _worldClockPage,
-            ShellPage.ImageConvert => _imageConvertPage,
-            _ => HomePage,
-        };
-
-        if (ReferenceEquals(target, _worldClockPage))
-        {
-            _worldClockPage.Activate();
-        }
-        else
-        {
-            _worldClockPage.Deactivate();
+            return;
         }
 
-        if (ReferenceEquals(target, _imageConvertPage))
+        var args = new PageNavigationRequestedEventArgs(target, fromCard: false);
+        PageNavigationRequested?.Invoke(this, args);
+        if (!args.Handled)
         {
-            _imageConvertPage.Activate();
+            CommitPage(target);
         }
-
-        CurrentPage = target;
-        _logger.Debug("Navigated to {Page}", page);
     }
+
+    private void ActivateCard(ShellPage page, ShellNavigationItem item)
+    {
+        var args = new PageNavigationRequestedEventArgs(page, fromCard: true);
+        PageNavigationRequested?.Invoke(this, args);
+        if (!args.Accepted)
+        {
+            return;
+        }
+
+        SelectPrimaryItem(item);
+        if (!args.Handled)
+        {
+            CommitPage(page);
+        }
+    }
+
+    private void SelectPrimaryItem(ShellNavigationItem item)
+    {
+        if (!ReferenceEquals(_selectedPrimaryItem, item))
+        {
+            _selectedPrimaryItem = item;
+            OnPropertyChanged(nameof(SelectedPrimaryItem));
+        }
+
+        if (_selectedSettingsItem is not null)
+        {
+            _selectedSettingsItem = null;
+            OnPropertyChanged(nameof(SelectedSettingsItem));
+        }
+    }
+
+    private ViewModelBase ResolvePage(ShellPage page) => page switch
+    {
+        ShellPage.Settings => SettingsPage,
+        ShellPage.WorldClock => _worldClockPage,
+        ShellPage.ImageConvert => _imageConvertPage,
+        ShellPage.FileRename => _fileRenamePage,
+        _ => HomePage,
+    };
 
     private void OpenWorldClock()
     {
-        SelectedPrimaryItem = _worldClockNavigationItem;
+        ActivateCard(ShellPage.WorldClock, _worldClockNavigationItem);
     }
 
     private void OpenImageConvert()
     {
-        SelectedPrimaryItem = _imageConvertNavigationItem;
+        ActivateCard(ShellPage.ImageConvert, _imageConvertNavigationItem);
+    }
+
+    private void OpenFileRename()
+    {
+        ActivateCard(ShellPage.FileRename, _fileRenameNavigationItem);
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

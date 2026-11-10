@@ -160,7 +160,10 @@ public partial class ImageConvertView : UserControl
     {
         try
         {
-            await viewModel.AddFilesAsync(paths);
+            if (await viewModel.AddFilesAsync(paths) is { } firstAdded)
+            {
+                viewModel.RememberSourcePickerFile(firstAdded);
+            }
         }
         catch (Exception exception)
         {
@@ -183,12 +186,21 @@ public partial class ImageConvertView : UserControl
                 return;
             }
 
-            IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(
-                new FilePickerOpenOptions
-                {
-                    AllowMultiple = true,
-                    FileTypeFilter = [_imageFileType],
-                });
+            var options = new FilePickerOpenOptions
+            {
+                AllowMultiple = true,
+                FileTypeFilter = [_imageFileType],
+            };
+
+            if (await PickerStartLocation.ResolveAsync(
+                    topLevel,
+                    viewModel.ReportPickerFailure,
+                    viewModel.SourcePickerStartDirectory) is { } startLocation)
+            {
+                options.SuggestedStartLocation = startLocation;
+            }
+
+            IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
 
             var paths = new List<string>(files.Count);
             foreach (IStorageFile file in files)
@@ -197,6 +209,11 @@ public partial class ImageConvertView : UserControl
                 {
                     paths.Add(path);
                 }
+            }
+
+            if (paths.Count > 0)
+            {
+                viewModel.RememberSourcePickerFile(paths[0]);
             }
 
             await viewModel.AddFilesAsync(paths);
@@ -222,8 +239,18 @@ public partial class ImageConvertView : UserControl
                 return;
             }
 
-            IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
-                new FolderPickerOpenOptions { AllowMultiple = false });
+            var options = new FolderPickerOpenOptions { AllowMultiple = false };
+
+            if (await PickerStartLocation.ResolveAsync(
+                    topLevel,
+                    viewModel.ReportPickerFailure,
+                    viewModel.OutputPickerStartDirectory,
+                    viewModel.SourcePickerStartDirectory) is { } startLocation)
+            {
+                options.SuggestedStartLocation = startLocation;
+            }
+
+            IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
 
             if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
             {

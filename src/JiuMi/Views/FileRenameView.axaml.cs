@@ -1,0 +1,513 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using FluentAvalonia.UI.Controls;
+using JiuMi.ViewModels;
+
+namespace JiuMi.Views;
+
+/// <summary>
+/// The batch rename page: the folder pickers, the confirmation dialog, drag and drop, and the
+/// log save dialog. The rules and file work live in the view model and the application layer.
+/// </summary>
+public partial class FileRenameView : UserControl
+{
+    private const double TitleBarAndIslandHeight = 68;
+
+    private TopLevel? _topLevel;
+    private ScrollViewer? _pageScrollViewer;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FileRenameView"/> class.
+    /// </summary>
+    public FileRenameView()
+    {
+        InitializeComponent();
+    }
+
+    /// <inheritdoc />
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _pageScrollViewer = this.FindAncestorOfType<ScrollViewer>();
+        if (_pageScrollViewer is not null)
+        {
+            _pageScrollViewer.SizeChanged += OnPageScrollViewerSizeChanged;
+            UpdatePageHeight(_pageScrollViewer.Bounds.Height);
+        }
+
+        _topLevel = TopLevel.GetTopLevel(this);
+        if (_topLevel is not null)
+        {
+            _topLevel.SizeChanged += OnTopLevelSizeChanged;
+            if (_pageScrollViewer is null)
+            {
+                UpdatePageHeight(_topLevel.ClientSize.Height);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_topLevel is not null)
+        {
+            _topLevel.SizeChanged -= OnTopLevelSizeChanged;
+            _topLevel = null;
+        }
+
+        if (_pageScrollViewer is not null)
+        {
+            _pageScrollViewer.SizeChanged -= OnPageScrollViewerSizeChanged;
+            _pageScrollViewer = null;
+        }
+
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnPageScrollViewerSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        UpdatePageHeight(e.NewSize.Height);
+
+    private void OnTopLevelSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (_pageScrollViewer is null)
+        {
+            UpdatePageHeight(e.NewSize.Height - TitleBarAndIslandHeight);
+        }
+    }
+
+    private void UpdatePageHeight(double viewportHeight)
+    {
+        if (viewportHeight > 0)
+        {
+            PageBorder.Height = viewportHeight;
+        }
+    }
+
+    private async void OnPickFolderClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            var options = new FolderPickerOpenOptions { AllowMultiple = false };
+            await PickerStartLocation.ApplyAsync(
+                options,
+                topLevel,
+                viewModel.ReportPageFailure,
+                viewModel.PickerStartDirectory);
+
+            IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
+            if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+            {
+                viewModel.RememberSourceDirectory(path);
+                await viewModel.SetDirectoryAsync(path);
+            }
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private async void OnAddFilesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel || !viewModel.CanEditSources)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            var options = new FilePickerOpenOptions { AllowMultiple = true };
+            await PickerStartLocation.ApplyAsync(
+                options,
+                topLevel,
+                viewModel.ReportPageFailure,
+                viewModel.PickerStartDirectory);
+
+            IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
+            var paths = new List<string>(files.Count);
+            foreach (IStorageFile file in files)
+            {
+                if (file.TryGetLocalPath() is { } path)
+                {
+                    paths.Add(path);
+                }
+            }
+
+            if (paths.Count > 0)
+            {
+                viewModel.RememberSourceFile(paths[0]);
+            }
+
+            await viewModel.AddFilesAsync(paths);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private async void OnAddFoldersClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel || !viewModel.CanEditSources)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            var options = new FolderPickerOpenOptions { AllowMultiple = true };
+            await PickerStartLocation.ApplyAsync(
+                options,
+                topLevel,
+                viewModel.ReportPageFailure,
+                viewModel.PickerStartDirectory);
+
+            IReadOnlyList<IStorageFolder> folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
+            var paths = new List<string>(folders.Count);
+            foreach (IStorageFolder folder in folders)
+            {
+                if (folder.TryGetLocalPath() is { } path)
+                {
+                    paths.Add(path);
+                }
+            }
+
+            if (paths.Count > 0)
+            {
+                viewModel.RememberSourceDirectory(paths[0]);
+            }
+
+            await viewModel.AddFoldersAsync(paths);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private async void OnRemoveSourceClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel ||
+            sender is not Button { CommandParameter: int order })
+        {
+            return;
+        }
+
+        try
+        {
+            await viewModel.RemoveSourceAsync(order);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private void OnClearSourcesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is FileRenameViewModel viewModel)
+        {
+            viewModel.ClearSources();
+        }
+    }
+
+    private async void OnRunClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel || !viewModel.CanRun)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            var content = new StackPanel();
+            content.Children.Add(new TextBlock
+            {
+                Text = viewModel.ConfirmBody,
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = viewModel.ConfirmNote,
+                Margin = new Thickness(0, 8, 0, 0),
+                FontSize = 11.5,
+                Opacity = 0.7,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            if (viewModel.ShowConfirmBackup)
+            {
+                content.Children.Add(new TextBlock
+                {
+                    Text = viewModel.ConfirmBackupText,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    FontSize = 11.5,
+                    Opacity = 0.7,
+                    TextWrapping = TextWrapping.Wrap,
+                });
+            }
+
+            var dialog = new FAContentDialog
+            {
+                Title = viewModel.ConfirmTitle,
+                Content = content,
+                PrimaryButtonText = viewModel.RunActionText,
+                CloseButtonText = viewModel.CancelText,
+                DefaultButton = FAContentDialogButton.Close,
+                MinWidth = 400,
+            };
+
+            FAContentDialogResult result = await dialog.ShowAsync(topLevel);
+            if (result == FAContentDialogResult.Primary)
+            {
+                await viewModel.ExecuteAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private async void OnExportClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FileRenameViewModel viewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+            {
+                return;
+            }
+
+            IStorageFile? file = await topLevel.StorageProvider.SaveFilePickerAsync(
+                new FilePickerSaveOptions
+                {
+                    SuggestedFileName = viewModel.DefaultExportFileName,
+                    DefaultExtension = "json",
+                    FileTypeChoices =
+                    [
+                        new FilePickerFileType(viewModel.ExportFileTypeName)
+                        {
+                            Patterns = ["*.json"],
+                        },
+                    ],
+                });
+            if (file is not null && file.TryGetLocalPath() is { } path)
+            {
+                await viewModel.ExportLogAsync(path);
+            }
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private void OnDragEnter(object? sender, DragEventArgs e) => UpdateDragState(e);
+
+    private void OnDragOver(object? sender, DragEventArgs e) => UpdateDragState(e);
+
+    private void OnDragLeave(object? sender, DragEventArgs e)
+    {
+        DropOverlay.IsVisible = false;
+        e.Handled = true;
+    }
+
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        DropOverlay.IsVisible = false;
+        e.Handled = true;
+        if (DataContext is not FileRenameViewModel viewModel ||
+            e.DataTransfer is null ||
+            (viewModel.IsFilesMode && !viewModel.CanEditSources))
+        {
+            return;
+        }
+
+        try
+        {
+            IStorageItem[]? items = e.DataTransfer.TryGetFiles();
+            if (items is null)
+            {
+                return;
+            }
+
+            if (viewModel.IsFilesMode)
+            {
+                var folders = new List<string>();
+                var files = new List<string>();
+                string? firstPath = null;
+                foreach (IStorageItem item in items)
+                {
+                    if (item.TryGetLocalPath() is not { } path)
+                    {
+                        continue;
+                    }
+
+                    firstPath ??= path;
+                    if (viewModel.IsDirectory(path))
+                    {
+                        folders.Add(path);
+                    }
+                    else
+                    {
+                        files.Add(path);
+                    }
+                }
+
+                viewModel.RememberDroppedItem(firstPath);
+
+                if (folders.Count > 0 || files.Count > 0)
+                {
+                    Dispatcher.UIThread.Post(
+                        () => _ = AddDroppedSourcesCoreAsync(viewModel, folders, files),
+                        DispatcherPriority.ApplicationIdle);
+                }
+
+                return;
+            }
+
+            string? directory = null;
+            string? droppedPath = null;
+            foreach (IStorageItem item in items)
+            {
+                if (item.TryGetLocalPath() is not { } path)
+                {
+                    continue;
+                }
+
+                droppedPath ??= path;
+                if (viewModel.IsDirectory(path))
+                {
+                    directory = path;
+                    break;
+                }
+            }
+
+            if (directory is null)
+            {
+                return;
+            }
+
+            viewModel.RememberDroppedItem(droppedPath);
+
+            Dispatcher.UIThread.Post(
+                () => OpenDroppedFolder(viewModel, directory),
+                DispatcherPriority.ApplicationIdle);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private static async Task AddDroppedSourcesCoreAsync(
+        FileRenameViewModel viewModel,
+        IReadOnlyList<string> folders,
+        IReadOnlyList<string> files)
+    {
+        try
+        {
+            await viewModel.AddDroppedAsync(folders, files);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private static void OpenDroppedFolder(FileRenameViewModel viewModel, string directory) =>
+        _ = SetDroppedFolderAsync(viewModel, directory);
+
+    private static async Task SetDroppedFolderAsync(FileRenameViewModel viewModel, string directory)
+    {
+        try
+        {
+            await viewModel.SetDirectoryAsync(directory);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
+    private void UpdateDragState(DragEventArgs e)
+    {
+        bool accepts = false;
+        if (DataContext is FileRenameViewModel viewModel &&
+            e.DataTransfer?.TryGetFiles() is { Length: > 0 } items)
+        {
+            bool filesMode = viewModel.IsFilesMode;
+            bool canAddFiles = viewModel.CanEditSources;
+            foreach (IStorageItem item in items)
+            {
+                if (item.TryGetLocalPath() is not { } path)
+                {
+                    continue;
+                }
+
+                if (filesMode)
+                {
+                    if (canAddFiles)
+                    {
+                        accepts = true;
+                        break;
+                    }
+                }
+                else if (viewModel.IsDirectory(path))
+                {
+                    accepts = true;
+                    break;
+                }
+            }
+        }
+
+        e.DragEffects = accepts ? DragDropEffects.Copy : DragDropEffects.None;
+        DropOverlay.IsVisible = accepts;
+        e.Handled = true;
+    }
+}
