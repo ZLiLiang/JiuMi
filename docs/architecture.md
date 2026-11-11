@@ -150,6 +150,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - **关闭按钮不再直接退出**：托盘可用时先按关闭询问规则处理；`ShutdownMode` 不变（与启动序列章节一致）。
 - 已最小化时触发关闭（任务栏右键关闭、Alt+F4）：先还原到最小化前的状态，再显示询问框；选「取消」后保持还原。
 - 隐藏到托盘只针对主窗口；splash 不可最小化或关闭（见启动序列章节），因此启动期没有关闭询问与托盘入口。
+- 桌面模式（设计，未实现）：主窗口隐藏/最小化且我的JiuMi 是当前页、猫清醒时，先走出到桌面再隐藏/最小化；睡眠、非当前页、退出/关机路径不等待。见 [ADR-0016](./adr/0016-desktop-mode.md) 与「我的JiuMi」章节。
 
 ### 关闭询问
 
@@ -192,7 +193,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ## 我的JiuMi
 
-我的JiuMi 是页面优先的小猫功能：猫生活在内容岛内的极简房间，只在页面可见时活动。页面模式与桌面模式的边界见 [ADR-0015](./adr/0015-my-jiumi-page.md)；视觉与交互见 [`docs/ui-spec.md`](./ui-spec.md)；角色与帧见 [`docs/pet-art-spec.md`](./pet-art-spec.md)。
+我的JiuMi 是页面优先的小猫功能：猫生活在内容岛内的极简房间，只在页面可见时活动。页面模式与桌面模式的边界见 [ADR-0015](./adr/0015-my-jiumi-page.md)，桌面模式的宿主、过渡与回退见 [ADR-0016](./adr/0016-desktop-mode.md)（设计，未实现；实现票 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)–[#141](https://github.com/ZLiLiang/JiuMi/issues/141)）；视觉与交互见 [`docs/ui-spec.md`](./ui-spec.md)；角色与帧见 [`docs/pet-art-spec.md`](./pet-art-spec.md)。
 
 ### 页面与生命周期
 
@@ -202,7 +203,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 视图 | `MyJiuMiView` 放在内容岛；房间铺满页头以下区域；猫约 200 DIP，贴地板线 |
 | 激活 | 进入页面时 `Activate()`：加载/复用帧、从 `LyingIdle` 开始、读取 `myJiuMi.x`、启动计时 |
 | 离开 | `Deactivate()`：停表、取消走路/过渡、清空爱心与 `Zzz`；不保存动画状态 |
-| 主窗口隐藏/最小化 | 页面不可见等同离开：暂停并重置；恢复后重新进入页面才重新开始 |
+| 主窗口隐藏/最小化 | 页面不可见等同离开：暂停并重置；恢复后重新进入页面才重新开始。桌面模式实现后，若我的JiuMi 是当前页且猫清醒，改为走出到桌面（设计见 ADR-0016） |
 | 不创建窗口 | v1 不创建置顶/透明窗口，不写屏幕坐标；桌面模式见 [#122](https://github.com/ZLiLiang/JiuMi/issues/122) |
 | 资源降级 | 帧缺失/加载失败：不显示猫、保留房间、记 Warning；不弹模态/不画占位牌 |
 
@@ -221,12 +222,14 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟；到点 `LyingIdle → SleepIn → Sleep`。倒计时在走路中到点则走完当前这段再 `SleepIn`；拖拽中到点则等松手；`React` / `Stretch` 中到点则等过渡结束。
 - 交互可打断 `Blink` / `React` / `Stretch` / `Walk` / `SleepIn`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
 - 爱心（点击后 300ms 出现、显示 800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
+- 桌面模式（设计）：桌面窗共享同一个状态机与帧缓存，只启用 `LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`；不跑自主闲逛与双击召唤，睡眠计时不随主窗口隐藏而暂停。走路只用于走出/走回过渡。
 
 ### 交互
 
 - 单击猫：清醒时 `React` + 爱心；睡着时先 `Wake`，不冒爱心；重置睡眠计时。单击地面空白处无反应。
 - 拖拽：手动跟踪指针，4px 阈值区分点击；只改水平位置，垂直贴地板；松手写归一化 X 并夹回 `0`–`1`；重置睡眠计时。睡着时直接进 `Drag`，松手回 `LyingIdle`。
 - 双击地面空白处：召唤；清醒时 `Stretch → Walk`，睡着时 `Wake → Walk`；重置睡眠计时。双击落在猫身上按单击处理，不召唤。双击间隔按平台默认判定；因为召唤只作用于地面空白处，不与猫的单击竞争，单击不需要延迟等待双击。
+- 猫在桌面时，双击地面改为召回：桌面窗关闭，猫从靠近桌面猫的一侧边缘走进目标 X；双击桌面猫恢复并打开页面但不召回。设计见 ADR-0016。
 - 自主闲逛不重置睡眠计时，也不产生爱心；页面离开时取消未完成的走动与过渡。
 - 无右键菜单、无悬停提示、无键盘交互；猫图像元素只设 `AutomationProperties.Name`（`MyJiuMi.Cat.AutomationName`）。
 
@@ -235,31 +238,57 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 只保存猫中心在房间地板上的归一化水平位置 `myJiuMi.x`，范围 `0`–`1`，默认 `0.5`；不保存垂直、屏幕坐标或窗口几何。
 - 拖动松手写一次；进入页面读取并夹回 `[0,1]`；房间宽度变化只重算像素位置，不改写已存值。
 - 写入失败记 Warning、不弹提示，下次拖动重试；读取时非数字按 `0.5`、越界夹回 `[0,1]`，并记 Warning。
+- 桌面模式（设计）不持久化模式或屏幕坐标：拖出、桌面拖动都不写设置；拖回与双击召唤写 `myJiuMi.x`；重启总是回页面。
 
 ### 帧资源与本地化
 
 - 资源：`src/JiuMi/Assets/MyJiuMi/<state>/<nn>.png`，PNG RGBA；状态名小写连字符：`lying-idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `stretch` / `walk`。
 - #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 已接入帧清单并删除该占位目录。
-- 页面按约 200 DIP 显示；建议 2× 导出（约 400×400），最终导出尺寸由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。帧只含猫本体，墙、地板与接触阴影由页面绘制。
+- 页面按约 200 DIP 显示；建议 2× 导出（约 400×400），最终导出尺寸由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。帧只含猫本体，墙、地板与接触阴影由页面绘制。桌面窗按 160 DIP 显示同一组帧，不新增交接专用帧。
 - 按状态按需加载；页面离开时停表，重复进入复用已解码帧，不重复读盘。
 - 入口名称：`Tool.MyJiuMi.Name`，用于左侧导航。
 - 页面文案：`MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName`；`Zzz` 是固定装饰字符，不登记文案键。
+- 桌面模式（设计）新增 `MyJiuMi.DesktopHint`（猫在桌面时页面空房间的提示），实现时成对进中英文 JSON；桌面窗复用 `MyJiuMi.Cat.AutomationName`，不新增窗口文案。
 - 新键先登记在本地化章节的已登记键表，再进 JSON；旧 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 退役。
 
 ### 分层与测试
 
-- UI：`MyJiuMiView`、`MyJiuMiViewModel`、帧渲染、爱心/`Zzz` 叠加与指针事件；房间绘制与位置换算在 UI。
-- Application：`MyJiuMiStateMachine`、`MyJiuMiAnimationCatalog`、`MyJiuMiState`、睡眠/眨眼/闲逛调度与归一化 X 夹取；纯逻辑，注入时间/随机源。
+- UI：`MyJiuMiView`、`MyJiuMiViewModel`、帧渲染、爱心/`Zzz` 叠加与指针事件；房间绘制与位置换算在 UI。桌面模式（设计）新增 `MyJiuMiSession`（共享状态机、帧缓存、16 ms 计时器与宿主协调）、`MyJiuMiDesktopWindow`、窗口级拖拽覆盖层，以及外壳隐藏/最小化钩子。
+- Application：`MyJiuMiStateMachine`、`MyJiuMiAnimationCatalog`、`MyJiuMiState`、睡眠/眨眼/闲逛调度与归一化 X 夹取；纯逻辑，注入时间/随机源。桌面模式（设计）新增 `MyJiuMiPresenceMachine`（`Home` / `Leaving` / `Desktop` / `Returning` 迁移与守卫）与 `MyJiuMiTransitionRules`（48 DIP 提交阈值、房间投影、走回入口侧、工作区夹取）。
 - Infrastructure：不新增服务；`ISettingsStore` 既有读写承载 `myJiuMi.x`。
-- 测试：`JiuMi.Application.Tests` 覆盖状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取；`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
-- 性能：页面离开即停表；目标 <1% 系统 CPU（仅页面可见时），帧切换不触发整页重排。
-- Win10/Win11：页面模式不涉及透明窗口、置顶与焦点；差异主要落在渲染与主题，按同一套 DIP 布局验证。
+- 测试：`JiuMi.Application.Tests` 覆盖状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取；桌面模式（设计）再加 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
+- 性能：页面离开即停表；目标 <1% 系统 CPU（仅页面可见时），帧切换不触发整页重排。桌面窗懒创建、回家即关闭，不保留隐藏窗口或后台计时器；桌面模式的计时成本只在猫离家时存在。
+- Win10/Win11：页面模式不涉及透明窗口、置顶与焦点；桌面模式（设计）在两版共用同一套窗口与交接逻辑，差异按手动清单确认。
+
+### 桌面模式（设计，未实现）
+
+桌面模式把猫交给一个 160 DIP 的置顶透明窗口；页面仍是「家」，同一时刻只有一个宿主显示猫。完整决策与备选见 [ADR-0016](./adr/0016-desktop-mode.md)；实现票 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)–[#141](https://github.com/ZLiLiang/JiuMi/issues/141)。
+
+| 项 | 规则 |
+| --- | --- |
+| 归属 | `MyJiuMiPresence`：`Home` / `Leaving` / `Desktop` / `Returning`；启动、重启与回家后都是 `Home` |
+| 会话 | `MyJiuMiSession` 持有共享状态机、帧缓存与 16 ms 计时器；页面与桌面窗只渲染与转发输入 |
+| 宿主 | 页面 `MyJiuMiView`；桌面 `MyJiuMiDesktopWindow`（160×160 DIP、置顶、透明、无任务栏、不可缩放、`ShowActivated=false`） |
+| 拖出 | 越过房间边缘 48 DIP 后在房间外松手 → 在松手屏幕点创建桌面窗；在房间内松手 → 回弹 |
+| 走出 | 主窗口隐藏/最小化且我的JiuMi 是当前页、猫清醒 → 走向最近边缘交接；隐藏最多等 900 ms，最小化用 150 ms 淡入 |
+| 拖回 | 桌面猫拖到房间可见范围松手 → 页面猫在投影 X 落定，写 `myJiuMi.x` |
+| 走回 | 页面双击地面 → 桌面窗关闭，猫从靠近桌面猫的一侧边缘走进目标 X，写 `myJiuMi.x` |
+| 桌面交互 | 单击 `React` + 爱心、拖拽移动、双击打开页面（猫留在桌面）、眨眼/睡眠/`Zzz`；无闲逛/右键/声音 |
+| 尺寸 | 页面 200 DIP ↔ 桌面 160 DIP，底边中心锚点，120 ms 缩放 |
+| 持久化 | 不新增设置键；模式与屏幕坐标只在会话内；重启回页面 |
+| 降级 | 桌面宿主创建失败/帧缺失 → 取消过渡、猫留在家、Warning；显示器/DPI 变化夹回工作区 |
+| 焦点 | 点击会激活桌面窗（[#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已确认无解）；v1 接受 |
+
+- 桌面窗懒创建、回家即 `Close()`；页面在桌面模式显示空房间，底部提示 `MyJiuMi.DesktopHint`。
+- 走出/拖出的过渡态只允许一次在途迁移；退出、关机、页面切走与失败路径都直接回到 `Home` 或 `Desktop`，不留半状态。
+- 跨窗口连续拖出不在本设计内；spike [#141](https://github.com/ZLiLiang/JiuMi/issues/141) 评估可行性与代价。
 
 ### 与旧桌面实现的关系
 
 - [#108](https://github.com/ZLiLiang/JiuMi/issues/108) 分支保留作桌面模式参考，不合并；[#109](https://github.com/ZLiLiang/JiuMi/issues/109)、#110 作废；#112 parked。
-- 旧 `PetWindow` / `PetWindowController` / `petEnabled` / `petX` / `petY` 与 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 不进入页面模式；[#119](https://github.com/ZLiLiang/JiuMi/issues/119) 移除旧入口与键，桌面模式（#122）重新设计后再登记。
-- 桌面模式与页面模式共用角色、美术与状态语义；v1 不建 `IPetLayer` 等双宿主抽象。
+- 旧 `PetWindow` / `PetWindowController` / `petEnabled` / `petX` / `petY` 与 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 不进入页面模式；[#119](https://github.com/ZLiLiang/JiuMi/issues/119) 移除旧入口与键。ADR-0016 的桌面模式不复用旧实现与旧键：双宿主、会话内坐标、无设置键。
+- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 的无焦点结论被桌面模式接受：点击/拖拽会把桌面窗带到前台；不再为它做版本分叉。
+- 桌面模式与页面模式共用角色、美术、状态机与帧缓存；v1 仍不建 `IPetLayer` 等预抽象，双宿主由 `MyJiuMiSession` 协调。
 
 ## 错误呈现与诊断
 
@@ -539,7 +568,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 - 只在拖动松手时写一次；进入页面读取并夹回 `0`–`1`；房间宽度变化只重算像素位置，不改写已存值。
 - 读取时非数字按 `0.5`、越界夹回 `[0,1]`，并记 Warning；写入失败记 Warning、不弹提示，下次拖动重试。
-- 旧键 `petEnabled` / `petX` / `petY` 退役：按未知键读取忽略、重写丢弃，不做迁移；桌面模式（[#122](https://github.com/ZLiLiang/JiuMi/issues/122)）若需要开关或屏幕坐标，另立新键。
+- 旧键 `petEnabled` / `petX` / `petY` 退役：按未知键读取忽略、重写丢弃，不做迁移；桌面模式（[ADR-0016](./adr/0016-desktop-mode.md)）不新增开关或屏幕坐标键，模式与会话位置只在内存，重启回页面。
 - `schemaVersion` 保持 `1`：`myJiuMi.x` 是新增键，缺键补默认。
 
 ### 世界工作时间状态
@@ -608,6 +637,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
 | `Tool.*.Name` / `Tool.*.Description` | 四张卡片与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock`；我的JiuMi 只走导航，复用 `Tool.MyJiuMi.Name` |
 | `MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName` | 我的JiuMi 页面标题、副标题与猫的可访问名 |
+| `MyJiuMi.DesktopHint` | 猫在桌面时页面空房间的提示；桌面模式实现时成对进中英文 JSON |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
 | `Tool.WorldClock.ManagePlaces` | 页头与管理空态的「管理地点」按钮 |

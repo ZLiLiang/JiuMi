@@ -100,8 +100,8 @@ JiuMi 的品牌形象是用户家里的橘猫：splash 与主页 hero 共用 180
 ## 不在本 ADR 内
 
 - 角色设定图、色板、逐帧清单与导出规范：见 [`docs/pet-art-spec.md`](../pet-art-spec.md)。
-- 窗口/动画/交互的逐条 UI 规则：历史规则已由 ADR-0015 与 [`docs/ui-spec.md`](../ui-spec.md) 的「我的JiuMi」章节取代；桌面模式的 UI 规则见 #122。
-- 实现分层、设置键、托盘契约与生命周期细节：历史细节已被 ADR-0015 与 [`docs/architecture.md`](../architecture.md) 的「我的JiuMi」章节取代；桌面模式见 #122。
+- 窗口/动画/交互的逐条 UI 规则：历史规则已由 ADR-0015 与 [`docs/ui-spec.md`](../ui-spec.md) 的「我的JiuMi」章节取代；桌面模式的规则见 [ADR-0016](./0016-desktop-mode.md)（票 #122）。
+- 实现分层、设置键、托盘契约与生命周期细节：历史细节已被 ADR-0015 与 [`docs/architecture.md`](../architecture.md) 的「我的JiuMi」章节取代；桌面模式见 [ADR-0016](./0016-desktop-mode.md)（票 #122）。
 - 桌面层双模式、裁切交接、走回内容页、声音、自动走动、点击穿透、尺寸档位、Live2D/Spine：见 #102。
 - 无焦点宿主窗口：见后续 spike；本 ADR 只记录 v1 接受已知限制。
 - Win11 实机结果：有机器再补；本 ADR 只定跨版本策略。
@@ -114,3 +114,4 @@ JiuMi 的品牌形象是用户家里的橘猫：splash 与主页 hero 共用 180
 - 主窗口不记几何：[ADR-0005](./0005-window-state-memory.md)
 - 托盘与关闭行为：[ADR-0012](./0012-minimize-and-close.md)
 - 美术规格：[`docs/pet-art-spec.md`](../pet-art-spec.md)
+- 桌面模式设计：[ADR-0016](./0016-desktop-mode.md)

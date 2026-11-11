@@ -52,7 +52,7 @@
 | 共用 | 角色、美术、状态语义与动画清单 | 同左，但宿主与调度独立 |
 
 - 两种模式**不是同一套窗口代码的两个配置**：页面模式没有窗口，桌面模式没有页面。共享的是角色与状态语义，不是生命周期。
-- v1 不预留 `IPetLayer` 或双宿主抽象；等 #122 明确桌面模式的窗口、拖出与恢复路径后，再决定复用哪些 Application 逻辑。
+- v1 不预留 `IPetLayer` 或双宿主抽象；[ADR-0016](./0016-desktop-mode.md) 已明确桌面模式共享状态机、帧缓存与会话，由 `MyJiuMiSession` 协调双宿主，不建 `IPetLayer`。
 - 页面模式的睡眠、眨眼、闲逛计时都随页面停表；桌面模式需要自己的调度与恢复规则，不能直接照搬。
 
 ## 为什么桌面模式延后
@@ -138,7 +138,7 @@
 - 页面壳与移除旧入口：[#119](https://github.com/ZLiLiang/JiuMi/issues/119)。
 - 趴姿/走路/睡眠与轻交互：[#120](https://github.com/ZLiLiang/JiuMi/issues/120)。
 - 最终描边插画资源：[#121](https://github.com/ZLiLiang/JiuMi/issues/121)。
-- 桌面模式、拖出/走回与走出/走回过渡：[#122](https://github.com/ZLiLiang/JiuMi/issues/122)。
+- 桌面模式、拖出/走回与走出/走回过渡：设计见 [ADR-0016](./0016-desktop-mode.md)，票 [#122](https://github.com/ZLiLiang/JiuMi/issues/122)。
 - 页面模式验收：[#123](https://github.com/ZLiLiang/JiuMi/issues/123)。
 - 更远的扩展目标：[#102](https://github.com/ZLiLiang/JiuMi/issues/102)。
 
@@ -148,6 +148,7 @@
 - 被取代的决议：[ADR-0014](./0014-desktop-pet.md)
 - 美术方向：[#117](https://github.com/ZLiLiang/JiuMi/issues/117)
 - 后续桌面模式：[#122](https://github.com/ZLiLiang/JiuMi/issues/122)
+- 桌面模式设计：[ADR-0016](./0016-desktop-mode.md)
 - 主窗口不记几何：[ADR-0005](./0005-window-state-memory.md)
 - 托盘与关闭行为：[ADR-0012](./0012-minimize-and-close.md)
 - 美术规格：[`docs/pet-art-spec.md`](../pet-art-spec.md)
