@@ -6,7 +6,7 @@
 
 - 参考图：`docs/images/pet/direction-117/walk.png`（已确认走路单帧）
 - 生成：VideoGen，wan30，`reference_to_video`，5 s，1280×720
-- 步态参考：owner 提供的 GIF（13 帧，约 0.85 s/循环）；仅作参考，不进 git。
+- 步态参考：owner 提供的 GIF（157 帧，480×480；一个循环 13 帧，约 0.85 s）；已提交在 `docs/images/pet/references/walk-reference.gif`，仅作步态依据。
 - 源视频：`docs/images/pet/final-121/walk-source.mp4`（随 PR 提交）
 - 后处理：抽帧 → 选一个完整周期（本次 33 帧）→ 去背景/连通阴影 → 固定缩放/锚点导出 400×400 → 按参考 GIF 重定时 26 ms/帧（约 38.5 fps）。
 - 本次固定参数：缩放 `240/386`，锚点 `cx=670`、`bottom=541`；换动作时重新测包围盒后重取。
