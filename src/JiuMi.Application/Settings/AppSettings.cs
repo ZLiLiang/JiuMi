@@ -64,6 +64,33 @@ public sealed record AppSettings
     } = CloseAction.Ask;
 
     /// <summary>
+    /// Gets a value indicating whether the desktop pet is shown.
+    /// </summary>
+    public bool PetEnabled
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Gets the remembered pet position in physical pixels, or <see langword="null"/> when it was never moved.
+    /// </summary>
+    public int? PetX
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Gets the remembered pet position in physical pixels, or <see langword="null"/> when it was never moved.
+    /// </summary>
+    public int? PetY
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
     /// Gets the persisted world clock view and places.
     /// </summary>
     public WorldClockSettings WorldClock
