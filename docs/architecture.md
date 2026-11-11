@@ -206,7 +206,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 不创建窗口 | v1 不创建置顶/透明窗口，不写屏幕坐标；桌面模式见 [#122](https://github.com/ZLiLiang/JiuMi/issues/122) |
 | 资源降级 | 帧缺失/加载失败：不显示猫、保留房间、记 Warning；不弹模态/不画占位牌 |
 
-- 页面沿用工具页的 `Activate()` / `Deactivate()` 约定；主窗口 `Activated` 不自动恢复睡眠计时。
+- 视图挂载/卸载时调用 `Activate()` / `Deactivate()`；主窗口隐藏或最小化时视图保持挂载，改由窗口可见性触发同一对方法。主窗口 `Activated` 不自动恢复睡眠计时。
 - 页面不是常驻状态：切页或隐藏后没有后台计时，也不在托盘留下入口。
 - 房间的墙、地板线与接触阴影由页面绘制；动画帧只含猫本体，背景透明。
 
@@ -215,12 +215,12 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 状态在 `JiuMi.Application`：`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk`；`MyJiuMiStateMachine` 纯逻辑，注入时间与随机源，不依赖 Avalonia。
 - `LyingIdle` 是唯一默认状态；`Blink` 只从 `LyingIdle` 触发；`SleepIn` / `Wake` / `Stretch` 不循环。
 - 帧序与逐帧时长由 `MyJiuMiAnimationCatalog` 唯一定义；UI 只按清单换帧。最终帧数与时长在 [#117](https://github.com/ZLiLiang/JiuMi/issues/117) 定稿后由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。
-- 调度：页面激活时启动 `DispatcherTimer`（约 50ms 检查）+ `Stopwatch` 计算逐帧截止时间；页面离开即停表，不做后台补偿。
+- 调度：页面激活时启动 `DispatcherTimer`（约 16ms 渲染滴答）驱动，状态机按注入的 `TimeProvider` 计算逐帧截止时间；页面离开即停表，不做后台补偿。
 - 眨眼：只在 `LyingIdle` 随机 4–8 秒。
-- 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 80 DIP/s；走路帧循环、页面内位移插值；到达回 `LyingIdle`。自主走动不重置睡眠计时。
+- 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 103 DIP/s（与走路帧步幅匹配）；走路帧循环、页面内位移插值；到达回 `LyingIdle`。自主走动不重置睡眠计时。
 - 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟；到点 `LyingIdle → SleepIn → Sleep`。倒计时在走路中到点则走完当前这段再 `SleepIn`；拖拽中到点则等松手；`React` / `Stretch` 中到点则等过渡结束。
 - 交互可打断 `Blink` / `React` / `Stretch` / `Walk` / `SleepIn`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
-- 爱心（800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
+- 爱心（点击后 300ms 出现、显示 800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
 
 ### 交互
 
@@ -228,7 +228,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 拖拽：手动跟踪指针，4px 阈值区分点击；只改水平位置，垂直贴地板；松手写归一化 X 并夹回 `0`–`1`；重置睡眠计时。睡着时直接进 `Drag`，松手回 `LyingIdle`。
 - 双击地面空白处：召唤；清醒时 `Stretch → Walk`，睡着时 `Wake → Walk`；重置睡眠计时。双击落在猫身上按单击处理，不召唤。双击间隔按平台默认判定；因为召唤只作用于地面空白处，不与猫的单击竞争，单击不需要延迟等待双击。
 - 自主闲逛不重置睡眠计时，也不产生爱心；页面离开时取消未完成的走动与过渡。
-- 无右键菜单、无悬停提示、无键盘交互；猫根元素只设 `AutomationProperties.Name`（`MyJiuMi.Cat.AutomationName`）。
+- 无右键菜单、无悬停提示、无键盘交互；猫图像元素只设 `AutomationProperties.Name`（`MyJiuMi.Cat.AutomationName`）。
 
 ### 位置持久化
 
@@ -239,7 +239,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 帧资源与本地化
 
 - 资源：`src/JiuMi/Assets/MyJiuMi/<state>/<nn>.png`，PNG RGBA；状态名小写连字符：`lying-idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `stretch` / `walk`。
-- #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 接入帧清单后删除该占位目录。
+- #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 已接入帧清单并删除该占位目录。
 - 页面按约 200 DIP 显示；建议 2× 导出（约 400×400），最终导出尺寸由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。帧只含猫本体，墙、地板与接触阴影由页面绘制。
 - 按状态按需加载；页面离开时停表，重复进入复用已解码帧，不重复读盘。
 - 入口名称：`Tool.MyJiuMi.Name`，用于左侧导航。

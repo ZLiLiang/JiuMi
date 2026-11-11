@@ -20,4 +20,7 @@ public enum SettingsLoadIssue
 
     /// <summary>One or more world clock places were invalid and were dropped.</summary>
     InvalidWorldClockPlaces = 1 << 3,
+
+    /// <summary>The stored My JiuMi position was not a number or was clamped into range.</summary>
+    InvalidMyJiuMiPosition = 1 << 4,
 }
