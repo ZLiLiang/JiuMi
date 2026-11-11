@@ -10,6 +10,7 @@ public sealed class LocalizationAssetsTests
     {
         "Shell",
         "Home",
+        "MyJiuMi",
         "Settings",
         "Tool",
         "Common",

@@ -1,7 +1,7 @@
 ﻿namespace JiuMi.Application.Shell;
 
 /// <summary>
-/// The notification-area entry: it brings the window forward and offers the fixed three-item menu.
+/// The notification-area entry: it brings the window forward and offers the fixed four-item menu.
 /// </summary>
 /// <remarks>
 /// The interface is the whole platform story the shell knows. The Windows implementation lives in the

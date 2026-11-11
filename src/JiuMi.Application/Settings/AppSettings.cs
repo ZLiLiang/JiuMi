@@ -1,5 +1,6 @@
 ﻿using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
+using JiuMi.Application.MyJiuMi;
 using JiuMi.Application.WorldClock;
 
 namespace JiuMi.Application.Settings;
@@ -89,6 +90,15 @@ public sealed record AppSettings
         get;
         init;
     } = FileRenameSettings.CreateDefault();
+
+    /// <summary>
+    /// Gets the persisted My JiuMi cat position.
+    /// </summary>
+    public MyJiuMiSettings MyJiuMi
+    {
+        get;
+        init;
+    } = MyJiuMiSettings.CreateDefault();
 
     /// <summary>
     /// Creates the settings used when the file is missing or unusable.

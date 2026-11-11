@@ -18,6 +18,7 @@ public partial class MainWindow : FAAppWindow
 {
     private static readonly ShellPage[] _preloadedPages =
     [
+        ShellPage.MyJiuMi,
         ShellPage.FileRename,
         ShellPage.ImageConvert,
         ShellPage.WorldClock,

@@ -160,6 +160,7 @@ internal static class Program
         services.AddSingleton<DiagnosticsExportController>();
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<MyJiuMiViewModel>();
         services.AddSingleton<WorldClockViewModel>();
         services.AddSingleton(new OutputPathPlanner(File.Exists));
         services.AddSingleton<ImageConvertViewModel>();
@@ -194,6 +195,11 @@ internal static class Program
         if (result.Issues.HasFlag(SettingsLoadIssue.InvalidWorldClockPlaces))
         {
             logger.Warning("Settings contained world clock places that failed validation; they were dropped");
+        }
+
+        if (result.Issues.HasFlag(SettingsLoadIssue.InvalidMyJiuMiPosition))
+        {
+            logger.Warning("Settings contained an invalid My JiuMi position; it was clamped or reset");
         }
 
         if (result.Issues.HasFlag(SettingsLoadIssue.Corrupted))

@@ -29,6 +29,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly WorldClockViewModel _worldClockPage;
     private readonly ImageConvertViewModel _imageConvertPage;
     private readonly FileRenameViewModel _fileRenamePage;
+    private readonly MyJiuMiViewModel _myJiuMiPage;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
     private ViewModelBase _currentPage;
@@ -42,6 +43,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="applicationInfo">Application name and version shown by the shell.</param>
     /// <param name="localization">The localization service that supplies interface text.</param>
     /// <param name="settingsPage">The settings page whose sections are bound from its view.</param>
+    /// <param name="myJiuMiPage">The My JiuMi page.</param>
     /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="imageConvertPage">The image conversion page.</param>
     /// <param name="fileRenamePage">The batch rename page.</param>
@@ -53,6 +55,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         IApplicationInfo applicationInfo,
         ILocalizationService localization,
         SettingsViewModel settingsPage,
+        MyJiuMiViewModel myJiuMiPage,
         WorldClockViewModel worldClockPage,
         ImageConvertViewModel imageConvertPage,
         FileRenameViewModel fileRenamePage,
@@ -64,6 +67,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(settingsPage);
+        ArgumentNullException.ThrowIfNull(myJiuMiPage);
         ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(imageConvertPage);
         ArgumentNullException.ThrowIfNull(fileRenamePage);
@@ -81,6 +85,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _worldClockPage = worldClockPage;
         _imageConvertPage = imageConvertPage;
         _fileRenamePage = fileRenamePage;
+        _myJiuMiPage = myJiuMiPage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
         HomePage = new HomeViewModel();
@@ -100,6 +105,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
+            CreateItem("my-jiumi", "Tool.MyJiuMi.Name", "Emoji", "EmojiFilled", ShellPage.MyJiuMi, isEnabled: true),
             CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
             _fileRenameNavigationItem,
             _imageConvertNavigationItem,
@@ -273,6 +279,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public FileRenameViewModel FileRenamePage => _fileRenamePage;
 
     /// <summary>
+    /// Gets the page that hosts the My JiuMi content.
+    /// </summary>
+    public MyJiuMiViewModel MyJiuMiPage => _myJiuMiPage;
+
+    /// <summary>
     /// Gets the application-wide error notice shown above the content.
     /// </summary>
     public InfoBarViewModel InfoBar
@@ -405,6 +416,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _worldClockPage.Dispose();
         _imageConvertPage.Dispose();
         _fileRenamePage.Dispose();
+        _myJiuMiPage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
     }
@@ -481,6 +493,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private ViewModelBase ResolvePage(ShellPage page) => page switch
     {
         ShellPage.Settings => SettingsPage,
+        ShellPage.MyJiuMi => _myJiuMiPage,
         ShellPage.WorldClock => _worldClockPage,
         ShellPage.ImageConvert => _imageConvertPage,
         ShellPage.FileRename => _fileRenamePage,

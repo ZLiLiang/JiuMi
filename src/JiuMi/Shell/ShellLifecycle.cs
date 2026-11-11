@@ -485,11 +485,13 @@ public sealed class ShellLifecycle
 
     private void ActivateFromNotification() => Dispatcher.UIThread.Post(() => TryActivate());
 
-    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e) => RefreshTray();
+
+    private void RefreshTray()
     {
         if (_trayAvailable)
         {
-            _tray.Show(_applicationInfo.Name, CreateTrayMenu());
+            _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu());
         }
     }
 

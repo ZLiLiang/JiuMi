@@ -57,8 +57,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 悬停 | 整行 `SubtleFillColorSecondaryBrush` |
 | 分隔线 | 1px `DividerStrokeColorDefaultBrush`，外边距 6 12 |
 
-- 自上而下：展开/收起按钮 → 主页 → 四个工具 → 弹性空白 → 分隔线 → 设置（贴底）。
-- 世界工作时间、图片格式转换与批量重命名**已启用**：可聚焦、可选中，选中态与主页、设置同款；微信视频下载仍**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
+- 自上而下：展开/收起按钮 → 主页 → 我的JiuMi → 四个工具 → 弹性空白 → 分隔线 → 设置（贴底）。
+- 我的JiuMi、世界工作时间、图片格式转换与批量重命名**已启用**：可聚焦、可选中，选中态与主页、设置同款；微信视频下载仍**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
 - **选中态**：整行填充；左侧 3 × 16、圆角 2 的 `AccentFillColorDefaultBrush` 指示条；图标改为强调色并使用填充变体，文字颜色不变。
 - **收起态**：导航岛宽 56，只剩图标、水平居中；项文案转为 `ToolTip`，可访问名仍取同一键。
 - **展开/收起过渡**：导航岛宽度 200ms `CubicEaseOut`，项文案同步 200ms 淡入淡出；内容岛随列宽连续重排。
@@ -79,68 +79,109 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 导航岛宽度固定（展开 280 / 收起 56），不随字号膨胀：收起态只留图标，展开态文字超长时省略并带 `ToolTip`。
 - 文本缩放到 200% 时由内容岛滚动承接，导航岛与标题栏不随之变形。
 
-## 桌宠
+## 我的JiuMi
 
-桌宠是一个独立的置顶窗口，不参与主窗口导航。窗口层级、生命周期与设置键见 [ADR-0014](./adr/0014-desktop-pet.md) 与 [`docs/architecture.md`](./architecture.md) 的桌宠章节；动画帧与角色设定见 [`docs/pet-art-spec.md`](./pet-art-spec.md)。
+我的JiuMi 是应用内的独立页面，不是常驻桌面的窗口：猫生活在内容岛的极简房间里，只在页面可见时活动。页面优先与双模式边界见 [ADR-0015](./adr/0015-my-jiumi-page.md)，桌面模式、拖出/拖回与走出/走回见 [ADR-0016](./adr/0016-desktop-mode.md)；分层、状态机与持久化见 [`docs/architecture.md`](./architecture.md) 的「我的JiuMi」章节；角色与美术见 [`docs/pet-art-spec.md`](./pet-art-spec.md)。
 
-### 窗口
+> 「桌面模式」是已定设计，代码尚未实现；实现票见 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)、[#139](https://github.com/ZLiLiang/JiuMi/issues/139)、[#140](https://github.com/ZLiLiang/JiuMi/issues/140)。页面模式（v1）规则不受影响。
+
+### 页面
 
 | 项 | 值 |
 | --- | --- |
-| 尺寸 | 160 × 160 DIP；固定，不可缩放 |
-| 背景 | 完全透明；无边框、无标题栏、无系统按钮 |
-| 层级 | 始终置顶；不显示在任务栏与 Alt+Tab |
-| 初始位置 | 主屏工作区右下角，距右/下 24 DIP |
-| 位置记忆 | 拖动后记忆；显示器/分辨率变化夹回可见区域 |
-| 入场 | 主窗口可见：从内容页右下角直线走到落点；主窗口隐藏到托盘/最小化：从右侧屏幕边缘（落点同高）走进来；只做进入，收起 150ms 淡出；宠物全程置顶，覆盖在页面上、不被主窗口裁切 |
-| 入场时长 | 按约 450 px/s 的统一速度计算：内容页约 1.6s，屏幕边缘约 0.8s，实际按路径长度；走路帧 10fps 循环，窗口位移 60fps；入场中点击/拖拽立即打断 |
-| 焦点 | 显示时不抢焦点；点击/拖拽会把宠物窗口带到前台——v1 已知限制，`WS_EX_NOACTIVATE` 等方案已实测无效，后续 spike 研究无焦点宿主 |
-| 可访问性 | 根元素 `AutomationProperties.Name` 取 `Shell.Pet.AutomationName`；v1 不做键盘交互 |
+| 入口 | 左侧导航；进入方式与已启用工具页相同（切页 200ms） |
+| 页头 | 标题取 `MyJiuMi.Title`，副标题取 `MyJiuMi.Subtitle`；排版同内容岛骨架 |
+| 房间 | 页头下方铺满剩余内容区：圆角 12、1px `CardStrokeColorDefaultBrush` 的房间外框内是一面墙 + 一条 1px 水平地板线 + 很淡的接触阴影；最小高度 380，不足时由内容岛纵向滚动承接 |
+| 猫 | 200 × 200 猫位，贴在水平地板线上；水平位置由归一化 X 决定，垂直位置固定，不随滚动缩放 |
+| 装饰 | 无卡片、无设置控件、无工具栏、无按钮；爱心与 `Zzz` 是猫身上的临时矢量叠加，不占布局 |
+| 猫在桌面时 | 房间保留，猫与接触阴影不显示；房间底部一行弱化提示 `MyJiuMi.DesktopHint`；双击地面召回（设计，见 ADR-0016） |
+| 主题 | 墙与房间底 `CardBackgroundFillColorDefaultBrush`；地板线 `DividerStrokeColorDefaultBrush`；地板 72 DIP 高，用 `SubtleFillColorSecondaryBrush`；接触阴影为 120 × 12、`#22000000` 椭圆。只复用现有主题资源，不新增 token；浅色/深色随主题 |
+| 可访问性 | 猫图像元素 `AutomationProperties.Name` 取 `MyJiuMi.Cat.AutomationName`；房间是装饰，不进入焦点顺序；v1 不做键盘交互 |
 
-- 不在宠物周围加底板、描边、阴影或背景带；透明像素不得出现黑边。
-- 160px 下以 100% 文本缩放为基线；200% 时窗口仍 160 DIP，内容按 DIP 缩放，不裁切。
-- 视觉基准是 [`docs/pet-art-spec.md`](./pet-art-spec.md) 的设定图；首版不额外做产品截图。
+- 不在猫周围加底板、描边、阴影或背景带；透明像素不得出现黑边。
+- 接触阴影由页面绘制（椭圆、低透明度、贴脚底），不烘焙进帧；深色主题下不能变成一块黑斑。
+- 猫与房间按 DIP 布局；文本缩放到 200% 时由内容岛滚动承接，猫仍按约 200 DIP 显示，不裁切。
+- [#119](https://github.com/ZLiLiang/JiuMi/issues/119) 先显示方向稿静态帧 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png`；[#120](https://github.com/ZLiLiang/JiuMi/issues/120) 已接入帧清单并用正式帧替换该占位。
 
-### 动画
+### 状态
 
-| 状态 | 帧数 | 时长 | 说明 |
-| --- | --- | --- | --- |
-| Idle | 12 | 100–120ms/帧 | 呼吸 + 尾巴轻摆；循环 |
-| Blink | 3 | 80ms/帧 | 半闭/闭/睁；身体中性；仅在 Idle 随机 4–8 秒触发 |
-| React | 3 | 80ms/帧 | 竖耳/睁眼；结束回 Idle；爱心叠加 800ms |
-| Drag | 2 | 150ms/帧 | 被拎起的悬垂姿势；拖动时循环 |
-| SleepIn | 4 | 120ms/帧 | 趴下/蜷起；不循环 |
-| Sleep | 4 | 300ms/帧 | 慢呼吸；循环；`Zzz` 矢量叠加 |
-| Wake | 2 | 100ms/帧 | 伸懒腰/站起；回 Idle |
-| WalkOut | 8 | 100ms/帧 | 侧/3-4 走路循环；入场时随窗口路径播放，结束回 Idle |
+| 状态 | 行为 | 进入 / 退出 |
+| --- | --- | --- |
+| 趴姿待机（LyingIdle） | 趴在地板上呼吸、尾巴轻摆；页面默认状态 | 页面激活、走路或交互结束后进入 |
+| 眨眼（Blink） | 半闭 → 闭 → 睁，身体姿态不变 | 仅在 LyingIdle 随机 4–8 秒触发，回 LyingIdle |
+| 点击反应（React） | 竖耳/睁眼，点击 300ms 后叠加爱心 800ms | 清醒时单击猫；回 LyingIdle |
+| 拖拽（Drag） | 被拎起/悬垂；水平拖动时循环 | 按住猫拖动；松手回 LyingIdle |
+| 入睡（SleepIn） | 趴下、闭眼的非循环过渡 | 5 分钟无交互；进入 Sleep |
+| 睡眠（Sleep） | 闭眼、慢呼吸；`Zzz` 矢量叠加 | 循环；交互或页面离开时退出 |
+| 醒来（Wake） | 睁眼/起身的非循环过渡 | 睡中单击或召唤；回 LyingIdle |
+| 起身/伸懒腰（Stretch） | 趴姿到走路之间的非循环过渡 | 清醒时开始走路前；进入 Walk |
+| 走路（Walk） | 走路循环，水平位移 | 自主闲逛或召唤；到达回 LyingIdle |
 
-- 约 10fps；逐帧时长由动画清单定义，不按固定帧率取整。
+- 帧数与逐帧时长由 `MyJiuMiAnimationCatalog` 定义，UI 不写死帧率；最终数值在 [#117](https://github.com/ZLiLiang/JiuMi/issues/117) 定稿后由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。
 - 爱心与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
-- 隐藏时停止计时；再次显示回 Idle。
+- 页面不可见时停止计时与走路；再次进入回 LyingIdle，不恢复上次的睡眠/走路状态。
 
 ### 交互
 
-- 单击：竖耳 + 小爱心；双击：打开主窗口。单击爱心延迟 300ms；双击判定用系统 `GetDoubleClickTime()`（通常 500ms），命中时隐藏爱心并打开主窗口。
-- 拖拽：按住移动；4px 阈值区分点击；松手保存位置；跨屏允许，夹回可见工作区。
-- 右键：菜单「隐藏小猫」/「打开设置」；隐藏与设置开关同一持久化状态。
-- 悬停：ToolTip「双击打开 JiuMi」；不唤醒、不重置睡眠计时。
-- 入场：WalkOut 播放 8 帧走路循环，窗口沿路径到落点；走完才开始 5 分钟睡眠计时；入场中点击/拖拽立即打断并接管，隐藏时中止。
-- 5 分钟无单击/拖拽/右键 → SleepIn → Sleep；悬停不算；睡着单击先 Wake 不冒爱心；睡着拖拽直接 Drag；双击 Wake + 打开主窗口；右键 Wake + 打开菜单；隐藏/显示回 Idle。
-- 交互可打断 Blink/React/SleepIn/Wake/WalkOut：拖拽立即进 Drag，单击按是否已进入 Sleep 决定 React 或 Wake；不排队等动画结束。
-- 不做点击穿透、自动走动、声音、跟随鼠标；不做收起的走回动画（150ms 淡出）。
-
-### 设置与入口
-
-- 设置页新增「桌宠」分区（在「窗口」之后）：ToggleSwitch「显示小猫」+ 说明「一只会待在桌面上的小猫，可以拖动它。」；默认关；切换即时生效并保存；不做尺寸/重置位置。
-- 托盘菜单顺序：显示主窗口 / 显示小猫（可勾选） / 设置 / 退出；勾选状态跟随 `petEnabled`；切换即时显隐并保存。
-- 右键菜单两项；隐藏后可从托盘或设置恢复。
-- 文案键：`Settings.Pet.Section` / `.Label` / `.Hint`；`Shell.Tray.ShowPet`；`Shell.Pet.Hide` / `.Settings` / `.ToolTip` / `.AutomationName`。
+- 单击猫：清醒时 React + 小爱心（点击 300ms 后出现，显示 800ms），重置 5 分钟睡眠计时；睡着时先 Wake，不冒爱心。单击地面空白处无反应。
+- 拖拽：按住猫水平拖动；4px 阈值区分点击；只改 X，垂直位置始终贴地板；松手写归一化 X 并夹回 `0`–`1`；拖拽重置睡眠计时。睡着时拖拽直接进 Drag，松手回 LyingIdle（清醒）。
+- 双击地面空白处：召唤；清醒时先 Stretch 再走到落点，睡着时先 Wake 再走；召唤重置睡眠计时。双击落在猫身上不触发召唤，按单击处理。
+- 猫在桌面时，双击地面改为召回：桌面窗关闭，猫从靠近桌面猫的一侧边缘走进目标 X；页面空房间的提示见 `MyJiuMi.DesktopHint`（设计，见 ADR-0016）。
+- 自主闲逛：页面可见且处于 LyingIdle 时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 103 DIP/s（与走路帧步幅匹配）；到达后回 LyingIdle。自主走动不重置睡眠计时，也不取消倒计时；到点后走完当前这段再入睡。
+- 眨眼：只在 LyingIdle，随机 4–8 秒。
+- 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟，到点进入 SleepIn → Sleep；自主走动不算交互。睡眠计时在走路中到点时，走完当前这段再 SleepIn；拖拽中到点则等松手后入睡；React/Stretch 中到点则等过渡结束。
+- 离开页面、主窗口隐藏或最小化：停止计时与走动，取消未完成动画；再次进入从 LyingIdle 开始，位置取已保存的 X，睡眠计时重新开始。桌面模式实现后，若我的JiuMi 是当前页且猫清醒，最小化/隐藏改为走出到桌面（见 ADR-0016）；未实现前按本条执行。
+- 交互可打断 Blink/React/Stretch/Walk/SleepIn：拖拽立即进 Drag；单击按是否已进入 Sleep 决定 React 或 Wake；不排队等动画结束。
+- v1 不交付桌面模式、拖出/走回、走出/走回；设计见 ADR-0016，实现票见 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)–[#141](https://github.com/ZLiLiang/JiuMi/issues/141)。v1 也不做：全局显示开关、托盘项、设置页桌宠分区、右键菜单、点击穿透、声音、跟随鼠标、工具状态联动、竖直播拖。
 
 ### 降级
 
-- 透明层级不可用或帧缺失/加载失败：不显示宠物，保留开关状态，记 Warning；不弹模态、不画黑框。
-- 主窗口不可见 → 从右侧屏幕边缘入场；可见 → 从内容页右下角入场。不做裁切交接与走回内容页。
-- 不处理全屏应用遮挡、点击穿透、桌面层、裁切交接；见 [#102](https://github.com/ZLiLiang/JiuMi/issues/102)。
+- 帧缺失或加载失败：不显示猫，保留房间与地板，记 Warning；不弹模态、不画黑框或占位牌。
+- 页面不可见时不跑动画与计时；恢复进入页面时从 LyingIdle 开始，不补播离开期间的动画。
+- 桌面模式的置顶、裁切交接、跨屏与失败回退已由 [ADR-0016](./adr/0016-desktop-mode.md) 设计（实现见 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)–[#141](https://github.com/ZLiLiang/JiuMi/issues/141)）；v1 只保证页面模式。桌面层、全屏让位、点击穿透仍属于更远的扩展（[#102](https://github.com/ZLiLiang/JiuMi/issues/102)）。
+
+### 桌面模式（设计，未实现）
+
+猫可以被带离页面，作为 160 DIP 的置顶透明窗口留在桌面。页面始终是「家」：默认、重启与回到页面后都在房间里；桌面模式只在本次运行有效。完整权衡见 [ADR-0016](./adr/0016-desktop-mode.md)；实现票见 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)、[#139](https://github.com/ZLiLiang/JiuMi/issues/139)、[#140](https://github.com/ZLiLiang/JiuMi/issues/140)。
+
+**窗口**
+
+| 项 | 值 |
+| --- | --- |
+| 尺寸 | 160 × 160 DIP；源帧仍为 400 × 400 |
+| 窗口 | 无边框、透明、置顶、不进任务栏、不可缩放、`ShowActivated=false`、手动定位 |
+| 内容 | 只画猫与爱心/`Zzz`；无房间、无地板、无接触阴影、无底板 |
+| 位置 | 拖出在松手屏幕点；走出在窗口边缘；夹回最近工作区 |
+| 命中区 | 160 × 160 矩形，透明角落也会接点击（与 ADR-0014 一致） |
+| 焦点 | 点击/拖拽会把桌面窗带到前台；[#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已确认现有 Windows 方案无法避免，本版接受 |
+
+**过渡**
+
+| 过渡 | 触发 | 表现 |
+| --- | --- | --- |
+| 拖出 | 拖动猫越过房间边缘 48 DIP 后在房间外松手 | 窗口级覆盖层把猫拖出房间；松手处出现桌面窗；200 → 160 DIP 在 120 ms 内缩放 |
+| 走出 | 主窗口最小化/隐藏到托盘，且我的JiuMi 是当前页、猫清醒 | 猫走向最近边缘；隐藏最多等 900 ms，最小化用 150 ms 淡入接住 |
+| 拖回 | 把桌面猫拖到房间可见范围内松手 | 桌面窗关闭，页面猫在投影 X 落定；写入 `myJiuMi.x` |
+| 走回 | 页面双击地面空白处 | 桌面窗关闭，猫从靠近桌面猫的一侧边缘走进目标 X；写入 `myJiuMi.x` |
+
+- 同一时刻只有一个宿主显示猫；交接在同一帧隐藏旧宿主、显示新宿主，不出现双影。
+- 拖出是松手提交，不是按住连续拖拽；连续手势由 spike [#141](https://github.com/ZLiLiang/JiuMi/issues/141) 评估。
+- 页面不可见、当前页不是我的JiuMi、睡眠中、退出/关机、桌面宿主失败时不进入或取消过渡。
+
+**桌面交互**
+
+- 单击：`React` + 爱心；重置 5 分钟睡眠计时。
+- 拖拽：4 DIP 阈值区分点击；移动窗口，松手夹回工作区；不写设置。
+- 双击：恢复并激活主窗口，导航到我的JiuMi；猫留在桌面，不自动召回。
+- 保留眨眼、睡眠与 `Zzz`；不做自主闲逛、双击召唤、右键菜单、声音、工具联动。
+- 猫在桌面时页面房间为空，底部显示 `MyJiuMi.DesktopHint`；提示弱化、不抢焦点、不是控件。
+
+**降级**
+
+- 桌面窗创建失败、透明不可用或帧缺失：取消走出/拖出，猫留在家，记 Warning，不弹窗；隐藏/最小化照常执行。
+- 桌面帧缺失但页面帧可用：关闭桌面窗并回家，页面照常显示猫。
+- 显示器移除或 DPI 变化：按最近工作区夹回、按新缩放重绘；不写设置。
+- 桌面模式不新增设置键；`myJiuMi.x` 是唯一持久化位置，重启总是回页面。
 
 ## 主页
 
@@ -175,8 +216,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 卡片标题 | 14px / SemiBold；与「即将推出」徽标间距 8 |
 | 卡片描述 | 12px / Regular / `TextFillColorSecondaryBrush`，行高 1.5，与标题间距 5 |
 
-- 四张卡片按「微信视频下载、批量重命名、图片格式转换、世界工作时间」排列，标题取 `Tool.<工具>.Name`，描述取 `Tool.<工具>.Description`。
-- 世界工作时间、图片格式转换与批量重命名**已启用**：整张卡片可点击，进入工具页；卡片本身不带「即将推出」徽标，悬停不改变卡片外观（可点击由光标与可访问名提示）。微信视频下载卡片仍带「即将推出」徽标。
+- 四张卡片按「微信视频下载、批量重命名、图片格式转换、世界工作时间」排列，标题取 `Tool.<工具>.Name`，描述取 `Tool.<工具>.Description`。我的JiuMi 只走左侧导航，不占主页卡片。
+- 微信视频下载以外的三张卡片**已启用**：整张卡片可点击，进入对应页面；卡片本身不带「即将推出」徽标，悬停不改变卡片外观（可点击由光标与可访问名提示）。微信视频下载卡片仍带「即将推出」徽标。
 - 点已启用的卡片进入工具页时播放 550ms 卡片进入动效（见「内容切换动效」）。
 - 微信视频下载卡片**不可交互**：无悬停高亮、无手型光标、不接收焦点；同排卡片等高。已启用的三张卡片可获取焦点，Enter / 空格与指针点击等价。
 - 内容岛宽度小于 760 时，网格降为单列、hero 改为纵向堆叠（媒体在上、文案在下，媒体仍按素材等比适配并水平居中，不撑满整行）。
@@ -230,12 +271,11 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
 3. **窗口**（`Settings.Window.Section`）：一行「关闭窗口时」（`Settings.Window.Label` / `Settings.Window.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，选项依次为每次询问 / 隐藏到托盘 / 退出应用（`Settings.Window.Ask` / `.HideToTray` / `.Exit`），默认「每次询问」；切换即时生效并保存。
-4. **桌宠**（`Settings.Pet.Section`）：一行「显示小猫」（`Settings.Pet.Label` / `Settings.Pet.Hint`），控件是 `ToggleSwitch`，默认关；切换即时生效并保存。分区放在「窗口」之后。
-5. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
+4. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
    - 第一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
    - 第二行「世界时钟目录」（`Settings.Data.Catalog.Title` / `Settings.Data.Catalog.Hint`），说明下方依次是「上次检查」与目录版本两行（11.5px / `TextFillColorSecondaryBrush`，行距 2）；右侧是 `Button`「立即检查」（`Settings.Data.Catalog.Check`，高 32、圆角 4、13px，最小宽 96）。检查进行中按钮禁用，检查行显示「正在检查…」（`Settings.Data.Catalog.Checking`）；从未检查显示「上次检查：无」（`Settings.Data.Catalog.NeverChecked`），否则「上次检查：yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.LastChecked`，本地时间）；版本行在已下载时显示「目录更新于 yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.Updated`），内置时显示「目录为内置版本」（`Settings.Data.Catalog.Bundled`）。
    - 「立即检查」忽略每日一次的限制，但仍受「允许在线获取数据」开关约束：开关关闭时按钮禁用。检查失败不弹提示、不显示错误，只记 Warning 日志；结果由上述两行状态文字体现。
-6. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
+5. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
 
 - 修改**即时生效并自动保存**：没有「保存」按钮、没有确认对话框、没有「已保存」提示。
 - 「导出诊断包」走系统保存对话框：默认文件名 `JiuMi-diagnostics-yyyyMMdd-HHmmss.zip`，默认目录为当前生效的 `logs\`。导出期间按钮禁用，结束后恢复；打包内容与失败处理见 [`docs/architecture.md`](./architecture.md) 的日志与诊断章节。
@@ -808,8 +848,8 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 右键菜单
 
-- 项顺序固定：显示主窗口（`Shell.Tray.Show`）／显示小猫（`Shell.Tray.ShowPet`，可勾选）／设置（`Shell.Tray.Settings`）／退出（`Shell.Tray.Exit`）。
-- 「显示小猫」的勾选状态跟随 `petEnabled`；勾选切换即时显示/隐藏桌宠并保存，与设置页开关同一状态。桌宠关闭时该项仍可见，只是未勾选。
+- 项顺序固定：显示主窗口（`Shell.Tray.Show`）／设置（`Shell.Tray.Settings`）／退出（`Shell.Tray.Exit`）。
+- v1 不提供「显示小猫」等桌宠入口：我的JiuMi 只从左侧导航进入，托盘不承担页面显隐。
 - 用系统托盘的**原生菜单**（Avalonia 托盘菜单即 `NativeMenu`，Windows 上是 Win32 弹出菜单）：字体、行高与圆角跟随系统，不自定义配色；键盘上下移动与 `Enter` 触发按系统默认行为。
 - 「设置」= 先恢复并激活主窗口，再执行导航栏「设置」的**同一条**导航命令；已在设置页时不重复导航，因此返回行为与手动点击导航完全一致。
 - 「退出」不弹关闭询问框，直接退出；与关闭按钮选择「退出应用」走同一条退出路径。
