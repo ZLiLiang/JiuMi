@@ -147,7 +147,7 @@ public partial class MainWindow : FAAppWindow
     /// </summary>
     /// <param name="screenPoint">The corner when the page has been laid out.</param>
     /// <returns><see langword="true"/> when the corner is available.</returns>
-    public bool TryGetContentBottomRight(out PixelPoint screenPoint)
+    internal bool TryGetContentBottomRight(out PixelPoint screenPoint)
     {
         if (!PageViewport.IsLoaded || PageViewport.Bounds.Width <= 0d || PageViewport.Bounds.Height <= 0d)
         {

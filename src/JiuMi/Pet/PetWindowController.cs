@@ -193,7 +193,7 @@ public sealed class PetWindowController : IDisposable
         window.Position = new PixelPoint(start.X, start.Y);
         if (window.ActualTransparencyLevel != WindowTransparencyLevel.Transparent)
         {
-            // The flag stays on so a later display change can still bring the pet back.
+            // The enabled flag stays on; the user can retry from the switch or the tray item.
             _logger.Warning("The desktop pet requires a transparent window and stays hidden");
             window.Hide();
             return;

@@ -39,6 +39,18 @@ public sealed class PetPlacementTests
     }
 
     [Fact]
+    public void GetDefault_GivenNoPrimaryScreen_UsesTheFirstScreen()
+    {
+        var first = new PetWorkArea(1920, 0, 1280, 1024, 1d, IsPrimary: false);
+        var second = new PetWorkArea(3200, 0, 1280, 1024, 1d, IsPrimary: false);
+
+        PetPlacementResult result = PetPlacement.GetDefault([first, second]);
+
+        Assert.Equal(first, result.WorkArea);
+        Assert.Equal(new PetPoint(3016, 840), result.Position);
+    }
+
+    [Fact]
     public void Resolve_GivenPositionInsideSecondaryScreen_KeepsIt()
     {
         var secondary = new PetWorkArea(1920, 0, 1280, 1024, 1d, IsPrimary: false);
