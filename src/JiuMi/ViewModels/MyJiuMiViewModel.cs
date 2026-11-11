@@ -16,7 +16,7 @@ namespace JiuMi.ViewModels;
 /// Drives the My JiuMi page: the state machine, the decoded frames, the heart and <c>Zzz</c>
 /// overlays, and the persisted normalized floor position.
 /// </summary>
-public sealed class MyJiuMiViewModel : ViewModelBase
+public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
 {
     private static readonly Uri _assetRoot = new("avares://JiuMi/Assets/MyJiuMi/");
 
@@ -29,11 +29,12 @@ public sealed class MyJiuMiViewModel : ViewModelBase
     private readonly HashSet<MyJiuMiState> _failedStates = [];
 
     private Bitmap? _frame;
-    private Thickness _catMargin = new(0, 0, 0, 2);
+    private Thickness _catMargin;
     private bool _isCatVisible = true;
     private bool _isHeartVisible;
     private bool _isZzzVisible;
     private bool _isFacingRight;
+    private bool _isDisposed;
     private double _stageWidth;
     private DateTimeOffset? _heartRevealAt;
     private DateTimeOffset? _heartHideAt;
@@ -133,10 +134,8 @@ public sealed class MyJiuMiViewModel : ViewModelBase
         }
 
         _stageWidth = stageWidth;
-        _heartRevealAt = null;
-        _heartHideAt = null;
-        double position = MyJiuMiPosition.Clamp(_settingsStore.Current.MyJiuMi.X);
-        _stateMachine.SetStageWidth(stageWidth);
+        ClearHeart();
+        double position = MyJiuMiPositionRules.Clamp(_settingsStore.Current.MyJiuMi.X);
         _stateMachine.Activate(stageWidth, position);
         _timer.Start();
         UpdateVisuals(forceFrame: true);
@@ -149,12 +148,37 @@ public sealed class MyJiuMiViewModel : ViewModelBase
     {
         _timer.Stop();
         _stateMachine.Deactivate();
-        _heartRevealAt = null;
-        _heartHideAt = null;
+        ClearHeart();
         IsHeartVisible = false;
         IsZzzVisible = false;
         _renderedState = null;
         _renderedFrame = -1;
+    }
+
+    /// <summary>
+    /// Releases the decoded frames when the application shuts down.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        _timer.Stop();
+        Frame = null;
+
+        foreach (Bitmap?[] frames in _frames.Values)
+        {
+            foreach (Bitmap? frame in frames)
+            {
+                frame?.Dispose();
+            }
+        }
+
+        _frames.Clear();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -188,8 +212,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase
         }
         else
         {
-            _heartRevealAt = null;
-            _heartHideAt = null;
+            ClearHeart();
         }
 
         UpdateVisuals(forceFrame: true);
@@ -200,8 +223,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase
     /// </summary>
     public void BeginDrag()
     {
-        _heartRevealAt = null;
-        _heartHideAt = null;
+        ClearHeart();
         IsHeartVisible = false;
         _stateMachine.BeginDrag();
         UpdateVisuals(forceFrame: true);
@@ -239,6 +261,11 @@ public sealed class MyJiuMiViewModel : ViewModelBase
 
     private void OnTick(object? sender, EventArgs e)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         _stateMachine.Update();
         UpdateVisuals(forceFrame: false);
     }
@@ -271,8 +298,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase
         DateTimeOffset now = _timeProvider.GetUtcNow();
         if (_heartHideAt is { } hideAt && now >= hideAt)
         {
-            _heartRevealAt = null;
-            _heartHideAt = null;
+            ClearHeart();
         }
 
         IsHeartVisible =
@@ -295,7 +321,13 @@ public sealed class MyJiuMiViewModel : ViewModelBase
                 width - catSize);
         }
 
-        CatMargin = new Thickness(left, 0, 0, 2);
+        CatMargin = new Thickness(left, 0, 0, 0);
+    }
+
+    private void ClearHeart()
+    {
+        _heartRevealAt = null;
+        _heartHideAt = null;
     }
 
     private void SavePosition()
@@ -304,7 +336,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase
         {
             MyJiuMi = new MyJiuMiSettings
             {
-                X = MyJiuMiPosition.Clamp(_stateMachine.PositionX),
+                X = MyJiuMiPositionRules.Clamp(_stateMachine.PositionX),
             },
         };
 
@@ -333,7 +365,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase
             return null;
         }
 
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.For(state);
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(state);
         var loaded = new Bitmap?[clip.FrameDurations.Count];
         try
         {

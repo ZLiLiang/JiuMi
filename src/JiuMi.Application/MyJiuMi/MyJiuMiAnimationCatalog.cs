@@ -25,7 +25,7 @@ public static class MyJiuMiAnimationCatalog
     /// <param name="state">The animation state.</param>
     /// <returns>The matching clip.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The state has no clip.</exception>
-    public static MyJiuMiAnimationClip For(MyJiuMiState state) => state switch
+    public static MyJiuMiAnimationClip GetClip(MyJiuMiState state) => state switch
     {
         MyJiuMiState.LyingIdle => _lyingIdle,
         MyJiuMiState.Blink => _blink,

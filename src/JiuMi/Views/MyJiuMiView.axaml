@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:JiuMi.Localization"
+             xmlns:my="using:JiuMi.Application.MyJiuMi"
              xmlns:vm="using:JiuMi.ViewModels"
              x:Class="JiuMi.Views.MyJiuMiView"
              x:DataType="vm:MyJiuMiViewModel">
@@ -36,20 +37,13 @@
                 Background="Transparent"
                 SizeChanged="OnRoomWallSizeChanged">
             <Grid x:Name="CatRoot"
-                  Width="200"
-                  Height="200"
+                  Width="{x:Static my:MyJiuMiInteractionRules.CatSize}"
+                  Height="{x:Static my:MyJiuMiInteractionRules.CatSize}"
                   HorizontalAlignment="Left"
                   VerticalAlignment="Bottom"
-                  Margin="{Binding CatMargin}"
-                  Background="Transparent"
-                  AutomationProperties.Name="{loc:Localize MyJiuMi.Cat.AutomationName}"
-                  PointerPressed="OnCatPointerPressed"
-                  PointerMoved="OnCatPointerMoved"
-                  PointerReleased="OnCatPointerReleased"
-                  PointerCaptureLost="OnCatPointerCaptureLost">
+                  Margin="{Binding CatMargin}">
               <Ellipse Width="120"
                        Height="12"
-                       Margin="0,0,0,2"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Bottom"
                        Fill="#22000000"
@@ -60,7 +54,8 @@
                      IsVisible="{Binding IsCatVisible}"
                      IsHitTestVisible="False"
                      RenderTransformOrigin="50%,50%"
-                     RenderOptions.BitmapInterpolationMode="HighQuality" />
+                     RenderOptions.BitmapInterpolationMode="HighQuality"
+                     AutomationProperties.Name="{loc:Localize MyJiuMi.Cat.AutomationName}" />
               <Path Width="20"
                     Height="18"
                     Margin="0,54,0,0"
@@ -81,6 +76,14 @@
                          FontWeight="SemiBold"
                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                          Text="Zzz" />
+              <Border x:Name="CatHitArea"
+                      Height="140"
+                      VerticalAlignment="Bottom"
+                      Background="Transparent"
+                      PointerPressed="OnCatPointerPressed"
+                      PointerMoved="OnCatPointerMoved"
+                      PointerReleased="OnCatPointerReleased"
+                      PointerCaptureLost="OnCatPointerCaptureLost" />
             </Grid>
           </Grid>
           <Border Grid.Row="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />

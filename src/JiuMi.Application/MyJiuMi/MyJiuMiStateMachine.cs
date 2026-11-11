@@ -25,7 +25,7 @@ public sealed class MyJiuMiStateMachine
     private DateTimeOffset? _nextBlinkAt;
     private DateTimeOffset? _nextWanderAt;
     private int _frameIndex;
-    private double _positionX = MyJiuMiPosition.Default;
+    private double _positionX = MyJiuMiPositionRules.Default;
     private double _stageWidth;
     private double _walkTargetX;
     private bool _isFacingRight;
@@ -81,7 +81,7 @@ public sealed class MyJiuMiStateMachine
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
         _stageWidth = NormalizeWidth(stageWidth);
-        _positionX = MyJiuMiPosition.Clamp(positionX);
+        _positionX = MyJiuMiPositionRules.Clamp(positionX);
         _isFacingRight = false;
         _isActive = true;
         _pendingAction = PendingAction.None;
@@ -117,7 +117,7 @@ public sealed class MyJiuMiStateMachine
     {
         if (_isActive)
         {
-            _positionX = MyJiuMiPosition.Clamp(positionX);
+            _positionX = MyJiuMiPositionRules.Clamp(positionX);
         }
     }
 
@@ -136,7 +136,7 @@ public sealed class MyJiuMiStateMachine
 
         for (int transitions = 0; transitions < MaxTransitionsPerUpdate; transitions++)
         {
-            if (IsSleepDue(now) && _state is MyJiuMiState.LyingIdle or MyJiuMiState.Blink)
+            if (IsSleepDue(now) && IsResting(_state))
             {
                 _pendingAction = PendingAction.None;
                 EnterState(MyJiuMiState.SleepIn, now);
@@ -250,7 +250,7 @@ public sealed class MyJiuMiStateMachine
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
         ResetSleep(now);
-        _walkTargetX = MyJiuMiPosition.Clamp(targetX);
+        _walkTargetX = MyJiuMiPositionRules.Clamp(targetX);
         EnterState(
             _state == MyJiuMiState.Sleep ? MyJiuMiState.Wake : MyJiuMiState.Stretch,
             now);
@@ -352,7 +352,7 @@ public sealed class MyJiuMiStateMachine
 
     private bool TryCompleteTransition(DateTimeOffset now)
     {
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.For(_state);
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(_state);
         if (clip.Loops || now - _stateStartedAt < clip.Duration)
         {
             return false;
@@ -423,7 +423,7 @@ public sealed class MyJiuMiStateMachine
             _nextBlinkAt = null;
         }
 
-        if (state is not (MyJiuMiState.LyingIdle or MyJiuMiState.Blink))
+        if (!IsResting(state))
         {
             _nextWanderAt = null;
         }
@@ -453,7 +453,7 @@ public sealed class MyJiuMiStateMachine
 
     private void UpdateFrame(DateTimeOffset now)
     {
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.For(_state);
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(_state);
         TimeSpan elapsed = now - _stateStartedAt;
         if (elapsed < TimeSpan.Zero)
         {
@@ -478,6 +478,9 @@ public sealed class MyJiuMiStateMachine
 
         _frameIndex = clip.FrameDurations.Count - 1;
     }
+
+    private static bool IsResting(MyJiuMiState state) =>
+        state is MyJiuMiState.LyingIdle or MyJiuMiState.Blink;
 
     private static double NormalizeWidth(double width) =>
         double.IsFinite(width) && width > 0 ? width : 0;

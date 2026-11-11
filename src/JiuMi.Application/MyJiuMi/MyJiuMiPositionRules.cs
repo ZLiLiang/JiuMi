@@ -3,7 +3,7 @@
 /// <summary>
 /// Clamps the normalized horizontal position of the cat between the room's left and right edges.
 /// </summary>
-public static class MyJiuMiPosition
+public static class MyJiuMiPositionRules
 {
     /// <summary>
     /// Gets the position used before the user has dragged the cat.

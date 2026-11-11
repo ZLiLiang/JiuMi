@@ -13,7 +13,7 @@ public sealed record MyJiuMiSettings
     {
         get;
         init;
-    } = MyJiuMiPosition.Default;
+    } = MyJiuMiPositionRules.Default;
 
     /// <summary>
     /// Creates the settings used before the user has dragged the cat.

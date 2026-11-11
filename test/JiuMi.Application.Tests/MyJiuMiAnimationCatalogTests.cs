@@ -24,7 +24,7 @@ public sealed class MyJiuMiAnimationCatalogTests
         int frameMilliseconds,
         bool loops)
     {
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.For(state);
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(state);
 
         Assert.Equal(folder, clip.AssetFolder);
         Assert.Equal(frameCount, clip.FrameDurations.Count);
@@ -39,7 +39,7 @@ public sealed class MyJiuMiAnimationCatalogTests
     {
         foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
         {
-            MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.For(state);
+            MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(state);
             TimeSpan expected = TimeSpan.FromTicks(
                 clip.FrameDurations.Sum(duration => duration.Ticks));
 
@@ -52,6 +52,6 @@ public sealed class MyJiuMiAnimationCatalogTests
     {
         Assert.Equal(
             TimeSpan.FromMilliseconds(858),
-            MyJiuMiAnimationCatalog.For(MyJiuMiState.Walk).Duration);
+            MyJiuMiAnimationCatalog.GetClip(MyJiuMiState.Walk).Duration);
     }
 }

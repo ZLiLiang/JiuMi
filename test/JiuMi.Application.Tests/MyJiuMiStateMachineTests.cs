@@ -406,7 +406,7 @@ public sealed class MyJiuMiStateMachineTests
     {
         (MyJiuMiStateMachine machine, _) = CreateMachine(positionX: double.NaN);
 
-        Assert.Equal(MyJiuMiPosition.Default, machine.PositionX, 9);
+        Assert.Equal(MyJiuMiPositionRules.Default, machine.PositionX, 9);
     }
 
     private static (MyJiuMiStateMachine Machine, ManualTimeProvider Time) CreateMachine(

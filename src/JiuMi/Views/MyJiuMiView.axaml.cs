@@ -18,6 +18,7 @@ public partial class MyJiuMiView : UserControl
     private Window? _window;
     private IPointer? _pointer;
     private Point _pressOrigin;
+    private double _dragOffsetX;
     private bool _isPressed;
     private bool _isDragging;
     private bool _isSubscribed;
@@ -160,7 +161,7 @@ public partial class MyJiuMiView : UserControl
     {
         if (_isPressed ||
             _viewModel is null ||
-            !e.GetCurrentPoint(CatRoot).Properties.IsLeftButtonPressed)
+            !e.GetCurrentPoint(CatHitArea).Properties.IsLeftButtonPressed)
         {
             return;
         }
@@ -169,7 +170,8 @@ public partial class MyJiuMiView : UserControl
         _isDragging = false;
         _pointer = e.Pointer;
         _pressOrigin = e.GetPosition(RoomWall);
-        e.Pointer.Capture(CatRoot);
+        _dragOffsetX = _pressOrigin.X - (CatRoot.Margin.Left + (CatRoot.Bounds.Width / 2));
+        e.Pointer.Capture(CatHitArea);
         e.Handled = true;
     }
 
@@ -183,9 +185,7 @@ public partial class MyJiuMiView : UserControl
         Point current = e.GetPosition(RoomWall);
         if (!_isDragging)
         {
-            double deltaX = current.X - _pressOrigin.X;
-            double deltaY = current.Y - _pressOrigin.Y;
-            if (Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY)) < MyJiuMiInteractionRules.DragThreshold)
+            if (Math.Abs(current.X - _pressOrigin.X) < MyJiuMiInteractionRules.DragThreshold)
             {
                 return;
             }
@@ -196,7 +196,8 @@ public partial class MyJiuMiView : UserControl
 
         if (RoomWall.Bounds.Width > 0)
         {
-            _viewModel.DragTo(current.X / RoomWall.Bounds.Width);
+            double targetCenter = current.X - _dragOffsetX;
+            _viewModel.DragTo(targetCenter / RoomWall.Bounds.Width);
         }
 
         e.Handled = true;
@@ -210,11 +211,7 @@ public partial class MyJiuMiView : UserControl
         }
 
         bool wasDragging = _isDragging;
-        _isPressed = false;
-        _isDragging = false;
-        IPointer? pointer = _pointer;
-        _pointer = null;
-        pointer?.Capture(null);
+        ReleasePointer();
 
         if (wasDragging)
         {
@@ -241,16 +238,21 @@ public partial class MyJiuMiView : UserControl
     private void EndActiveDrag()
     {
         bool wasDragging = _isDragging;
-        _isPressed = false;
-        _isDragging = false;
-        IPointer? pointer = _pointer;
-        _pointer = null;
-        pointer?.Capture(null);
+        ReleasePointer();
 
         if (wasDragging)
         {
             _viewModel?.EndDrag();
         }
+    }
+
+    private void ReleasePointer()
+    {
+        _isPressed = false;
+        _isDragging = false;
+        IPointer? pointer = _pointer;
+        _pointer = null;
+        pointer?.Capture(null);
     }
 
     private void OnRoomDoubleTapped(object? sender, TappedEventArgs e)
@@ -260,9 +262,15 @@ public partial class MyJiuMiView : UserControl
             return;
         }
 
-        Point local = e.GetPosition(CatRoot);
-        if (local.X is >= 0 and <= MyJiuMiInteractionRules.CatSize &&
-            local.Y is >= 0 and <= MyJiuMiInteractionRules.CatSize)
+        double hitWidth = CatHitArea.Bounds.Width;
+        double hitHeight = CatHitArea.Bounds.Height;
+        Point local = e.GetPosition(CatHitArea);
+        if (hitWidth > 0 &&
+            hitHeight > 0 &&
+            local.X >= 0 &&
+            local.X <= hitWidth &&
+            local.Y >= 0 &&
+            local.Y <= hitHeight)
         {
             // A double click on the cat is two single clicks, not a summon.
             return;

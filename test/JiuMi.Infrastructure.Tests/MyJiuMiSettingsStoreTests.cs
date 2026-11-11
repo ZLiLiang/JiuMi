@@ -35,7 +35,7 @@ public sealed class MyJiuMiSettingsStoreTests : IDisposable
         SettingsLoadResult result = CreateStore().Load();
 
         Assert.Equal(SettingsLoadIssue.None, result.Issues);
-        Assert.Equal(MyJiuMiPosition.Default, result.Settings.MyJiuMi.X);
+        Assert.Equal(MyJiuMiPositionRules.Default, result.Settings.MyJiuMi.X);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class MyJiuMiSettingsStoreTests : IDisposable
         SettingsLoadResult result = CreateStore().Load();
 
         Assert.True(result.Issues.HasFlag(SettingsLoadIssue.InvalidMyJiuMiPosition));
-        Assert.Equal(MyJiuMiPosition.Default, result.Settings.MyJiuMi.X);
+        Assert.Equal(MyJiuMiPositionRules.Default, result.Settings.MyJiuMi.X);
     }
 
     [Theory]
@@ -108,7 +108,7 @@ public sealed class MyJiuMiSettingsStoreTests : IDisposable
         SettingsLoadResult result = CreateStore().Load();
 
         Assert.Equal(SettingsLoadIssue.None, result.Issues);
-        Assert.Equal(MyJiuMiPosition.Default, result.Settings.MyJiuMi.X);
+        Assert.Equal(MyJiuMiPositionRules.Default, result.Settings.MyJiuMi.X);
     }
 
     [Fact]

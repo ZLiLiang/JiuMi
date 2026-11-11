@@ -107,16 +107,8 @@ public sealed class JsonSettingsStore : ISettingsStore
 
         try
         {
-            settings = ReadSettings(settingsPath, out bool invalidWorldClockPlaces, out bool invalidMyJiuMiPosition);
-            if (invalidWorldClockPlaces)
-            {
-                issues |= SettingsLoadIssue.InvalidWorldClockPlaces;
-            }
-
-            if (invalidMyJiuMiPosition)
-            {
-                issues |= SettingsLoadIssue.InvalidMyJiuMiPosition;
-            }
+            settings = ReadSettings(settingsPath, out SettingsLoadIssue readIssues);
+            issues |= readIssues;
         }
         catch (Exception exception) when (IsFileFailure(exception) || exception is JsonException)
         {
@@ -140,11 +132,9 @@ public sealed class JsonSettingsStore : ISettingsStore
         };
     }
 
-    private static AppSettings ReadSettings(
-        string settingsPath,
-        out bool invalidWorldClockPlaces,
-        out bool invalidMyJiuMiPosition)
+    private static AppSettings ReadSettings(string settingsPath, out SettingsLoadIssue issues)
     {
+        issues = SettingsLoadIssue.None;
         using FileStream stream = new(settingsPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using JsonDocument document = JsonDocument.Parse(stream);
         JsonElement root = document.RootElement;
@@ -154,7 +144,18 @@ public sealed class JsonSettingsStore : ISettingsStore
             throw new JsonException("The settings file root is not a JSON object.");
         }
 
-        WorldClockSettings worldClock = ReadWorldClock(root, out invalidWorldClockPlaces);
+        WorldClockSettings worldClock = ReadWorldClock(root, out bool invalidWorldClockPlaces);
+        MyJiuMiSettings myJiuMi = ReadMyJiuMi(root, out bool invalidMyJiuMiPosition);
+        if (invalidWorldClockPlaces)
+        {
+            issues |= SettingsLoadIssue.InvalidWorldClockPlaces;
+        }
+
+        if (invalidMyJiuMiPosition)
+        {
+            issues |= SettingsLoadIssue.InvalidMyJiuMiPosition;
+        }
+
         return new AppSettings
         {
             SchemaVersion = ReadSchemaVersion(root),
@@ -166,7 +167,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             WorldClock = worldClock,
             ImageConvert = ReadImageConvert(root),
             FileRename = ReadFileRename(root),
-            MyJiuMi = ReadMyJiuMi(root, out invalidMyJiuMiPosition),
+            MyJiuMi = myJiuMi,
         };
     }
 
@@ -273,8 +274,8 @@ public sealed class JsonSettingsStore : ISettingsStore
             return MyJiuMiSettings.CreateDefault();
         }
 
-        invalidPosition = !MyJiuMiPosition.IsInRange(x);
-        return new MyJiuMiSettings { X = MyJiuMiPosition.Clamp(x) };
+        invalidPosition = !MyJiuMiPositionRules.IsInRange(x);
+        return new MyJiuMiSettings { X = MyJiuMiPositionRules.Clamp(x) };
     }
 
     private static ImageConvertSettings ReadImageConvert(JsonElement root)
