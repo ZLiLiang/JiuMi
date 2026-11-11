@@ -161,6 +161,15 @@ public partial class MainWindow : FAAppWindow
 
     private void UpdateBackdrop()
     {
+        // TransparencyLevelHint is a XAML attribute on the root, so setting it raises
+        // ActualTransparencyLevel while the loader is still building the content tree. On Windows 11
+        // the platform accepts Mica at that point and this runs before BackdropHighlight exists.
+        // OnOpened re-applies the backdrop once the named content is available.
+        if (BackdropHighlight is null)
+        {
+            return;
+        }
+
         if (ActualTransparencyLevel == WindowTransparencyLevel.Mica)
         {
             Background = null;
