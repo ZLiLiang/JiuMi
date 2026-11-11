@@ -228,7 +228,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 拖拽：手动跟踪指针，4px 阈值区分点击；只改水平位置，垂直贴地板；松手写归一化 X 并夹回 `0`–`1`；重置睡眠计时。睡着时直接进 `Drag`，松手回 `LyingIdle`。
 - 双击地面空白处：召唤；清醒时 `Stretch → Walk`，睡着时 `Wake → Walk`；重置睡眠计时。双击落在猫身上按单击处理，不召唤。双击间隔按平台默认判定；因为召唤只作用于地面空白处，不与猫的单击竞争，单击不需要延迟等待双击。
 - 自主闲逛不重置睡眠计时，也不产生爱心；页面离开时取消未完成的走动与过渡。
-- 无右键菜单、无悬停提示、无键盘交互；猫根元素只设 `AutomationProperties.Name`（`MyJiuMi.Cat.AutomationName`）。
+- 无右键菜单、无悬停提示、无键盘交互；猫图像元素只设 `AutomationProperties.Name`（`MyJiuMi.Cat.AutomationName`）。
 
 ### 位置持久化
 

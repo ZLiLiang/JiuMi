@@ -170,7 +170,6 @@ public partial class MyJiuMiView : UserControl
         _isDragging = false;
         _pointer = e.Pointer;
         _pressOrigin = e.GetPosition(RoomWall);
-        _dragOffsetX = _pressOrigin.X - (CatRoot.Margin.Left + (CatRoot.Bounds.Width / 2));
         e.Pointer.Capture(CatHitArea);
         e.Handled = true;
     }
@@ -191,6 +190,7 @@ public partial class MyJiuMiView : UserControl
             }
 
             _isDragging = true;
+            _dragOffsetX = _pressOrigin.X - _viewModel.CatCenterX;
             _viewModel.BeginDrag();
         }
 
@@ -262,15 +262,7 @@ public partial class MyJiuMiView : UserControl
             return;
         }
 
-        double hitWidth = CatHitArea.Bounds.Width;
-        double hitHeight = CatHitArea.Bounds.Height;
-        Point local = e.GetPosition(CatHitArea);
-        if (hitWidth > 0 &&
-            hitHeight > 0 &&
-            local.X >= 0 &&
-            local.X <= hitWidth &&
-            local.Y >= 0 &&
-            local.Y <= hitHeight)
+        if (e.Source == CatHitArea)
         {
             // A double click on the cat is two single clicks, not a summon.
             return;

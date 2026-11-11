@@ -416,6 +416,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _worldClockPage.Dispose();
         _imageConvertPage.Dispose();
         _fileRenamePage.Dispose();
+        _myJiuMiPage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
     }

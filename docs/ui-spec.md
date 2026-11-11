@@ -93,7 +93,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 猫 | 200 × 200 猫位，贴在水平地板线上；水平位置由归一化 X 决定，垂直位置固定，不随滚动缩放 |
 | 装饰 | 无卡片、无设置控件、无工具栏、无按钮；爱心与 `Zzz` 是猫身上的临时矢量叠加，不占布局 |
 | 主题 | 墙与房间底 `CardBackgroundFillColorDefaultBrush`；地板线 `DividerStrokeColorDefaultBrush`；地板 72 DIP 高，用 `SubtleFillColorSecondaryBrush`；接触阴影为 120 × 12、`#22000000` 椭圆。只复用现有主题资源，不新增 token；浅色/深色随主题 |
-| 可访问性 | 猫根元素 `AutomationProperties.Name` 取 `MyJiuMi.Cat.AutomationName`；房间是装饰，不进入焦点顺序；v1 不做键盘交互 |
+| 可访问性 | 猫图像元素 `AutomationProperties.Name` 取 `MyJiuMi.Cat.AutomationName`；房间是装饰，不进入焦点顺序；v1 不做键盘交互 |
 
 - 不在猫周围加底板、描边、阴影或背景带；透明像素不得出现黑边。
 - 接触阴影由页面绘制（椭圆、低透明度、贴脚底），不烘焙进帧；深色主题下不能变成一块黑斑。

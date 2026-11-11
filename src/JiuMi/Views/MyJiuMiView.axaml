@@ -77,7 +77,9 @@
                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                          Text="Zzz" />
               <Border x:Name="CatHitArea"
-                      Height="140"
+                      Width="{x:Static my:MyJiuMiInteractionRules.CatHitWidth}"
+                      Height="{x:Static my:MyJiuMiInteractionRules.CatHitHeight}"
+                      HorizontalAlignment="Center"
                       VerticalAlignment="Bottom"
                       Background="Transparent"
                       PointerPressed="OnCatPointerPressed"

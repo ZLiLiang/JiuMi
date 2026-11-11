@@ -52,6 +52,18 @@ public static class MyJiuMiInteractionRules
     public const double CatSize = 200;
 
     /// <summary>
+    /// Gets the width, in DIP, of the cat's pointer hit area; the exported cat art is about
+    /// 170–177 DIP wide, so this keeps empty floor on either side clickable.
+    /// </summary>
+    public const double CatHitWidth = 180;
+
+    /// <summary>
+    /// Gets the height, in DIP, of the cat's pointer hit area above the floor line; the tallest
+    /// exported frame has visible art within the bottom 121 DIP.
+    /// </summary>
+    public const double CatHitHeight = 140;
+
+    /// <summary>
     /// Gets the horizontal pointer movement, in pixels, that turns a click into a drag.
     /// </summary>
     public const double DragThreshold = 4;

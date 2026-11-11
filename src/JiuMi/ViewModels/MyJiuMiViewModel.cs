@@ -73,13 +73,18 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Gets the cat's left margin inside the room wall; the vertical margin keeps it on the floor.
+    /// Gets the cat's margin inside the room wall; the cat sits on the floor line.
     /// </summary>
     public Thickness CatMargin
     {
         get => _catMargin;
         private set => SetProperty(ref _catMargin, value);
     }
+
+    /// <summary>
+    /// Gets the cat centre's horizontal offset from the room wall's left edge, in DIP.
+    /// </summary>
+    public double CatCenterX => _catMargin.Left + (MyJiuMiInteractionRules.CatSize / 2);
 
     /// <summary>
     /// Gets a value indicating whether the cat has frames to show.
@@ -128,7 +133,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     /// <param name="stageWidth">The room width in DIP.</param>
     public void Activate(double stageWidth)
     {
-        if (!(stageWidth > 0))
+        if (_isDisposed || !(stageWidth > 0))
         {
             return;
         }
@@ -166,7 +171,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
         }
 
         _isDisposed = true;
-        _timer.Stop();
+        Deactivate();
         Frame = null;
 
         foreach (Bitmap?[] frames in _frames.Values)
@@ -188,7 +193,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     /// <param name="stageWidth">The new room width in DIP.</param>
     public void SetStageWidth(double stageWidth)
     {
-        if (!(stageWidth > 0))
+        if (_isDisposed || !(stageWidth > 0))
         {
             return;
         }
@@ -272,6 +277,11 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
 
     private void UpdateVisuals(bool forceFrame)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         MyJiuMiState state = _stateMachine.State;
         int frameIndex = _stateMachine.FrameIndex;
         if (forceFrame || _renderedState != state || _renderedFrame != frameIndex)
@@ -355,6 +365,11 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
         Justification = "Asset loading is a UI boundary; a missing frame must degrade to a hidden cat.")]
     private Bitmap?[]? GetFrames(MyJiuMiState state)
     {
+        if (_isDisposed)
+        {
+            return null;
+        }
+
         if (_frames.TryGetValue(state, out Bitmap?[]? frames))
         {
             return frames;
