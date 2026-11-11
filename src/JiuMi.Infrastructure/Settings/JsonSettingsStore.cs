@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
+using JiuMi.Application.MyJiuMi;
 using JiuMi.Application.Settings;
 using JiuMi.Application.WorldClock;
 
@@ -106,10 +107,15 @@ public sealed class JsonSettingsStore : ISettingsStore
 
         try
         {
-            settings = ReadSettings(settingsPath, out bool invalidWorldClockPlaces);
+            settings = ReadSettings(settingsPath, out bool invalidWorldClockPlaces, out bool invalidMyJiuMiPosition);
             if (invalidWorldClockPlaces)
             {
                 issues |= SettingsLoadIssue.InvalidWorldClockPlaces;
+            }
+
+            if (invalidMyJiuMiPosition)
+            {
+                issues |= SettingsLoadIssue.InvalidMyJiuMiPosition;
             }
         }
         catch (Exception exception) when (IsFileFailure(exception) || exception is JsonException)
@@ -134,7 +140,10 @@ public sealed class JsonSettingsStore : ISettingsStore
         };
     }
 
-    private static AppSettings ReadSettings(string settingsPath, out bool invalidWorldClockPlaces)
+    private static AppSettings ReadSettings(
+        string settingsPath,
+        out bool invalidWorldClockPlaces,
+        out bool invalidMyJiuMiPosition)
     {
         using FileStream stream = new(settingsPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using JsonDocument document = JsonDocument.Parse(stream);
@@ -157,6 +166,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             WorldClock = worldClock,
             ImageConvert = ReadImageConvert(root),
             FileRename = ReadFileRename(root),
+            MyJiuMi = ReadMyJiuMi(root, out invalidMyJiuMiPosition),
         };
     }
 
@@ -236,6 +246,35 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         return !root.TryGetProperty("onlineDataEnabled", out JsonElement element) ||
             element.ValueKind != JsonValueKind.False;
+    }
+
+    private static MyJiuMiSettings ReadMyJiuMi(JsonElement root, out bool invalidPosition)
+    {
+        invalidPosition = false;
+        if (!root.TryGetProperty("myJiuMi", out JsonElement element))
+        {
+            return MyJiuMiSettings.CreateDefault();
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            invalidPosition = true;
+            return MyJiuMiSettings.CreateDefault();
+        }
+
+        if (!element.TryGetProperty("x", out JsonElement xElement))
+        {
+            return MyJiuMiSettings.CreateDefault();
+        }
+
+        if (xElement.ValueKind != JsonValueKind.Number || !xElement.TryGetDouble(out double x))
+        {
+            invalidPosition = true;
+            return MyJiuMiSettings.CreateDefault();
+        }
+
+        invalidPosition = !MyJiuMiPosition.IsInRange(x);
+        return new MyJiuMiSettings { X = MyJiuMiPosition.Clamp(x) };
     }
 
     private static ImageConvertSettings ReadImageConvert(JsonElement root)
@@ -476,6 +515,10 @@ public sealed class JsonSettingsStore : ISettingsStore
                     }),
                 ],
             },
+            MyJiuMi = new MyJiuMiDocument
+            {
+                X = settings.MyJiuMi.X,
+            },
         };
     }
 
@@ -594,6 +637,21 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public WorldClockDocument? WorldClock
+        {
+            get;
+            init;
+        }
+
+        public MyJiuMiDocument? MyJiuMi
+        {
+            get;
+            init;
+        }
+    }
+
+    private sealed class MyJiuMiDocument
+    {
+        public double X
         {
             get;
             init;

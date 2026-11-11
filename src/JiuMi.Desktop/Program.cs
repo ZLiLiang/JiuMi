@@ -197,6 +197,11 @@ internal static class Program
             logger.Warning("Settings contained world clock places that failed validation; they were dropped");
         }
 
+        if (result.Issues.HasFlag(SettingsLoadIssue.InvalidMyJiuMiPosition))
+        {
+            logger.Warning("Settings contained an invalid My JiuMi position; it was clamped or reset");
+        }
+
         if (result.Issues.HasFlag(SettingsLoadIssue.Corrupted))
         {
             reporter.Report(recordFactory.Create(

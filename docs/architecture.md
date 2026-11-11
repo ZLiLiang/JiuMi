@@ -215,12 +215,12 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 状态在 `JiuMi.Application`：`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk`；`MyJiuMiStateMachine` 纯逻辑，注入时间与随机源，不依赖 Avalonia。
 - `LyingIdle` 是唯一默认状态；`Blink` 只从 `LyingIdle` 触发；`SleepIn` / `Wake` / `Stretch` 不循环。
 - 帧序与逐帧时长由 `MyJiuMiAnimationCatalog` 唯一定义；UI 只按清单换帧。最终帧数与时长在 [#117](https://github.com/ZLiLiang/JiuMi/issues/117) 定稿后由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。
-- 调度：页面激活时启动 `DispatcherTimer`（约 50ms 检查）+ `Stopwatch` 计算逐帧截止时间；页面离开即停表，不做后台补偿。
+- 调度：页面激活时启动 `DispatcherTimer`（约 16ms 渲染滴答）驱动，状态机按注入的 `TimeProvider` 计算逐帧截止时间；页面离开即停表，不做后台补偿。
 - 眨眼：只在 `LyingIdle` 随机 4–8 秒。
-- 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 80 DIP/s；走路帧循环、页面内位移插值；到达回 `LyingIdle`。自主走动不重置睡眠计时。
+- 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 103 DIP/s（与走路帧步幅匹配）；走路帧循环、页面内位移插值；到达回 `LyingIdle`。自主走动不重置睡眠计时。
 - 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟；到点 `LyingIdle → SleepIn → Sleep`。倒计时在走路中到点则走完当前这段再 `SleepIn`；拖拽中到点则等松手；`React` / `Stretch` 中到点则等过渡结束。
 - 交互可打断 `Blink` / `React` / `Stretch` / `Walk` / `SleepIn`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
-- 爱心（800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
+- 爱心（点击后 300ms 出现、显示 800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
 
 ### 交互
 
@@ -239,7 +239,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 帧资源与本地化
 
 - 资源：`src/JiuMi/Assets/MyJiuMi/<state>/<nn>.png`，PNG RGBA；状态名小写连字符：`lying-idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `stretch` / `walk`。
-- #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 接入帧清单后删除该占位目录。
+- #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 已接入帧清单并删除该占位目录。
 - 页面按约 200 DIP 显示；建议 2× 导出（约 400×400），最终导出尺寸由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。帧只含猫本体，墙、地板与接触阴影由页面绘制。
 - 按状态按需加载；页面离开时停表，重复进入复用已解码帧，不重复读盘。
 - 入口名称：`Tool.MyJiuMi.Name`，用于左侧导航。
