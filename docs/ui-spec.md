@@ -89,7 +89,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | --- | --- |
 | 入口 | 左侧导航；进入方式与已启用工具页相同（切页 200ms） |
 | 页头 | 标题取 `MyJiuMi.Title`，副标题取 `MyJiuMi.Subtitle`；排版同内容岛骨架 |
-| 房间 | 页头下方铺满剩余内容区：一面墙 + 一条 1px 水平地板线 + 很淡的接触阴影；最小高度 380，不足时由内容岛纵向滚动承接 |
+| 房间 | 页头下方铺满剩余内容区：圆角 12、1px `CardStrokeColorDefaultBrush` 的房间外框内是一面墙 + 一条 1px 水平地板线 + 很淡的接触阴影；最小高度 380，不足时由内容岛纵向滚动承接 |
 | 猫 | 200 × 200 猫位，贴在水平地板线上；水平位置由归一化 X 决定，垂直位置固定，不随滚动缩放 |
 | 装饰 | 无卡片、无设置控件、无工具栏、无按钮；爱心与 `Zzz` 是猫身上的临时矢量叠加，不占布局 |
 | 主题 | 墙与房间底 `CardBackgroundFillColorDefaultBrush`；地板线 `DividerStrokeColorDefaultBrush`；地板 72 DIP 高，用 `SubtleFillColorSecondaryBrush`；接触阴影为 120 × 12、`#22000000` 椭圆。只复用现有主题资源，不新增 token；浅色/深色随主题 |

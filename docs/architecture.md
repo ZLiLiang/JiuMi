@@ -588,7 +588,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | `Shell.*` | 窗口、导航、托盘 |
 | `Home.*` | 主页 |
-| `MyJiuMi.*` | 我的JiuMi 页面专属文案；入口名称/描述仍用 `Tool.MyJiuMi.*`（与卡片/导航共用） |
+| `MyJiuMi.*` | 我的JiuMi 页面专属文案；导航入口名称仍用 `Tool.MyJiuMi.Name` |
 | `Settings.*` | 设置页 |
 | `Tool.*` | 工具页与工具卡 |
 | `Common.*` | 跨页复用且**含义相同**的文案 |
