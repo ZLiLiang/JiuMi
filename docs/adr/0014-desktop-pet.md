@@ -1,8 +1,10 @@
 # ADR-0014 桌宠：置顶透明窗口与逐帧动画
 
-- 状态：已接受
+- 状态：已被 [ADR-0015](./0015-my-jiumi-page.md) 取代（superseded，2026-11-11）
 - 日期：2026-11-10
 - 来源：地图 [#103](https://github.com/ZLiLiang/JiuMi/issues/103)；2026-11-10 设计定稿；后续目标 [#102](https://github.com/ZLiLiang/JiuMi/issues/102)
+
+> 历史文档：本 ADR 记录 2026-11-10 的「桌面宠物 v1」决议。2026-11-11 grilling 后方向改为页面优先的「我的JiuMi」，见 [ADR-0015](./0015-my-jiumi-page.md)。#108 分支保留作桌面模式参考，不合并；#109、#110 作废；#112 parked。以下内容只作历史与桌面模式设计参考，不再代表 v1 契约。
 
 ## 背景
 
@@ -98,8 +100,8 @@ JiuMi 的品牌形象是用户家里的橘猫：splash 与主页 hero 共用 180
 ## 不在本 ADR 内
 
 - 角色设定图、色板、逐帧清单与导出规范：见 [`docs/pet-art-spec.md`](../pet-art-spec.md)。
-- 窗口/动画/交互的逐条 UI 规则：见 [`docs/ui-spec.md`](../ui-spec.md) 的桌宠章节。
-- 实现分层、设置键、托盘契约与生命周期细节：见 [`docs/architecture.md`](../architecture.md) 的桌宠章节。
+- 窗口/动画/交互的逐条 UI 规则：历史规则已由 ADR-0015 与 [`docs/ui-spec.md`](../ui-spec.md) 的「我的JiuMi」章节取代；桌面模式的 UI 规则见 #122。
+- 实现分层、设置键、托盘契约与生命周期细节：历史细节已被 ADR-0015 与 [`docs/architecture.md`](../architecture.md) 的「我的JiuMi」章节取代；桌面模式见 #122。
 - 桌面层双模式、裁切交接、走回内容页、声音、自动走动、点击穿透、尺寸档位、Live2D/Spine：见 #102。
 - 无焦点宿主窗口：见后续 spike；本 ADR 只记录 v1 接受已知限制。
 - Win11 实机结果：有机器再补；本 ADR 只定跨版本策略。
