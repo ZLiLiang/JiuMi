@@ -5,6 +5,7 @@ using JiuMi.Application.Diagnostics;
 using JiuMi.Application.Errors;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Localization;
+using JiuMi.Application.Pet;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
 using JiuMi.Diagnostics;
@@ -167,6 +168,9 @@ internal static class Program
         services.AddSingleton<FileRenameViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
+        services.AddSingleton(provider => new PetAnimationStateMachine(
+            provider.GetRequiredService<TimeProvider>(),
+            Random.Shared));
         services.AddSingleton<PetWindowController>();
         services.AddSingleton<ErrorWindowCoordinator>();
         services.AddSingleton<ShellLifecycle>();

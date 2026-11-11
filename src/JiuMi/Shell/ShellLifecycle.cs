@@ -100,6 +100,8 @@ public sealed class ShellLifecycle
         _tray.SettingsRequested += OnTraySettingsRequested;
         _tray.ExitRequested += OnTrayExitRequested;
         _pet.EnabledChanged += OnPetEnabledChanged;
+        _pet.OpenRequested += OnPetOpenRequested;
+        _pet.SettingsRequested += OnPetSettingsRequested;
     }
 
     /// <summary>
@@ -433,13 +435,21 @@ public sealed class ShellLifecycle
         Dispatcher.UIThread.Post(() => _pet.SetEnabled(!_pet.IsEnabled));
 
     private void OnTraySettingsRequested(object? sender, EventArgs e) =>
-        Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(OpenSettings);
+
+    private void OnPetOpenRequested(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(() => TryActivate());
+
+    private void OnPetSettingsRequested(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(OpenSettings);
+
+    private void OpenSettings()
+    {
+        if (TryActivate())
         {
-            if (TryActivate())
-            {
-                _viewModel?.ShowSettings();
-            }
-        });
+            _viewModel?.ShowSettings();
+        }
+    }
 
     private void OnTrayExitRequested(object? sender, EventArgs e) =>
         Dispatcher.UIThread.Post(RequestExit);

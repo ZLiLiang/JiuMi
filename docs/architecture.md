@@ -234,7 +234,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `WalkOut` | 8 | 100ms/帧 | 侧/3-4 走路循环；入场时随窗口路径播放，结束回 `Idle` |
 
 - 资源：`src/JiuMi/Assets/Pet/<state>/<nn>.png`，384×384 透明 PNG；同一画布/脚底基线；C# 动画清单定义帧序与时长；按状态按需加载。
-- 调度：`DispatcherTimer` 约 50ms 检查 + `Stopwatch` 计算逐帧截止时间；约 10fps；隐藏时停表，显示时从 `Idle` 开始。
+- 调度：`DispatcherTimer` 约 50ms 检查 + 注入的 `TimeProvider` 计算逐帧截止时间；约 10fps；隐藏时停表，显示时从 `Idle` 开始。
 - 眨眼：只在 `Idle`，随机 4–8 秒；`React`/`Drag`/`Sleep` 中不眨眼。
 - 入场：`WalkOut` 播放 8 帧走路循环，窗口按路径插值到落点；走完才开始 5 分钟睡眠计时；入场中点击/拖拽立即打断并接管，隐藏时中止入场；入场动画不改变 `petEnabled`。
 - 睡眠：任意单击/拖拽/右键重置 5 分钟计时，悬停不算；到点 `Idle → SleepIn → Sleep`；睡着单击先 `Wake` 不冒爱心；睡着拖拽直接 `Drag`；双击 `Wake` + 打开主窗口；右键 `Wake` + 打开菜单。

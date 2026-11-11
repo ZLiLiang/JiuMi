@@ -51,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISystemLauncher, ShellLauncher>();
         services.AddSingleton<ISystemAnimationSettings, SystemAnimationSettings>();
+        services.AddSingleton<ISystemDoubleClickTime, SystemDoubleClickTime>();
         services.AddSingleton<IImageProbe, MagickImageProbe>();
         services.AddSingleton<IImageConverter, MagickImageConverter>();
         services.AddSingleton<IRenameScanner, RenameScanner>();

@@ -1,13 +1,19 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using JiuMi.Application;
 using JiuMi.Application.Errors;
+using JiuMi.Application.Localization;
 using JiuMi.Application.Pet;
 using JiuMi.Application.Settings;
 using JiuMi.Views;
@@ -15,33 +21,44 @@ using JiuMi.Views;
 namespace JiuMi.Pet;
 
 /// <summary>
-/// Owns the desktop pet window: lazy creation, entrance movement, visibility, dragging and the saved
-/// enabled/position state.
+/// Owns the desktop pet window: lazy creation, entrance movement, animation frames, interactions,
+/// visibility and the saved enabled/position state.
 /// </summary>
 /// <remarks>
-/// The controller reads and writes the settings store and turns screen and shell state into a window
-/// position. The window itself only renders a frame and forwards pointer drags.
+/// The controller reads and writes the settings store and turns screen, shell and pointer state into a
+/// window position and an animation frame. The window itself only renders and forwards pointer input.
 /// </remarks>
 public sealed class PetWindowController : IDisposable
 {
-    private static readonly Uri _placeholderFrameUri =
-        new("avares://JiuMi/Assets/Pet/idle/00.png");
-
     private static readonly TimeSpan _hideDuration = TimeSpan.FromMilliseconds(150);
-    private static readonly TimeSpan _frameInterval = TimeSpan.FromMilliseconds(16);
+    private static readonly TimeSpan _entranceFrameInterval = TimeSpan.FromMilliseconds(16);
+    private static readonly TimeSpan _animationInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly ISettingsStore _settingsStore;
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
+    private readonly ILocalizationService _localization;
+    private readonly ISystemDoubleClickTime _doubleClickTime;
+    private readonly TimeProvider _timeProvider;
+    private readonly PetAnimationStateMachine _stateMachine;
     private readonly Serilog.ILogger _logger;
     private readonly Stopwatch _entranceClock = new();
+    private readonly Dictionary<PetState, Bitmap[]> _frames = [];
+    private readonly HashSet<PetState> _failedFrameStates = [];
 
     private MainWindow? _shell;
     private PetWindow? _window;
-    private Bitmap? _frame;
     private DispatcherTimer? _entranceTimer;
     private PetEntrancePath _entrancePath;
+    private bool _entranceMirrored;
     private DispatcherTimer? _hideTimer;
+    private DispatcherTimer? _animationTimer;
+    private DispatcherTimer? _heartDelayTimer;
+    private DispatcherTimer? _heartTimer;
+    private MenuFlyout? _menuFlyout;
+    private PetState? _renderedState;
+    private int _renderedFrame = -1;
+    private DateTimeOffset? _lastClickAt;
     private bool _shuttingDown;
     private bool _disposed;
 
@@ -51,28 +68,56 @@ public sealed class PetWindowController : IDisposable
     /// <param name="settingsStore">Supplies and stores the enabled flag and position.</param>
     /// <param name="errorReporter">Receives failed settings saves.</param>
     /// <param name="recordFactory">Creates those error records.</param>
+    /// <param name="localization">Supplies the tooltip, menu and accessible name.</param>
+    /// <param name="doubleClickTime">Supplies the operating system's double-click interval.</param>
+    /// <param name="timeProvider">Supplies the current time for click gestures.</param>
+    /// <param name="stateMachine">Owns the animation state and its timers.</param>
     /// <param name="logger">Receives the pet lifecycle decisions and degradation warnings.</param>
     public PetWindowController(
         ISettingsStore settingsStore,
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
+        ILocalizationService localization,
+        ISystemDoubleClickTime doubleClickTime,
+        TimeProvider timeProvider,
+        PetAnimationStateMachine stateMachine,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
+        ArgumentNullException.ThrowIfNull(localization);
+        ArgumentNullException.ThrowIfNull(doubleClickTime);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(stateMachine);
         ArgumentNullException.ThrowIfNull(logger);
 
         _settingsStore = settingsStore;
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
+        _localization = localization;
+        _doubleClickTime = doubleClickTime;
+        _timeProvider = timeProvider;
+        _stateMachine = stateMachine;
         _logger = logger;
+
+        _localization.PropertyChanged += OnLocalizationChanged;
     }
 
     /// <summary>
     /// Raised after the enabled state changed, from the settings switch, the tray item or the pet itself.
     /// </summary>
     public event EventHandler? EnabledChanged;
+
+    /// <summary>
+    /// Raised when a double click asks for the main window; the shell restores and activates it.
+    /// </summary>
+    public event EventHandler? OpenRequested;
+
+    /// <summary>
+    /// Raised when the pet menu asks for the settings page.
+    /// </summary>
+    public event EventHandler? SettingsRequested;
 
     /// <summary>
     /// Gets a value indicating whether the desktop pet is enabled.
@@ -139,6 +184,7 @@ public sealed class PetWindowController : IDisposable
         }
 
         _disposed = true;
+        _localization.PropertyChanged -= OnLocalizationChanged;
         if (_shell is { } shell)
         {
             shell.Closed -= OnShellClosed;
@@ -175,6 +221,13 @@ public sealed class PetWindowController : IDisposable
             return;
         }
 
+        // The entrance and the resting frame are required before anything becomes visible; a missing
+        // frame degrades to an invisible pet with the enabled flag kept.
+        if (GetFrames(PetState.Idle) is null || GetFrames(PetState.WalkOut) is null)
+        {
+            return;
+        }
+
         PetPlacementResult landing = ResolveLanding(workAreas);
         PetPoint start = ResolveStartPoint(landing);
         PetEntrancePath path = PetPlacement.CreateEntrancePath(
@@ -200,14 +253,31 @@ public sealed class PetWindowController : IDisposable
         }
 
         window.Opacity = 1d;
+        _stateMachine.Show();
+        _stateMachine.BeginEntrance();
+        _renderedState = null;
+        _renderedFrame = -1;
+        StartAnimation();
         StartEntrance(window, path);
+        Render();
     }
 
     private void HidePet()
     {
         StopEntrance();
-        CancelHide();
-        if (_window is not { IsVisible: true } window)
+        StopAnimation();
+        _lastClickAt = null;
+        CancelHeartDelay();
+        HideHeart();
+        _menuFlyout?.Hide();
+        _stateMachine.Hide();
+        if (_window is not { } window)
+        {
+            return;
+        }
+
+        window.SetSleeping(false);
+        if (!window.IsVisible)
         {
             return;
         }
@@ -243,15 +313,20 @@ public sealed class PetWindowController : IDisposable
     private void StartEntrance(PetWindow window, PetEntrancePath path)
     {
         StopEntrance();
+        _entranceMirrored = path.End.X > path.Start.X;
+        window.SetMirrored(_entranceMirrored);
         if (path.Duration <= TimeSpan.Zero)
         {
             window.Position = new PixelPoint(path.End.X, path.End.Y);
+            _stateMachine.CompleteEntrance();
+            StopMirror();
+            Render();
             return;
         }
 
         _entrancePath = path;
         _entranceClock.Restart();
-        _entranceTimer = new DispatcherTimer { Interval = _frameInterval };
+        _entranceTimer = new DispatcherTimer { Interval = _entranceFrameInterval };
         _entranceTimer.Tick += OnEntranceTick;
         _entranceTimer.Start();
     }
@@ -269,6 +344,8 @@ public sealed class PetWindowController : IDisposable
         {
             window.Position = new PixelPoint(_entrancePath.End.X, _entrancePath.End.Y);
             StopEntrance();
+            _stateMachine.CompleteEntrance();
+            Render();
             return;
         }
 
@@ -278,6 +355,7 @@ public sealed class PetWindowController : IDisposable
 
     private void StopEntrance()
     {
+        StopMirror();
         if (_entranceTimer is null)
         {
             return;
@@ -287,6 +365,70 @@ public sealed class PetWindowController : IDisposable
         _entranceTimer.Stop();
         _entranceTimer.Tick -= OnEntranceTick;
         _entranceTimer = null;
+    }
+
+    private void StopMirror()
+    {
+        if (!_entranceMirrored)
+        {
+            return;
+        }
+
+        _entranceMirrored = false;
+        _window?.SetMirrored(false);
+    }
+
+    private void StartAnimation()
+    {
+        StopAnimation();
+        _animationTimer = new DispatcherTimer { Interval = _animationInterval };
+        _animationTimer.Tick += OnAnimationTick;
+        _animationTimer.Start();
+    }
+
+    private void StopAnimation()
+    {
+        if (_animationTimer is null)
+        {
+            return;
+        }
+
+        _animationTimer.Stop();
+        _animationTimer.Tick -= OnAnimationTick;
+        _animationTimer = null;
+    }
+
+    private void OnAnimationTick(object? sender, EventArgs e)
+    {
+        _stateMachine.Update();
+        Render();
+    }
+
+    private void Render()
+    {
+        if (_window is not { IsVisible: true } window)
+        {
+            return;
+        }
+
+        PetState state = _stateMachine.State;
+        int frameIndex = _stateMachine.FrameIndex;
+        window.SetSleeping(state == PetState.Sleep);
+        if (_renderedState == state && _renderedFrame == frameIndex)
+        {
+            return;
+        }
+
+        Bitmap[]? frames = GetFrames(state);
+        if (frames is null)
+        {
+            HidePet();
+            return;
+        }
+
+        window.SetFrame(frames[frameIndex]);
+        _renderedState = state;
+        _renderedFrame = frameIndex;
     }
 
     private void OnHideTick(object? sender, EventArgs e)
@@ -314,10 +456,130 @@ public sealed class PetWindowController : IDisposable
         _hideTimer = null;
     }
 
-    private void OnPetInteractionStarted(object? sender, EventArgs e) => StopEntrance();
+    private void OnPetInteractionStarted(object? sender, EventArgs e)
+    {
+        // A press interrupts the entrance immediately; the release decides between click and drag.
+        StopEntrance();
+        _stateMachine.InterruptEntrance();
+        Render();
+    }
+
+    private void OnPetDragStarted(object? sender, EventArgs e)
+    {
+        _lastClickAt = null;
+        CancelHeartDelay();
+        HideHeart();
+        _stateMachine.BeginDrag();
+        Render();
+    }
+
+    private void OnPetClicked(object? sender, EventArgs e)
+    {
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        if (_lastClickAt is { } last)
+        {
+            TimeSpan sinceLast = now - last;
+            if (sinceLast >= TimeSpan.Zero && sinceLast <= _doubleClickTime.DoubleClickInterval)
+            {
+                _lastClickAt = null;
+                CancelHeartDelay();
+                HideHeart();
+                _stateMachine.DoubleClick();
+                Render();
+                OpenRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+        }
+
+        _lastClickAt = now;
+        CancelHeartDelay();
+        HideHeart();
+
+        // The reaction starts at once; only the heart waits for the click delay.
+        PetClickEffect effect = _stateMachine.Click();
+        if (effect == PetClickEffect.React)
+        {
+            _heartDelayTimer = new DispatcherTimer { Interval = PetInteractionRules.HeartDelay };
+            _heartDelayTimer.Tick += OnHeartDelayTick;
+            _heartDelayTimer.Start();
+        }
+
+        Render();
+    }
+
+    private void OnHeartDelayTick(object? sender, EventArgs e)
+    {
+        CancelHeartDelay();
+        ShowHeart();
+    }
+
+    private void CancelHeartDelay()
+    {
+        if (_heartDelayTimer is null)
+        {
+            return;
+        }
+
+        _heartDelayTimer.Stop();
+        _heartDelayTimer.Tick -= OnHeartDelayTick;
+        _heartDelayTimer = null;
+    }
+
+    private void ShowHeart()
+    {
+        if (_window is not { } window)
+        {
+            return;
+        }
+
+        StopHeart();
+        window.SetHeartVisible(true);
+        _heartTimer = new DispatcherTimer { Interval = PetInteractionRules.HeartDuration };
+        _heartTimer.Tick += OnHeartTick;
+        _heartTimer.Start();
+    }
+
+    private void OnHeartTick(object? sender, EventArgs e) => HideHeart();
+
+    private void HideHeart()
+    {
+        StopHeart();
+        _window?.SetHeartVisible(false);
+    }
+
+    private void StopHeart()
+    {
+        if (_heartTimer is null)
+        {
+            return;
+        }
+
+        _heartTimer.Stop();
+        _heartTimer.Tick -= OnHeartTick;
+        _heartTimer = null;
+    }
+
+    private void OnPetContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        // The flyout opens after this event; take the pet out of walking or sleep first.
+        StopEntrance();
+        _lastClickAt = null;
+        CancelHeartDelay();
+        HideHeart();
+        _stateMachine.RightClick();
+        Render();
+
+        if (_window is { } window && _menuFlyout is { } menu)
+        {
+            menu.ShowAt(window);
+            e.Handled = true;
+        }
+    }
 
     private void OnPetDragCompleted(object? sender, EventArgs e)
     {
+        _stateMachine.EndDrag();
+        Render();
         if (ClampWindowPosition() is not { } position)
         {
             return;
@@ -329,6 +591,8 @@ public sealed class PetWindowController : IDisposable
     private void OnScreensChanged(object? sender, EventArgs e)
     {
         StopEntrance();
+        _stateMachine.InterruptEntrance();
+        Render();
         _ = ClampWindowPosition();
     }
 
@@ -376,6 +640,30 @@ public sealed class PetWindowController : IDisposable
         CloseWindow();
     }
 
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ILocalizationService.CurrentLanguage))
+        {
+            return;
+        }
+
+        _menuFlyout?.Hide();
+        ApplyLocalizedMenu();
+    }
+
+    private void ApplyLocalizedMenu()
+    {
+        var hideItem = new MenuItem { Header = _localization["Shell.Pet.Hide"] };
+        hideItem.Click += (_, _) => SetEnabled(false);
+        var settingsItem = new MenuItem { Header = _localization["Shell.Pet.Settings"] };
+        settingsItem.Click += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
+
+        var menu = new MenuFlyout { Placement = PlacementMode.Pointer };
+        menu.Items.Add(hideItem);
+        menu.Items.Add(settingsItem);
+        _menuFlyout = menu;
+    }
+
     [SuppressMessage(
         "Design",
         "CA1031:Do not catch general exception types",
@@ -391,26 +679,74 @@ public sealed class PetWindowController : IDisposable
         try
         {
             window = new PetWindow();
-            using Stream stream = AssetLoader.Open(_placeholderFrameUri);
-            _frame = new Bitmap(stream);
-            window.SetFrame(_frame);
         }
         catch (Exception exception)
         {
-            _frame?.Dispose();
-            _frame = null;
             _logger.Warning(
                 exception,
-                "The desktop pet window or its frame could not be created; the pet stays hidden");
+                "The desktop pet window could not be created; the pet stays hidden");
             return null;
         }
 
         window.InteractionStarted += OnPetInteractionStarted;
+        window.DragStarted += OnPetDragStarted;
+        window.Clicked += OnPetClicked;
         window.DragCompleted += OnPetDragCompleted;
+        window.ContextRequested += OnPetContextRequested;
         window.Closing += OnPetWindowClosing;
+        window.DataContext = _shell?.DataContext;
         _window = window;
+        ApplyLocalizedMenu();
         return window;
     }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Asset loading is a UI boundary; a missing frame must degrade to a hidden pet.")]
+    private Bitmap[]? GetFrames(PetState state)
+    {
+        if (_frames.TryGetValue(state, out Bitmap[]? frames))
+        {
+            return frames;
+        }
+
+        if (_failedFrameStates.Contains(state))
+        {
+            return null;
+        }
+
+        PetAnimationClip clip = PetAnimationCatalog.For(state);
+        var loaded = new Bitmap[clip.FrameDurations.Count];
+        try
+        {
+            for (int index = 0; index < loaded.Length; index++)
+            {
+                using Stream stream = AssetLoader.Open(FrameUri(clip.AssetFolder, index));
+                loaded[index] = new Bitmap(stream);
+            }
+
+            _frames[state] = loaded;
+            return loaded;
+        }
+        catch (Exception exception)
+        {
+            for (int index = 0; index < loaded.Length; index++)
+            {
+                loaded[index]?.Dispose();
+            }
+
+            _failedFrameStates.Add(state);
+            _logger.Warning(
+                exception,
+                "The desktop pet frames for {State} could not be loaded; the pet stays hidden",
+                state);
+            return null;
+        }
+    }
+
+    private static Uri FrameUri(string folder, int index) =>
+        new($"avares://JiuMi/Assets/Pet/{folder}/{index.ToString("D2", CultureInfo.InvariantCulture)}.png");
 
     private IReadOnlyList<PetWorkArea> ReadWorkAreas()
     {
@@ -468,7 +804,12 @@ public sealed class PetWindowController : IDisposable
     {
         _shuttingDown = true;
         StopEntrance();
+        StopAnimation();
+        CancelHeartDelay();
+        StopHeart();
+        _menuFlyout?.Hide();
         CancelHide();
+        _stateMachine.Hide();
         if (_window is not { } window)
         {
             return;
@@ -476,7 +817,10 @@ public sealed class PetWindowController : IDisposable
 
         _window = null;
         window.InteractionStarted -= OnPetInteractionStarted;
+        window.DragStarted -= OnPetDragStarted;
+        window.Clicked -= OnPetClicked;
         window.DragCompleted -= OnPetDragCompleted;
+        window.ContextRequested -= OnPetContextRequested;
         window.Closing -= OnPetWindowClosing;
 
         try
@@ -489,8 +833,18 @@ public sealed class PetWindowController : IDisposable
             _logger.Debug(exception, "The desktop pet window was already gone");
         }
 
-        _frame?.Dispose();
-        _frame = null;
+        foreach (Bitmap[] frames in _frames.Values)
+        {
+            foreach (Bitmap frame in frames)
+            {
+                frame.Dispose();
+            }
+        }
+
+        _frames.Clear();
+        _failedFrameStates.Clear();
+        _renderedState = null;
+        _renderedFrame = -1;
     }
 
     private static DoubleTransition CreateFade() => new()
