@@ -3,6 +3,10 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Local generation outputs
+vibe_images/
+vibe_videos/
+
 # dotenv files
 .env
 
