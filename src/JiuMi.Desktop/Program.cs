@@ -11,6 +11,7 @@ using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
 using JiuMi.Infrastructure.Logging;
+using JiuMi.Pet;
 using JiuMi.Shell;
 using JiuMi.Startup;
 using JiuMi.Theming;
@@ -166,6 +167,7 @@ internal static class Program
         services.AddSingleton<FileRenameViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
+        services.AddSingleton<PetWindowController>();
         services.AddSingleton<ErrorWindowCoordinator>();
         services.AddSingleton<ShellLifecycle>();
         services.AddSingleton<IErrorWindowPresenter>(provider => new ErrorWindowPresenter(

@@ -142,6 +142,25 @@ public partial class MainWindow : FAAppWindow
     private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e) =>
         _transitions?.FinishImmediately();
 
+    /// <summary>
+    /// Gets the bottom-right corner of the content page in screen pixels.
+    /// </summary>
+    /// <param name="screenPoint">The corner when the page has been laid out.</param>
+    /// <returns><see langword="true"/> when the corner is available.</returns>
+    internal bool TryGetContentBottomRight(out PixelPoint screenPoint)
+    {
+        if (!PageViewport.IsLoaded || PageViewport.Bounds.Width <= 0d || PageViewport.Bounds.Height <= 0d)
+        {
+            screenPoint = default;
+            return false;
+        }
+
+        // The viewport, not the scrolled page: a long page must not move the entrance start off-screen.
+        screenPoint = PageViewport.PointToScreen(
+            new Point(PageViewport.Bounds.Width, PageViewport.Bounds.Height));
+        return true;
+    }
+
     private void WarmPageViews()
     {
         foreach (ShellPage page in _preloadedPages)

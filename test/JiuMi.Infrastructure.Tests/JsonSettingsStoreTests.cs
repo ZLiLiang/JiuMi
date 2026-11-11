@@ -439,6 +439,58 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Assert.False(File.Exists(_tempPath));
     }
 
+    [Fact]
+    public void Load_GivenNoPetKeys_UsesDisabledAndNoPosition()
+    {
+        WriteSettings("""{ "language": "en-US" }""");
+
+        AppSettings settings = CreateStore().Load().Settings;
+
+        Assert.False(settings.PetEnabled);
+        Assert.Null(settings.PetX);
+        Assert.Null(settings.PetY);
+    }
+
+    [Fact]
+    public void Save_GivenPetSettings_RoundTrips()
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+
+        SettingsSaveResult result = store.Save(new AppSettings
+        {
+            PetEnabled = true,
+            PetX = 1840,
+            PetY = 920,
+        });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        Assert.True(document.RootElement.GetProperty("petEnabled").GetBoolean());
+        Assert.Equal(1840, document.RootElement.GetProperty("petX").GetInt32());
+        Assert.Equal(920, document.RootElement.GetProperty("petY").GetInt32());
+
+        AppSettings reloaded = CreateStore().Load().Settings;
+        Assert.True(reloaded.PetEnabled);
+        Assert.Equal(1840, reloaded.PetX);
+        Assert.Equal(920, reloaded.PetY);
+    }
+
+    [Theory]
+    [InlineData("""{ "petX": 100 }""")]
+    [InlineData("""{ "petY": 100 }""")]
+    [InlineData("""{ "petX": "left", "petY": 100 }""")]
+    [InlineData("""{ "petX": 100, "petY": 2.5 }""")]
+    public void Load_GivenIncompleteOrInvalidPetPosition_UsesNoPosition(string json)
+    {
+        WriteSettings(json);
+
+        AppSettings settings = CreateStore().Load().Settings;
+
+        Assert.Null(settings.PetX);
+        Assert.Null(settings.PetY);
+    }
+
     private JsonSettingsStore CreateStore() =>
         new(new SettingsLocationProvider(_executableDirectory, _appDataDirectory));
 

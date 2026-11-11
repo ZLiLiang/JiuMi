@@ -146,6 +146,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         WorldClockSettings worldClock = ReadWorldClock(root, out invalidWorldClockPlaces);
+        (int? petX, int? petY) = ReadPetPosition(root);
         return new AppSettings
         {
             SchemaVersion = ReadSchemaVersion(root),
@@ -154,6 +155,9 @@ public sealed class JsonSettingsStore : ISettingsStore
             NavExpanded = ReadNavExpanded(root),
             CloseAction = ReadCloseAction(root),
             OnlineDataEnabled = ReadOnlineDataEnabled(root),
+            PetEnabled = ReadBoolean(root, "petEnabled"),
+            PetX = petX,
+            PetY = petY,
             WorldClock = worldClock,
             ImageConvert = ReadImageConvert(root),
             FileRename = ReadFileRename(root),
@@ -236,6 +240,21 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         return !root.TryGetProperty("onlineDataEnabled", out JsonElement element) ||
             element.ValueKind != JsonValueKind.False;
+    }
+
+    private static (int? X, int? Y) ReadPetPosition(JsonElement root)
+    {
+        return TryReadInt32(root, "petX", out int x) && TryReadInt32(root, "petY", out int y)
+            ? (x, y)
+            : (null, null);
+    }
+
+    private static bool TryReadInt32(JsonElement element, string property, out int value)
+    {
+        value = 0;
+        return element.TryGetProperty(property, out JsonElement item) &&
+            item.ValueKind == JsonValueKind.Number &&
+            item.TryGetInt32(out value);
     }
 
     private static ImageConvertSettings ReadImageConvert(JsonElement root)
@@ -436,6 +455,9 @@ public sealed class JsonSettingsStore : ISettingsStore
             NavExpanded = settings.NavExpanded,
             CloseAction = ToStorageValue(settings.CloseAction),
             OnlineDataEnabled = settings.OnlineDataEnabled,
+            PetEnabled = settings.PetEnabled,
+            PetX = settings.PetX,
+            PetY = settings.PetY,
             ImageConvert = new ImageConvertDocument
             {
                 OutputDirectory = settings.ImageConvert.OutputDirectory,
@@ -576,6 +598,24 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public bool OnlineDataEnabled
+        {
+            get;
+            init;
+        }
+
+        public bool PetEnabled
+        {
+            get;
+            init;
+        }
+
+        public int? PetX
+        {
+            get;
+            init;
+        }
+
+        public int? PetY
         {
             get;
             init;

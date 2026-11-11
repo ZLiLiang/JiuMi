@@ -1,7 +1,7 @@
 ﻿namespace JiuMi.Application.Shell;
 
 /// <summary>
-/// The notification-area entry: it brings the window forward and offers the fixed three-item menu.
+/// The notification-area entry: it brings the window forward and offers the fixed four-item menu.
 /// </summary>
 /// <remarks>
 /// The interface is the whole platform story the shell knows. The Windows implementation lives in the
@@ -13,6 +13,11 @@ public interface ITrayIcon : IDisposable
     /// Raised when the icon is clicked and the window should come forward.
     /// </summary>
     event EventHandler? ShowRequested;
+
+    /// <summary>
+    /// Raised when the checkable pet item of the menu is chosen.
+    /// </summary>
+    event EventHandler? PetToggleRequested;
 
     /// <summary>
     /// Raised when the settings item of the menu is chosen.
@@ -29,6 +34,7 @@ public interface ITrayIcon : IDisposable
     /// </summary>
     /// <param name="toolTip">The hover text, which is the application name.</param>
     /// <param name="menu">The localized menu labels.</param>
+    /// <param name="petChecked">Whether the desktop pet is currently shown.</param>
     /// <returns><see langword="true"/> when the platform shows the icon.</returns>
-    bool Show(string toolTip, TrayMenuText menu);
+    bool Show(string toolTip, TrayMenuText menu, bool petChecked);
 }

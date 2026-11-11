@@ -21,6 +21,18 @@ internal sealed class NullTrayIcon : ITrayIcon
     }
 
     /// <inheritdoc />
+    public event EventHandler? PetToggleRequested
+    {
+        add
+        {
+        }
+
+        remove
+        {
+        }
+    }
+
+    /// <inheritdoc />
     public event EventHandler? SettingsRequested
     {
         add
@@ -45,7 +57,7 @@ internal sealed class NullTrayIcon : ITrayIcon
     }
 
     /// <inheritdoc />
-    public bool Show(string toolTip, TrayMenuText menu) => false;
+    public bool Show(string toolTip, TrayMenuText menu, bool petChecked) => false;
 
     /// <inheritdoc />
     public void Dispose()
