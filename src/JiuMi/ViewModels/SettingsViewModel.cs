@@ -11,7 +11,6 @@ using JiuMi.Application.Logging;
 using JiuMi.Application.Settings;
 using JiuMi.Application.WorldClock;
 using JiuMi.Diagnostics;
-using JiuMi.Pet;
 using JiuMi.Threading;
 
 namespace JiuMi.ViewModels;
@@ -27,7 +26,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IErrorReporter _errorReporter;
     private readonly DiagnosticsExportController _exportController;
     private readonly ILoggingStatus _loggingStatus;
-    private readonly PetWindowController _pet;
     private readonly Serilog.ILogger _logger;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly ILocalizationService _localization;
@@ -53,7 +51,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="exportController">Runs the export and reports its failures.</param>
     /// <param name="loggingStatus">Reports whether file logging is working.</param>
     /// <param name="catalogUpdater">Checks the published world clock catalog and reports its state.</param>
-    /// <param name="pet">Owns the desktop pet and its saved enabled state.</param>
     /// <param name="logger">Receives settings saves from this page.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -68,7 +65,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         DiagnosticsExportController exportController,
         ILoggingStatus loggingStatus,
         IWorldClockCatalogUpdater catalogUpdater,
-        PetWindowController pet,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -83,7 +79,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(exportController);
         ArgumentNullException.ThrowIfNull(loggingStatus);
         ArgumentNullException.ThrowIfNull(catalogUpdater);
-        ArgumentNullException.ThrowIfNull(pet);
         ArgumentNullException.ThrowIfNull(logger);
 
         _applicationInfo = applicationInfo;
@@ -92,7 +87,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _errorReporter = errorReporter;
         _exportController = exportController;
         _loggingStatus = loggingStatus;
-        _pet = pet;
         _logger = logger;
         _recordFactory = recordFactory;
         _localization = localization;
@@ -116,7 +110,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _loggingStatus.PropertyChanged += OnLoggingStatusChanged;
         _exportController.ExportingChanged += OnExportingChanged;
         _catalogUpdater.StatusChanged += OnCatalogStatusChanged;
-        _pet.EnabledChanged += OnPetEnabledChanged;
     }
 
     /// <summary>
@@ -259,24 +252,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public bool IsDarkTheme => _themeService.Current == AppTheme.Dark;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the desktop pet is shown; a change applies and saves immediately.
-    /// </summary>
-    public bool IsPetEnabled
-    {
-        get => _pet.IsEnabled;
-        set
-        {
-            if (value == _pet.IsEnabled)
-            {
-                return;
-            }
-
-            _pet.SetEnabled(value);
-            OnPropertyChanged();
-        }
-    }
-
-    /// <summary>
     /// Gets or sets a value indicating whether the tools may fetch data from the network.
     /// </summary>
     public bool IsOnlineDataEnabled
@@ -393,7 +368,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _loggingStatus.PropertyChanged -= OnLoggingStatusChanged;
         _exportController.ExportingChanged -= OnExportingChanged;
         _catalogUpdater.StatusChanged -= OnCatalogStatusChanged;
-        _pet.EnabledChanged -= OnPetEnabledChanged;
     }
 
     private void SelectTheme(AppTheme theme)
@@ -546,9 +520,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         // Writes can fail on any thread; the about section is only safe to update on the UI thread.
         _uiThreadDispatcher.Post(() => OnPropertyChanged(nameof(IsFileLoggingAvailable)));
     }
-
-    private void OnPetEnabledChanged(object? sender, EventArgs e) =>
-        OnPropertyChanged(nameof(IsPetEnabled));
 
     // The controller documents ExportingChanged as an interface-thread event, so no marshalling here.
     private void OnExportingChanged(object? sender, EventArgs e)

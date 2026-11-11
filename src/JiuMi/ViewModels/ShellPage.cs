@@ -8,6 +8,9 @@ public enum ShellPage
     /// <summary>The home page.</summary>
     Home,
 
+    /// <summary>The My JiuMi page.</summary>
+    MyJiuMi,
+
     /// <summary>The world working hours page.</summary>
     WorldClock,
 
