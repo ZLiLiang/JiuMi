@@ -198,7 +198,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 | 项 | 规则 |
 | --- | --- |
-| 入口 | 首页工具卡 + 左侧导航；作为独立页面参与现有导航与切页动效 |
+| 入口 | 左侧导航；作为独立页面参与现有导航与切页动效 |
 | 视图 | `MyJiuMiView` 放在内容岛；房间铺满页头以下区域；猫约 200 DIP，贴地板线 |
 | 激活 | 进入页面时 `Activate()`：加载/复用帧、从 `LyingIdle` 开始、读取 `myJiuMi.x`、启动计时 |
 | 离开 | `Deactivate()`：停表、取消走路/过渡、清空爱心与 `Zzz`；不保存动画状态 |
@@ -239,9 +239,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 帧资源与本地化
 
 - 资源：`src/JiuMi/Assets/MyJiuMi/<state>/<nn>.png`，PNG RGBA；状态名小写连字符：`lying-idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `stretch` / `walk`。
+- #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 接入帧清单后删除该占位目录。
 - 页面按约 200 DIP 显示；建议 2× 导出（约 400×400），最终导出尺寸由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。帧只含猫本体，墙、地板与接触阴影由页面绘制。
 - 按状态按需加载；页面离开时停表，重复进入复用已解码帧，不重复读盘。
-- 入口名称/描述：`Tool.MyJiuMi.Name` / `Tool.MyJiuMi.Description`，与首页卡片和左侧导航共用。
+- 入口名称：`Tool.MyJiuMi.Name`，用于左侧导航。
 - 页面文案：`MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName`；`Zzz` 是固定装饰字符，不登记文案键。
 - 新键先登记在本地化章节的已登记键表，再进 JSON；旧 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 退役。
 
@@ -587,7 +588,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | `Shell.*` | 窗口、导航、托盘 |
 | `Home.*` | 主页 |
-| `MyJiuMi.*` | 我的JiuMi 页面专属文案；入口名称/描述仍用 `Tool.MyJiuMi.*`（与卡片/导航共用） |
+| `MyJiuMi.*` | 我的JiuMi 页面专属文案；导航入口名称仍用 `Tool.MyJiuMi.Name` |
 | `Settings.*` | 设置页 |
 | `Tool.*` | 工具页与工具卡 |
 | `Common.*` | 跨页复用且**含义相同**的文案 |
@@ -605,7 +606,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
-| `Tool.*.Name` / `Tool.*.Description` | 五张卡片与导航项共用的名称与描述；`*` 取 `MyJiuMi` / `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock` |
+| `Tool.*.Name` / `Tool.*.Description` | 四张卡片与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock`；我的JiuMi 只走导航，复用 `Tool.MyJiuMi.Name` |
 | `MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName` | 我的JiuMi 页面标题、副标题与猫的可访问名 |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
 | `Tool.WorldClock.View.Board` / `Tool.WorldClock.View.Plan` | 看板 / 规划分段 |
@@ -637,7 +638,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Common.ErrorCountSuffix` | 合并提示的次数后缀，`{0}` 为次数 |
 | `Error.<事件码>` | 与 `ErrorRecord.code` 一一对应，如 `Error.Settings.SaveFailed`；事件码清单见错误呈现与诊断章节的场景映射 |
 
-已退役的键：`Shell.Tray.ShowPet` / `Shell.Pet.*` / `Settings.Pet.*`。v1 删除托盘「显示小猫」、桌面宠物右键菜单与设置页桌宠分区；[#119](https://github.com/ZLiLiang/JiuMi/issues/119) 从代码与 JSON 删除。桌面模式（#122）若需要入口，重新登记新键，不复用旧键。
+已退役的键：`Shell.Tray.ShowPet` / `Shell.Pet.*` / `Settings.Pet.*`。v1 删除托盘「显示小猫」、桌面宠物右键菜单与设置页桌宠分区；[#119](https://github.com/ZLiLiang/JiuMi/issues/119) 已从代码与 JSON 删除。桌面模式（#122）若需要入口，重新登记新键，不复用旧键。
 
 ### 占位符
 

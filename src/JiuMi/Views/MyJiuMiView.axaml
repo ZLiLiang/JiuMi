@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:JiuMi.Localization"
+             xmlns:vm="using:JiuMi.ViewModels"
+             x:Class="JiuMi.Views.MyJiuMiView"
+             x:DataType="vm:MyJiuMiViewModel">
+  <Border Padding="44,32,44,36">
+    <Grid RowDefinitions="Auto,*">
+      <StackPanel>
+        <TextBlock FontSize="28"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   Text="{loc:Localize MyJiuMi.Title}" />
+        <TextBlock Margin="0,6,0,0"
+                   FontSize="13"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Localize MyJiuMi.Subtitle}" />
+      </StackPanel>
+
+      <Border Grid.Row="1"
+              Margin="0,22,0,0"
+              MinHeight="380"
+              CornerRadius="12"
+              ClipToBounds="True"
+              Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+              BorderThickness="1">
+        <Grid RowDefinitions="*,1,72">
+          <Grid Grid.Row="0"
+                Width="200"
+                Height="200"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                IsHitTestVisible="False"
+                AutomationProperties.Name="{loc:Localize MyJiuMi.Cat.AutomationName}">
+            <Ellipse Width="120"
+                     Height="12"
+                     Margin="0,0,0,2"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Bottom"
+                     Fill="#22000000" />
+            <Image Stretch="Uniform"
+                   Source="avares://JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png" />
+          </Grid>
+          <Border Grid.Row="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+          <Border Grid.Row="2" Background="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

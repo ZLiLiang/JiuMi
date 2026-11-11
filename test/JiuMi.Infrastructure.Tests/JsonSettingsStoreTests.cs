@@ -440,55 +440,27 @@ public sealed class JsonSettingsStoreTests : IDisposable
     }
 
     [Fact]
-    public void Load_GivenNoPetKeys_UsesDisabledAndNoPosition()
+    public void Load_GivenRetiredDesktopPetKeys_DropsThemOnRewrite()
     {
-        WriteSettings("""{ "language": "en-US" }""");
-
-        AppSettings settings = CreateStore().Load().Settings;
-
-        Assert.False(settings.PetEnabled);
-        Assert.Null(settings.PetX);
-        Assert.Null(settings.PetY);
-    }
-
-    [Fact]
-    public void Save_GivenPetSettings_RoundTrips()
-    {
+        WriteSettings("""
+            {
+              "language": "en-US",
+              "petEnabled": true,
+              "petX": 1840,
+              "petY": 920
+            }
+            """);
         JsonSettingsStore store = CreateStore();
         store.Load();
 
-        SettingsSaveResult result = store.Save(new AppSettings
-        {
-            PetEnabled = true,
-            PetX = 1840,
-            PetY = 920,
-        });
+        SettingsSaveResult result = store.Save(store.Current);
 
         Assert.True(result.Persisted);
-        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
-        Assert.True(document.RootElement.GetProperty("petEnabled").GetBoolean());
-        Assert.Equal(1840, document.RootElement.GetProperty("petX").GetInt32());
-        Assert.Equal(920, document.RootElement.GetProperty("petY").GetInt32());
-
-        AppSettings reloaded = CreateStore().Load().Settings;
-        Assert.True(reloaded.PetEnabled);
-        Assert.Equal(1840, reloaded.PetX);
-        Assert.Equal(920, reloaded.PetY);
-    }
-
-    [Theory]
-    [InlineData("""{ "petX": 100 }""")]
-    [InlineData("""{ "petY": 100 }""")]
-    [InlineData("""{ "petX": "left", "petY": 100 }""")]
-    [InlineData("""{ "petX": 100, "petY": 2.5 }""")]
-    public void Load_GivenIncompleteOrInvalidPetPosition_UsesNoPosition(string json)
-    {
-        WriteSettings(json);
-
-        AppSettings settings = CreateStore().Load().Settings;
-
-        Assert.Null(settings.PetX);
-        Assert.Null(settings.PetY);
+        string json = File.ReadAllText(_settingsPath);
+        Assert.DoesNotContain("petEnabled", json);
+        Assert.DoesNotContain("petX", json);
+        Assert.DoesNotContain("petY", json);
+        Assert.Contains("\"language\": \"en-US\"", json);
     }
 
     private JsonSettingsStore CreateStore() =>

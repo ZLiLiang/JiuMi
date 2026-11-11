@@ -9,7 +9,6 @@ using JiuMi.Application.Localization;
 using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
-using JiuMi.Pet;
 using JiuMi.ViewModels;
 using JiuMi.Views;
 
@@ -34,7 +33,6 @@ public sealed class ShellLifecycle
     private readonly IApplicationInfo _applicationInfo;
     private readonly ISettingsStore _settingsStore;
     private readonly ErrorRecordFactory _recordFactory;
-    private readonly PetWindowController _pet;
     private readonly Serilog.ILogger _logger;
     private readonly object _pendingSync = new();
     private readonly HashSet<string> _notifiedCodes = new(StringComparer.Ordinal);
@@ -61,7 +59,6 @@ public sealed class ShellLifecycle
     /// <param name="applicationInfo">Supplies the name shown by the tray tooltip and notifications.</param>
     /// <param name="settingsStore">Supplies and stores the close behavior.</param>
     /// <param name="recordFactory">Creates the records for a failed close-behavior save.</param>
-    /// <param name="pet">Owns the desktop pet window and its enabled state.</param>
     /// <param name="logger">Receives the lifecycle decisions.</param>
     public ShellLifecycle(
         ISingleInstanceCoordinator singleInstance,
@@ -71,7 +68,6 @@ public sealed class ShellLifecycle
         IApplicationInfo applicationInfo,
         ISettingsStore settingsStore,
         ErrorRecordFactory recordFactory,
-        PetWindowController pet,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(singleInstance);
@@ -81,7 +77,6 @@ public sealed class ShellLifecycle
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(recordFactory);
-        ArgumentNullException.ThrowIfNull(pet);
         ArgumentNullException.ThrowIfNull(logger);
 
         _singleInstance = singleInstance;
@@ -91,15 +86,12 @@ public sealed class ShellLifecycle
         _applicationInfo = applicationInfo;
         _settingsStore = settingsStore;
         _recordFactory = recordFactory;
-        _pet = pet;
         _logger = logger;
 
         _singleInstance.ActivationRequested += OnActivationRequested;
         _tray.ShowRequested += OnTrayShowRequested;
-        _tray.PetToggleRequested += OnTrayPetToggleRequested;
         _tray.SettingsRequested += OnTraySettingsRequested;
         _tray.ExitRequested += OnTrayExitRequested;
-        _pet.EnabledChanged += OnPetEnabledChanged;
     }
 
     /// <summary>
@@ -162,8 +154,7 @@ public sealed class ShellLifecycle
         shell.PropertyChanged += OnShellPropertyChanged;
         shell.Closing += OnShellClosing;
         _errorReporter.Reported += OnErrorReported;
-        _pet.AttachShell(shell);
-        _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu(), _pet.IsEnabled);
+        _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu());
 
         if (_trayAvailable)
         {
@@ -429,9 +420,6 @@ public sealed class ShellLifecycle
     private void OnTrayShowRequested(object? sender, EventArgs e) =>
         Dispatcher.UIThread.Post(() => TryActivate());
 
-    private void OnTrayPetToggleRequested(object? sender, EventArgs e) =>
-        Dispatcher.UIThread.Post(() => _pet.SetEnabled(!_pet.IsEnabled));
-
     private void OnTraySettingsRequested(object? sender, EventArgs e) =>
         Dispatcher.UIThread.Post(() =>
         {
@@ -499,19 +487,16 @@ public sealed class ShellLifecycle
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e) => RefreshTray();
 
-    private void OnPetEnabledChanged(object? sender, EventArgs e) => RefreshTray();
-
     private void RefreshTray()
     {
         if (_trayAvailable)
         {
-            _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu(), _pet.IsEnabled);
+            _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu());
         }
     }
 
     private TrayMenuText CreateTrayMenu() => new(
         Localized("Shell.Tray.Show"),
-        Localized("Shell.Tray.ShowPet"),
         Localized("Shell.Tray.Settings"),
         Localized("Shell.Tray.Exit"));
 

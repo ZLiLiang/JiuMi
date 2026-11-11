@@ -23,9 +23,8 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
     private const uint CallbackMessage = 0x8000 + 1;
     private const uint IconId = 1;
     private const uint CommandShow = 1;
-    private const uint CommandShowPet = 2;
-    private const uint CommandSettings = 3;
-    private const uint CommandExit = 4;
+    private const uint CommandSettings = 2;
+    private const uint CommandExit = 3;
 
     private const uint NotifyAdd = 0;
     private const uint NotifyModify = 1;
@@ -38,7 +37,6 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
     private const uint NotifyInfoInfo = 0x1;
 
     private const uint MenuString = 0x0;
-    private const uint MenuStringChecked = 0x8;
     private const uint TrackRightButton = 0x2;
     private const uint TrackNoNotify = 0x80;
     private const uint TrackReturnCommand = 0x100;
@@ -68,8 +66,7 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
     private bool _disposed;
     private uint _taskbarCreatedMessage;
     private string _toolTip = string.Empty;
-    private TrayMenuText _menu = new(string.Empty, string.Empty, string.Empty, string.Empty);
-    private bool _petChecked;
+    private TrayMenuText _menu = new(string.Empty, string.Empty, string.Empty);
     private Action? _notificationActivated;
 
     /// <summary>
@@ -89,16 +86,13 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
     public event EventHandler? ShowRequested;
 
     /// <inheritdoc />
-    public event EventHandler? PetToggleRequested;
-
-    /// <inheritdoc />
     public event EventHandler? SettingsRequested;
 
     /// <inheritdoc />
     public event EventHandler? ExitRequested;
 
     /// <inheritdoc />
-    public bool Show(string toolTip, TrayMenuText menu, bool petChecked)
+    public bool Show(string toolTip, TrayMenuText menu)
     {
         ArgumentNullException.ThrowIfNull(toolTip);
         ArgumentNullException.ThrowIfNull(menu);
@@ -106,7 +100,6 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
 
         _toolTip = toolTip;
         _menu = menu;
-        _petChecked = petChecked;
 
         EnsureWindow();
         if (_window == IntPtr.Zero)
@@ -309,11 +302,6 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
         try
         {
             _ = AppendMenuW(menu, MenuString, new UIntPtr(CommandShow), _menu.Show);
-            _ = AppendMenuW(
-                menu,
-                MenuString | (_petChecked ? MenuStringChecked : 0),
-                new UIntPtr(CommandShowPet),
-                _menu.ShowPet);
             _ = AppendMenuW(menu, MenuString, new UIntPtr(CommandSettings), _menu.Settings);
             _ = AppendMenuW(menu, MenuString, new UIntPtr(CommandExit), _menu.Exit);
 
@@ -338,9 +326,6 @@ internal sealed class WindowsTrayIcon : ITrayIcon, IUserNotification
             {
                 case (int)CommandShow:
                     Raise(ShowRequested);
-                    break;
-                case (int)CommandShowPet:
-                    Raise(PetToggleRequested);
                     break;
                 case (int)CommandSettings:
                     Raise(SettingsRequested);

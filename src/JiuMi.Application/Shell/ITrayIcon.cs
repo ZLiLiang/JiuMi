@@ -15,11 +15,6 @@ public interface ITrayIcon : IDisposable
     event EventHandler? ShowRequested;
 
     /// <summary>
-    /// Raised when the checkable pet item of the menu is chosen.
-    /// </summary>
-    event EventHandler? PetToggleRequested;
-
-    /// <summary>
     /// Raised when the settings item of the menu is chosen.
     /// </summary>
     event EventHandler? SettingsRequested;
@@ -34,7 +29,6 @@ public interface ITrayIcon : IDisposable
     /// </summary>
     /// <param name="toolTip">The hover text, which is the application name.</param>
     /// <param name="menu">The localized menu labels.</param>
-    /// <param name="petChecked">Whether the desktop pet is currently shown.</param>
     /// <returns><see langword="true"/> when the platform shows the icon.</returns>
-    bool Show(string toolTip, TrayMenuText menu, bool petChecked);
+    bool Show(string toolTip, TrayMenuText menu);
 }
