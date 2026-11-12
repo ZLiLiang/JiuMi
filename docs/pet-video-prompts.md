@@ -34,3 +34,15 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - **起身/伸懒腰**：`animate the cat rising from lying into a stretch and then a walk-ready stance; stay in place; 3 s; non-looping`。
 
 每次仍需：固定机位、同一张已确认参考图、纯色背景、无阴影/文字/水印、全身与四腿可见；生成后抽帧、选段、去背景/阴影、固定缩放/锚点导出。
+
+## 动作源视频（2026-11-12）
+
+已生成并归档一段 6.58 s 的连续动作源，作为后续坐姿、蹲伏、腾空、落地等姿态的来源；**不整段进入运行时**。
+
+- 绿幕：`docs/images/pet/action-source/jiumi-cat-6s-actions-green.mp4`
+- 中性底预览：`docs/images/pet/action-source/jiumi-cat-6s-actions-neutral.mp4`
+- 规格：768×768，24 fps，6.58 s。
+- 内容：趴 → 卷成睡球 → 醒 → 坐 → 走 → 蹲 → 小跳 → 落地站立。
+- 用法：按关键动作抽 1–3 帧，按本文的导出流程去背/去阴影、固定缩放与锚点，导出 400×400 RGBA；只把需要的姿态接进 `MyJiuMiAnimationCatalog`。
+- 带“AI生成”水印的原片不进 git；当前页面微动效（呼吸/轻摆/眨眼/小跳）不依赖这段视频。
+
