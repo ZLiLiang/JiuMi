@@ -46,3 +46,20 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - 用法：按关键动作抽 1–3 帧，按本文的导出流程去背/去阴影、固定缩放与锚点，导出 400×400 RGBA；只把需要的姿态接进 `MyJiuMiAnimationCatalog`。
 - 带“AI生成”水印的原片不进 git；当前页面微动效（呼吸/轻摆/眨眼/小跳）不依赖这段视频。
 
+### 抽帧姿势（2026-11-12）
+
+从上面的绿幕视频抽出 4 个候选姿势，已抠像、统一缩放并贴地对齐到 400×400 RGBA：
+
+| 姿势 | 文件 | 时间点 | 用途 |
+| --- | --- | --- | --- |
+| 坐姿 | `docs/images/pet/action-source/poses/sit.png` | 3.5 s | 新的休息/起身过渡姿势 |
+| 腾空 | `docs/images/pet/action-source/poses/airborne.png` | 5.3 s | 点击小跳的腾空帧 |
+| 落地 | `docs/images/pet/action-source/poses/landing.png` | 5.6 s | 跳跃落地/蹲伏 |
+| 站姿 | `docs/images/pet/action-source/poses/stand.png` | 6.4 s | 站姿参考；现有 `stretch/03` 已覆盖 |
+
+- 预览：`docs/images/pet/action-source/poses/preview.png`。
+- 处理：绿幕抠像；以站姿高度对齐现有 `stretch/03` 的 291 px；坐/落地/站贴地，腾空在播放跳跃时额外上移约 40 DIP。
+- 已知差异：抽帧线宽比现有帧略细，眼部更圆；200 DIP 下可接受，2× 可见。接入 `src/JiuMi/Assets/MyJiuMi/` 前需要做一轮描边/眼部确认。
+- 状态：候选素材，尚未接入运行时；先归档保留。
+
+
