@@ -11,6 +11,7 @@ using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
 using JiuMi.Infrastructure.Logging;
+using JiuMi.MyJiuMi;
 using JiuMi.Shell;
 using JiuMi.Startup;
 using JiuMi.Theming;
@@ -160,6 +161,7 @@ internal static class Program
         services.AddSingleton<DiagnosticsExportController>();
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<MyJiuMiSession>();
         services.AddSingleton<MyJiuMiViewModel>();
         services.AddSingleton<WorldClockViewModel>();
         services.AddSingleton(new OutputPathPlanner(File.Exists));

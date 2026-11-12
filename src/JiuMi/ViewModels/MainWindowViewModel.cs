@@ -23,6 +23,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IWorldClockCatalogUpdater _catalogUpdater;
     private readonly Serilog.ILogger _logger;
     private readonly ShellNavigationItem _settingsNavigationItem;
+    private readonly ShellNavigationItem _myJiuMiNavigationItem;
     private readonly ShellNavigationItem _worldClockNavigationItem;
     private readonly ShellNavigationItem _imageConvertNavigationItem;
     private readonly ShellNavigationItem _fileRenameNavigationItem;
@@ -102,10 +103,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             "image-convert", "Tool.ImageConvert.Name", "Image", "ImageFilled", ShellPage.ImageConvert, isEnabled: true);
         _fileRenameNavigationItem = CreateItem(
             "file-rename", "Tool.FileRename.Name", "Rename", "Rename", ShellPage.FileRename, isEnabled: true);
+        _myJiuMiNavigationItem = CreateItem(
+            "my-jiumi", "Tool.MyJiuMi.Name", "Emoji", "EmojiFilled", ShellPage.MyJiuMi, isEnabled: true);
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
-            CreateItem("my-jiumi", "Tool.MyJiuMi.Name", "Emoji", "EmojiFilled", ShellPage.MyJiuMi, isEnabled: true),
+            _myJiuMiNavigationItem,
             CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
             _fileRenameNavigationItem,
             _imageConvertNavigationItem,
@@ -407,6 +410,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         SelectedSettingsItem = _settingsNavigationItem;
+    }
+
+    /// <summary>
+    /// Opens the My JiuMi page through the same navigation the rail uses; the desktop cat stays put.
+    /// </summary>
+    public void ShowMyJiuMi()
+    {
+        if (ReferenceEquals(CurrentPage, _myJiuMiPage))
+        {
+            return;
+        }
+
+        SelectedPrimaryItem = _myJiuMiNavigationItem;
     }
 
     /// <inheritdoc />
