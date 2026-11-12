@@ -41,7 +41,9 @@
                   Height="{x:Static my:MyJiuMiInteractionRules.CatSize}"
                   HorizontalAlignment="Left"
                   VerticalAlignment="Bottom"
-                  Margin="{Binding CatMargin}">
+                  Margin="{Binding CatMargin}"
+                  RenderTransformOrigin="50%,100%"
+                  IsVisible="{Binding IsCatRootVisible}">
               <Ellipse Width="120"
                        Height="12"
                        HorizontalAlignment="Center"

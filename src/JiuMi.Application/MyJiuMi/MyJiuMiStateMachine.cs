@@ -30,6 +30,7 @@ public sealed class MyJiuMiStateMachine
     private double _walkTargetX;
     private bool _isFacingRight;
     private bool _isActive;
+    private bool _isWanderingEnabled = true;
     private PendingAction _pendingAction;
 
     /// <summary>
@@ -61,6 +62,11 @@ public sealed class MyJiuMiStateMachine
     /// Gets the zero-based frame of <see cref="State"/> to draw.
     /// </summary>
     public int FrameIndex => _frameIndex;
+
+    /// <summary>
+    /// Gets a value indicating whether the cat is awake and may leave the page.
+    /// </summary>
+    public bool IsAwake => _isActive && _state is not MyJiuMiState.SleepIn and not MyJiuMiState.Sleep;
 
     /// <summary>
     /// Gets the cat's horizontal position as a fraction of the room width.
@@ -110,6 +116,57 @@ public sealed class MyJiuMiStateMachine
     public void SetStageWidth(double stageWidth) => _stageWidth = NormalizeWidth(stageWidth);
 
     /// <summary>
+    /// Enables or disables autonomous wandering without touching the other timers.
+    /// </summary>
+    /// <param name="enabled">Whether the cat may start a wander from <see cref="MyJiuMiState.LyingIdle"/>.</param>
+    public void SetWanderingEnabled(bool enabled)
+    {
+        if (_isWanderingEnabled == enabled)
+        {
+            return;
+        }
+
+        _isWanderingEnabled = enabled;
+        if (!enabled)
+        {
+            _nextWanderAt = null;
+            return;
+        }
+
+        if (_isActive && _state == MyJiuMiState.LyingIdle)
+        {
+            ScheduleWander(_timeProvider.GetUtcNow());
+        }
+    }
+
+    /// <summary>
+    /// Walks the awake cat to a normalized position without the summon stretch, used by the desktop
+    /// handoff that must start moving at once.
+    /// </summary>
+    /// <param name="targetX">The normalized target position.</param>
+    /// <returns><see langword="true"/> when the cat started walking.</returns>
+    public bool WalkTo(double targetX)
+    {
+        if (!IsAwake || _state == MyJiuMiState.Drag)
+        {
+            return false;
+        }
+
+        double target = MyJiuMiPositionRules.Clamp(targetX);
+        if (Math.Abs(target - _positionX) < double.Epsilon)
+        {
+            return false;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _pendingAction = PendingAction.None;
+        _walkTargetX = target;
+        _isFacingRight = target > _positionX;
+        EnterState(MyJiuMiState.Walk, now);
+        return true;
+    }
+
+    /// <summary>
     /// Moves the cat while the pointer drags it.
     /// </summary>
     /// <param name="positionX">The normalized pointer position.</param>
@@ -151,7 +208,7 @@ public sealed class MyJiuMiStateMachine
                     continue;
                 }
 
-                if (_nextWanderAt is { } wanderAt && now >= wanderAt)
+                if (_isWanderingEnabled && _nextWanderAt is { } wanderAt && now >= wanderAt)
                 {
                     _nextWanderAt = null;
                     if (!TryStartWander(now))
@@ -400,7 +457,7 @@ public sealed class MyJiuMiStateMachine
     private void EnterLyingIdle(DateTimeOffset at, bool restartWander)
     {
         EnterState(MyJiuMiState.LyingIdle, at);
-        if (restartWander)
+        if (restartWander && _isWanderingEnabled)
         {
             ScheduleWander(at);
         }

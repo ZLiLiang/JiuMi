@@ -9,6 +9,7 @@ using JiuMi.Application.Localization;
 using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.MyJiuMi;
 using JiuMi.ViewModels;
 using JiuMi.Views;
 
@@ -33,6 +34,7 @@ public sealed class ShellLifecycle
     private readonly IApplicationInfo _applicationInfo;
     private readonly ISettingsStore _settingsStore;
     private readonly ErrorRecordFactory _recordFactory;
+    private readonly MyJiuMiSession _myJiuMi;
     private readonly Serilog.ILogger _logger;
     private readonly object _pendingSync = new();
     private readonly HashSet<string> _notifiedCodes = new(StringComparer.Ordinal);
@@ -48,6 +50,7 @@ public sealed class ShellLifecycle
     private bool _running;
     private bool _allowClose;
     private bool _closeDialogOpen;
+    private bool _hidingToTray;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ShellLifecycle"/> class.
@@ -59,6 +62,7 @@ public sealed class ShellLifecycle
     /// <param name="applicationInfo">Supplies the name shown by the tray tooltip and notifications.</param>
     /// <param name="settingsStore">Supplies and stores the close behavior.</param>
     /// <param name="recordFactory">Creates the records for a failed close-behavior save.</param>
+    /// <param name="myJiuMi">Coordinates the desktop handoff before the window hides or minimizes.</param>
     /// <param name="logger">Receives the lifecycle decisions.</param>
     public ShellLifecycle(
         ISingleInstanceCoordinator singleInstance,
@@ -68,6 +72,7 @@ public sealed class ShellLifecycle
         IApplicationInfo applicationInfo,
         ISettingsStore settingsStore,
         ErrorRecordFactory recordFactory,
+        MyJiuMiSession myJiuMi,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(singleInstance);
@@ -77,6 +82,7 @@ public sealed class ShellLifecycle
         ArgumentNullException.ThrowIfNull(applicationInfo);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(recordFactory);
+        ArgumentNullException.ThrowIfNull(myJiuMi);
         ArgumentNullException.ThrowIfNull(logger);
 
         _singleInstance = singleInstance;
@@ -86,6 +92,7 @@ public sealed class ShellLifecycle
         _applicationInfo = applicationInfo;
         _settingsStore = settingsStore;
         _recordFactory = recordFactory;
+        _myJiuMi = myJiuMi;
         _logger = logger;
 
         _singleInstance.ActivationRequested += OnActivationRequested;
@@ -153,7 +160,10 @@ public sealed class ShellLifecycle
 
         shell.PropertyChanged += OnShellPropertyChanged;
         shell.Closing += OnShellClosing;
+        shell.Closed += OnShellClosed;
         _errorReporter.Reported += OnErrorReported;
+        _myJiuMi.AttachShell(shell);
+        _myJiuMi.OpenHomeRequested += OnDesktopOpenRequested;
         _trayAvailable = _tray.Show(_applicationInfo.Name, CreateTrayMenu());
 
         if (_trayAvailable)
@@ -266,11 +276,40 @@ public sealed class ShellLifecycle
         _restoreState = change.GetOldValue<WindowState>() == WindowState.Maximized
             ? WindowState.Maximized
             : WindowState.Normal;
+
+        bool pageCurrent = _viewModel?.IsPageShown(ShellPage.MyJiuMi) == true;
+        if (!_myJiuMi.TryLeaveOnMinimize(pageCurrent) && pageCurrent)
+        {
+            // The cat stays home but its page is no longer visible, so the visit pauses as usual.
+            _myJiuMi.DeactivateHome();
+        }
+    }
+
+    private void OnDesktopOpenRequested(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (TryActivate())
+            {
+                _viewModel?.ShowMyJiuMi();
+            }
+        });
+
+    private void OnShellClosed(object? sender, EventArgs e)
+    {
+        if (sender is MainWindow shell)
+        {
+            shell.Closed -= OnShellClosed;
+        }
+
+        _myJiuMi.OpenHomeRequested -= OnDesktopOpenRequested;
     }
 
     private void HideToTray(MainWindow shell)
     {
-        if (!_trayAvailable || !ReferenceEquals(shell, _shell) || !shell.IsVisible)
+        if (!_trayAvailable ||
+            !ReferenceEquals(shell, _shell) ||
+            !shell.IsVisible ||
+            _hidingToTray)
         {
             // Without a tray entry, hiding would leave no way back; the taskbar entry stays.
             return;
@@ -283,6 +322,24 @@ public sealed class ShellLifecycle
             _restoreState = shell.WindowState == WindowState.Maximized
                 ? WindowState.Maximized
                 : WindowState.Normal;
+        }
+
+        _hidingToTray = true;
+        if (_viewModel?.IsPageShown(ShellPage.MyJiuMi) == true)
+        {
+            _myJiuMi.BeginTrayLeave(pageCurrent: true, () => HideShellNow(shell));
+            return;
+        }
+
+        HideShellNow(shell);
+    }
+
+    private void HideShellNow(MainWindow shell)
+    {
+        _hidingToTray = false;
+        if (!shell.IsVisible || _allowClose)
+        {
+            return;
         }
 
         shell.ShowInTaskbar = false;

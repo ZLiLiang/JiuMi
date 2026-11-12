@@ -3,8 +3,10 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using JiuMi.Application.MyJiuMi;
+using JiuMi.MyJiuMi;
 using JiuMi.ViewModels;
 
 namespace JiuMi.Views;
@@ -12,13 +14,15 @@ namespace JiuMi.Views;
 /// <summary>
 /// The My JiuMi page: a minimal room whose cat follows pointer clicks, drags and floor summons.
 /// </summary>
-public partial class MyJiuMiView : UserControl
+public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 {
+    private readonly ScaleTransform _homeScale = new(1, 1);
     private MyJiuMiViewModel? _viewModel;
     private Window? _window;
     private IPointer? _pointer;
     private Point _pressOrigin;
     private double _dragOffsetX;
+    private PixelPoint? _catScreenAnchor;
     private bool _isPressed;
     private bool _isDragging;
     private bool _isSubscribed;
@@ -30,7 +34,15 @@ public partial class MyJiuMiView : UserControl
     public MyJiuMiView()
     {
         InitializeComponent();
+        CatRoot.RenderTransform = _homeScale;
+        RoomWall.EffectiveViewportChanged += OnEffectiveViewportChanged;
     }
+
+    /// <inheritdoc />
+    public bool IsHomeVisible =>
+        _isAttached &&
+        _window is { IsVisible: true } &&
+        _window.WindowState != WindowState.Minimized;
 
     /// <inheritdoc />
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -40,11 +52,16 @@ public partial class MyJiuMiView : UserControl
         if (_window is not null)
         {
             _window.PropertyChanged += OnWindowPropertyChanged;
+            _window.Deactivated += OnWindowDeactivated;
+            _window.PositionChanged += OnWindowPositionChanged;
         }
 
         _isAttached = true;
         Subscribe();
+        ApplyMirror();
+        ApplyScale();
         UpdateActivation();
+        _viewModel?.Session.AttachHomeHost(this);
     }
 
     /// <inheritdoc />
@@ -52,9 +69,13 @@ public partial class MyJiuMiView : UserControl
     {
         _isAttached = false;
         Unsubscribe();
+        _viewModel?.Session.DetachHomeHost(this);
+        _catScreenAnchor = null;
         if (_window is not null)
         {
             _window.PropertyChanged -= OnWindowPropertyChanged;
+            _window.Deactivated -= OnWindowDeactivated;
+            _window.PositionChanged -= OnWindowPositionChanged;
             _window = null;
         }
 
@@ -69,10 +90,24 @@ public partial class MyJiuMiView : UserControl
         base.OnDataContextChanged(e);
 
         Unsubscribe();
+        _viewModel?.Session.DetachHomeHost(this);
         _viewModel = DataContext as MyJiuMiViewModel;
         Subscribe();
+        _viewModel?.Session.AttachHomeHost(this);
         ApplyMirror();
+        ApplyScale();
         UpdateActivation();
+    }
+
+    /// <inheritdoc />
+    public PixelPoint? GetCatScreenAnchor()
+    {
+        if (IsHomeVisible)
+        {
+            UpdateCatScreenAnchor();
+        }
+
+        return _catScreenAnchor;
     }
 
     private void Subscribe()
@@ -99,10 +134,37 @@ public partial class MyJiuMiView : UserControl
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (e.Property == Window.WindowStateProperty || e.Property == Visual.IsVisibleProperty)
+        if (e.Property == Visual.IsVisibleProperty)
         {
             UpdateActivation();
+            return;
         }
+
+        if (e.Property == Window.WindowStateProperty)
+        {
+            // Minimizing keeps the cat running until the shell decides whether it walks out; hiding
+            // deactivates it here because the page cannot be seen any more.
+            if (_window?.WindowState != WindowState.Minimized)
+            {
+                UpdateActivation();
+            }
+        }
+    }
+
+    private void OnWindowDeactivated(object? sender, EventArgs e) => UpdateCatScreenAnchor();
+
+    private void OnEffectiveViewportChanged(object? sender, EffectiveViewportChangedEventArgs e) =>
+        UpdateCatScreenAnchor();
+
+    private void OnWindowPositionChanged(object? sender, PixelPointEventArgs e)
+    {
+        // Minimized windows move to an off-screen sentinel; that position is not the cat's anchor.
+        if (e.Point.X <= -10000 || e.Point.Y <= -10000)
+        {
+            return;
+        }
+
+        UpdateCatScreenAnchor();
     }
 
     private void OnRoomWallSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateActivation();
@@ -113,6 +175,16 @@ public partial class MyJiuMiView : UserControl
         {
             ApplyMirror();
         }
+
+        if (e.PropertyName == nameof(MyJiuMiViewModel.HomeScale))
+        {
+            ApplyScale();
+        }
+
+        if (e.PropertyName is nameof(MyJiuMiViewModel.CatMargin) or nameof(MyJiuMiViewModel.IsCatVisible))
+        {
+            UpdateCatScreenAnchor();
+        }
     }
 
     private void ApplyMirror()
@@ -120,6 +192,13 @@ public partial class MyJiuMiView : UserControl
         CatImage.RenderTransform = _viewModel?.IsFacingRight == true
             ? new ScaleTransform(-1, 1)
             : null;
+    }
+
+    private void ApplyScale()
+    {
+        double scale = _viewModel?.HomeScale ?? 1;
+        _homeScale.ScaleX = scale;
+        _homeScale.ScaleY = scale;
     }
 
     private void UpdateActivation()
@@ -137,10 +216,7 @@ public partial class MyJiuMiView : UserControl
             _viewModel.SetStageWidth(width);
         }
 
-        bool isVisible = _window is null ||
-            (_window.IsVisible && _window.WindowState != WindowState.Minimized);
-
-        if (!isVisible)
+        if (_window is { IsVisible: false })
         {
             if (_viewModel.IsActive)
             {
@@ -151,9 +227,39 @@ public partial class MyJiuMiView : UserControl
             return;
         }
 
+        if (_window?.WindowState == WindowState.Minimized)
+        {
+            // The shell decides between walking out and pausing; the page must not stop the cat first.
+            return;
+        }
+
         if (width > 0 && !_viewModel.IsActive)
         {
             _viewModel.Activate(width);
+        }
+
+        UpdateCatScreenAnchor();
+    }
+
+    private void UpdateCatScreenAnchor()
+    {
+        if (_viewModel is null ||
+            _window is null ||
+            !_viewModel.IsCatRootVisible ||
+            _window.WindowState == WindowState.Minimized ||
+            RoomWall.Bounds.Width <= 0)
+        {
+            return;
+        }
+
+        double x = Math.Clamp(
+            _viewModel.CatMargin.Left + (MyJiuMiInteractionRules.CatSize / 2),
+            0,
+            RoomWall.Bounds.Width);
+        Point? inWindow = RoomWall.TranslatePoint(new Point(x, RoomWall.Bounds.Height), _window);
+        if (inWindow is { } point)
+        {
+            _catScreenAnchor = _window.PointToScreen(point);
         }
     }
 

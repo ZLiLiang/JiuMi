@@ -1,4 +1,5 @@
 ﻿using JiuMi.Application.MyJiuMi;
+using static JiuMi.Application.Tests.MyJiuMiTestTimeline;
 
 namespace JiuMi.Application.Tests;
 
@@ -425,48 +426,5 @@ public sealed class MyJiuMiStateMachineTests
         Advance(machine, time, MyJiuMiInteractionRules.SleepDelay);
         Advance(machine, time, TimeSpan.FromMilliseconds(450));
         Assert.Equal(MyJiuMiState.Sleep, machine.State);
-    }
-
-    private static void Advance(
-        MyJiuMiStateMachine machine,
-        ManualTimeProvider time,
-        TimeSpan duration,
-        TimeSpan? step = null)
-    {
-        TimeSpan interval = step ?? TimeSpan.FromMilliseconds(50);
-        TimeSpan remaining = duration;
-        while (remaining > TimeSpan.Zero)
-        {
-            TimeSpan delta = remaining < interval ? remaining : interval;
-            time.Advance(delta);
-            machine.Update();
-            remaining -= delta;
-        }
-    }
-
-    private sealed class ManualTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now;
-
-        public ManualTimeProvider(DateTimeOffset now)
-        {
-            _now = now;
-        }
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan duration) => _now += duration;
-    }
-
-    private sealed class FixedRandom : Random
-    {
-        private readonly double _value;
-
-        public FixedRandom(double value)
-        {
-            _value = value;
-        }
-
-        public override double NextDouble() => _value;
     }
 }
