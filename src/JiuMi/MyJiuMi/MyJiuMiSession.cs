@@ -58,6 +58,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private DesktopEntranceRun? _desktopEntrance;
     private DesktopWalk? _desktopWalk;
     private TrayLeave? _trayLeave;
+    private PendingHandoff? _pendingHandoff;
+    private DispatcherTimer? _handoffTimer;
     private bool _isDisposed;
 
     /// <summary>
@@ -494,6 +496,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         _isDisposed = true;
         _trayLeave = null;
+        StopHandoffTimer();
+        _pendingHandoff = null;
         if (_shell is { } shell)
         {
             shell.Screens.Changed -= OnScreensChanged;
@@ -577,16 +581,69 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         _trayLeave = null;
         PixelPoint? anchor = _homeHost?.GetCatScreenAnchor();
-        if (anchor is null)
+        MyJiuMiDesktopWindow? prepared = null;
+        MyJiuMiScreenArea area = default;
+        if (anchor is { } value)
         {
-            CancelLeave();
-        }
-        else
-        {
-            OpenDesktop(anchor.Value, DesktopEntrance.Hidden);
+            prepared = PrepareDesktop(value, DesktopEntrance.Hidden, out area);
         }
 
-        leave.Ready();
+        if (prepared is null || anchor is null)
+        {
+            leave.Ready();
+            CancelLeave();
+            if (_homeHost is not { IsHomeVisible: true })
+            {
+                StopMachine();
+                OnPropertyChanged(nameof(IsMachineActive));
+            }
+
+            return;
+        }
+
+        // Empty the page first and give the compositor a couple of frames, then hide the shell and
+        // only afterwards show the desktop cat. Otherwise the old window's last frame can linger
+        // over the new host for a frame and read as a second, differently sized cat.
+        _presence.TryCompleteLeave();
+        NotifyPresence();
+        _pendingHandoff = new PendingHandoff(prepared, anchor.Value, area, leave.Ready);
+        _handoffTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(32),
+            DispatcherPriority.Background,
+            OnHandoffTick);
+        _handoffTimer.Start();
+    }
+
+    private void OnHandoffTick(object? sender, EventArgs e)
+    {
+        StopHandoffTimer();
+        PendingHandoff? pending = _pendingHandoff;
+        _pendingHandoff = null;
+        if (_isDisposed || pending is not { } handoff)
+        {
+            return;
+        }
+
+        handoff.HideShell();
+        if (!ReferenceEquals(_desktopWindow, handoff.Window))
+        {
+            return;
+        }
+
+        BeginDesktopEntrance(DesktopEntrance.Hidden, handoff.Anchor, handoff.Area);
+        StartTimer();
+        UpdateVisuals(forceFrame: true);
+    }
+
+    private void StopHandoffTimer()
+    {
+        if (_handoffTimer is not { } timer)
+        {
+            return;
+        }
+
+        timer.Stop();
+        _handoffTimer = null;
     }
 
     private void UpdateVisuals(bool forceFrame)
@@ -688,10 +745,6 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
     }
 
-    [SuppressMessage(
-        "Design",
-        "CA1031:Do not catch general exception types",
-        Justification = "Window creation and asset loading are UI boundaries; a missing host must keep the cat at home.")]
     private bool OpenDesktop(PixelPoint anchor, DesktopEntrance entrance)
     {
         if (_isDisposed)
@@ -710,18 +763,36 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return true;
         }
 
-        if (!EnsureDesktopFrames())
+        MyJiuMiDesktopWindow? window = PrepareDesktop(anchor, entrance, out MyJiuMiScreenArea area);
+        if (window is null)
         {
             CancelLeave();
             return false;
+        }
+
+        return CompleteDesktop(window, anchor, area, entrance);
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Window creation is a UI boundary; a missing host must keep the cat at home.")]
+    private MyJiuMiDesktopWindow? PrepareDesktop(
+        PixelPoint anchor,
+        DesktopEntrance entrance,
+        out MyJiuMiScreenArea area)
+    {
+        area = default;
+        if (!EnsureDesktopFrames())
+        {
+            return null;
         }
 
         IReadOnlyList<MyJiuMiScreenArea> workAreas = ReadWorkAreas();
         if (workAreas.Count == 0)
         {
             _logger.Warning("The desktop host was cancelled because no screen work area is available");
-            CancelLeave();
-            return false;
+            return null;
         }
 
         double startSizeDip = entrance == DesktopEntrance.Minimized
@@ -731,6 +802,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             new MyJiuMiScreenPoint(anchor.X, anchor.Y),
             startSizeDip,
             workAreas);
+        area = placement.Area;
 
         MyJiuMiDesktopWindow window;
         try
@@ -742,8 +814,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             _logger.Warning(
                 exception,
                 "The My JiuMi desktop window could not be created; the cat stays home");
-            CancelLeave();
-            return false;
+            return null;
         }
 
         _desktopWindow = window;
@@ -754,7 +825,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
 
         // The host stays invisible until transparency is confirmed, so an unsupported compositor
-        // never flashes an opaque box.
+        // never flashes an opaque box and the caller may hide the old host first.
         DesktopOpacity = 0;
 
         try
@@ -767,21 +838,33 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 exception,
                 "The My JiuMi desktop window could not be shown; the cat stays home");
             CloseDesktopWindow();
-            CancelLeave();
-            return false;
+            return null;
         }
 
         if (window.ActualTransparencyLevel != WindowTransparencyLevel.Transparent)
         {
             _logger.Warning("The My JiuMi desktop window requires transparency; the cat stays home");
             CloseDesktopWindow();
-            CancelLeave();
+            return null;
+        }
+
+        return window;
+    }
+
+    private bool CompleteDesktop(
+        MyJiuMiDesktopWindow window,
+        PixelPoint anchor,
+        MyJiuMiScreenArea area,
+        DesktopEntrance entrance)
+    {
+        if (!ReferenceEquals(_desktopWindow, window))
+        {
             return false;
         }
 
         _presence.TryCompleteLeave();
         NotifyPresence();
-        BeginDesktopEntrance(entrance, anchor, placement.Area);
+        BeginDesktopEntrance(entrance, anchor, area);
         StartTimer();
         UpdateVisuals(forceFrame: true);
         return true;
@@ -925,6 +1008,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
     private void CloseDesktopWindow()
     {
+        StopHandoffTimer();
+        _pendingHandoff = null;
         if (_desktopWindow is not { } window)
         {
             return;
@@ -1151,4 +1236,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         MyJiuMiScreenArea Area);
 
     private readonly record struct TrayLeave(DateTimeOffset Deadline, Action Ready);
+
+    private readonly record struct PendingHandoff(
+        MyJiuMiDesktopWindow Window,
+        PixelPoint Anchor,
+        MyJiuMiScreenArea Area,
+        Action HideShell);
 }
