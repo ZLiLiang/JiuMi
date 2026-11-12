@@ -17,6 +17,11 @@ namespace JiuMi.Views;
 public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 {
     private readonly ScaleTransform _homeScale = new(1, 1);
+    private readonly ScaleTransform _motionScale = new(1, 1);
+    private readonly RotateTransform _motionRotation = new(0);
+    private readonly TranslateTransform _motionOffset = new(0, 0);
+    private readonly ScaleTransform _shadowScale = new(1, 1);
+    private readonly TransformGroup _motionTransform = new();
     private MyJiuMiViewModel? _viewModel;
     private Window? _window;
     private IPointer? _pointer;
@@ -34,7 +39,11 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     public MyJiuMiView()
     {
         InitializeComponent();
-        CatRoot.RenderTransform = _homeScale;
+        _motionTransform.Children = [_motionScale, _motionRotation, _motionOffset];
+        CatStage.RenderTransform = _homeScale;
+        CatRoot.RenderTransform = _motionTransform;
+        CatShadow.RenderTransform = _shadowScale;
+        ApplyMotion();
         RoomWall.EffectiveViewportChanged += OnEffectiveViewportChanged;
     }
 
@@ -60,6 +69,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         Subscribe();
         ApplyMirror();
         ApplyScale();
+        ApplyMotion();
         UpdateActivation();
         _viewModel?.Session.AttachHomeHost(this);
     }
@@ -96,6 +106,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         _viewModel?.Session.AttachHomeHost(this);
         ApplyMirror();
         ApplyScale();
+        ApplyMotion();
         UpdateActivation();
     }
 
@@ -181,6 +192,11 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
             ApplyScale();
         }
 
+        if (e.PropertyName == nameof(MyJiuMiViewModel.Motion))
+        {
+            ApplyMotion();
+        }
+
         if (e.PropertyName is nameof(MyJiuMiViewModel.CatMargin) or nameof(MyJiuMiViewModel.IsCatVisible))
         {
             UpdateCatScreenAnchor();
@@ -199,6 +215,18 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         double scale = _viewModel?.HomeScale ?? 1;
         _homeScale.ScaleX = scale;
         _homeScale.ScaleY = scale;
+    }
+
+    private void ApplyMotion()
+    {
+        MyJiuMiMotion motion = _viewModel?.Motion ?? MyJiuMiMotion.None;
+        _motionScale.ScaleX = motion.ScaleX;
+        _motionScale.ScaleY = motion.ScaleY;
+        _motionRotation.Angle = motion.RotationDegrees;
+        _motionOffset.Y = motion.OffsetY;
+        _shadowScale.ScaleX = motion.ShadowScale;
+        _shadowScale.ScaleY = motion.ShadowScale;
+        CatShadow.Opacity = motion.ShadowOpacity;
     }
 
     private void UpdateActivation()

@@ -85,6 +85,11 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public double HomeScale => _session.HomeScale;
 
     /// <summary>
+    /// Gets the procedural micro-motion of the page cat.
+    /// </summary>
+    public MyJiuMiMotion Motion => _session.Motion;
+
+    /// <summary>
     /// Gets a value indicating whether the page is currently running the cat.
     /// </summary>
     public bool IsActive => IsCatRootVisible && _session.IsMachineActive;
@@ -215,6 +220,10 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
 
             case nameof(MyJiuMiSession.HomeScale):
                 OnPropertyChanged(nameof(HomeScale));
+                break;
+
+            case nameof(MyJiuMiSession.Motion):
+                OnPropertyChanged(nameof(Motion));
                 break;
         }
     }

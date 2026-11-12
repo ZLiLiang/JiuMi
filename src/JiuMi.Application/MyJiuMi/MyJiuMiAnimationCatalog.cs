@@ -10,7 +10,14 @@
 public static class MyJiuMiAnimationCatalog
 {
     private static readonly MyJiuMiAnimationClip _lyingIdle = Create("lying-idle", 2, 1500, loops: true);
-    private static readonly MyJiuMiAnimationClip _blink = Create("blink", 3, 80, loops: false);
+    private static readonly MyJiuMiAnimationClip _blink = Create(
+        "blink",
+        [
+            TimeSpan.FromMilliseconds(60),
+            TimeSpan.FromMilliseconds(90),
+            TimeSpan.FromMilliseconds(60),
+        ],
+        loops: false);
     private static readonly MyJiuMiAnimationClip _react = Create("react", 2, 120, loops: false);
     private static readonly MyJiuMiAnimationClip _drag = Create("drag", 2, 400, loops: true);
     private static readonly MyJiuMiAnimationClip _sleepIn = Create("sleep-in", 3, 150, loops: false);
@@ -45,4 +52,9 @@ public static class MyJiuMiAnimationCatalog
         Array.Fill(durations, TimeSpan.FromMilliseconds(milliseconds));
         return new MyJiuMiAnimationClip(folder, durations, loops);
     }
+
+    private static MyJiuMiAnimationClip Create(
+        string folder,
+        IReadOnlyList<TimeSpan> durations,
+        bool loops) => new(folder, durations, loops);
 }
