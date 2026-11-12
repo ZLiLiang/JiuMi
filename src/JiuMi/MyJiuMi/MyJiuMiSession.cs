@@ -52,9 +52,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private DateTimeOffset? _heartRevealAt;
     private DateTimeOffset? _heartHideAt;
     private DateTimeOffset _leaveStartedAt;
+    private DateTimeOffset _motionStartedAt;
+    private DateTimeOffset? _jumpStartedAt;
+    private MyJiuMiMotion _motion = MyJiuMiMotion.None;
     private MyJiuMiLeaveTrigger? _leaveTrigger;
     private MyJiuMiState? _renderedState;
     private int _renderedFrame = -1;
+    private bool _renderedJumping;
     private DesktopEntranceRun? _desktopEntrance;
     private DesktopWalk? _desktopWalk;
     private TrayLeave? _trayLeave;
@@ -167,6 +171,15 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Gets the procedural micro-motion of the page cat; the desktop host ignores it.
+    /// </summary>
+    public MyJiuMiMotion Motion
+    {
+        get => _motion;
+        private set => SetProperty(ref _motion, value);
+    }
+
+    /// <summary>
     /// Gets the desktop window opacity used by the minimized entrance.
     /// </summary>
     public double DesktopOpacity
@@ -239,6 +252,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             ClearHeart();
             double position = MyJiuMiPositionRules.Clamp(_settingsStore.Current.MyJiuMi.X);
             _machine.Activate(stageWidth, position);
+            StartMotion();
             StartTimer();
         }
 
@@ -291,6 +305,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             DateTimeOffset now = _timeProvider.GetUtcNow();
             _heartRevealAt = now + MyJiuMiInteractionRules.HeartDelay;
             _heartHideAt = _heartRevealAt + MyJiuMiInteractionRules.HeartDuration;
+            if (Presence == MyJiuMiPresence.Home)
+            {
+                StartJump(now);
+            }
         }
         else
         {
@@ -312,6 +330,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         ClearHeart();
         IsHeartVisible = false;
+        EndJump();
         _machine.BeginDrag();
         UpdateVisuals(forceFrame: true);
     }
@@ -357,6 +376,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
+        EndJump();
         _machine.Summon(positionX);
         UpdateVisuals(forceFrame: true);
     }
@@ -370,6 +390,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _desktopWalk = null;
         ClearHeart();
         IsHeartVisible = false;
+        EndJump();
         _machine.BeginDrag();
         UpdateVisuals(forceFrame: true);
     }
@@ -537,12 +558,71 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         _machine.Update();
+        UpdateMotion();
         UpdateVisuals(forceFrame: false);
         UpdateHomeScale();
         UpdateTrayLeave();
         UpdateDesktopEntrance();
         UpdateDesktopWalk();
     }
+
+    private void StartMotion()
+    {
+        _motionStartedAt = _timeProvider.GetUtcNow();
+        _jumpStartedAt = null;
+        _renderedJumping = false;
+        ResetMotion();
+    }
+
+    private void UpdateMotion()
+    {
+        if (_isDisposed || !_machine.IsActive || Presence == MyJiuMiPresence.Desktop)
+        {
+            ResetMotion();
+            return;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        if (_jumpStartedAt is { } jumpStartedAt)
+        {
+            if (now - jumpStartedAt >= MyJiuMiMotionRules.JumpDuration)
+            {
+                _jumpStartedAt = null;
+            }
+            else
+            {
+                Motion = MyJiuMiMotionRules.SampleJump(now - jumpStartedAt);
+                return;
+            }
+        }
+
+        Motion = MyJiuMiMotionRules.Sample(now - _motionStartedAt, _machine.State);
+    }
+
+    private void StartJump(DateTimeOffset now)
+    {
+        if (CanJump())
+        {
+            _jumpStartedAt = now;
+        }
+    }
+
+    private void EndJump() => _jumpStartedAt = null;
+
+    private bool IsJumpActive(DateTimeOffset now) =>
+        Presence == MyJiuMiPresence.Home &&
+        _jumpStartedAt is { } startedAt &&
+        now - startedAt < MyJiuMiMotionRules.JumpDuration;
+
+    private bool CanJump()
+    {
+        Bitmap?[]? frames = GetFrames(MyJiuMiState.Stretch);
+        return frames is not null &&
+            frames.Length > MyJiuMiMotionRules.JumpFrameIndex &&
+            frames[MyJiuMiMotionRules.JumpFrameIndex] is not null;
+    }
+
+    private void ResetMotion() => Motion = MyJiuMiMotion.None;
 
     private void UpdateHomeScale()
     {
@@ -664,10 +744,17 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         MyJiuMiState state = _machine.State;
         int frameIndex = _machine.FrameIndex;
-        if (forceFrame || _renderedState != state || _renderedFrame != frameIndex)
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        bool jumping = IsJumpActive(now);
+        if (forceFrame ||
+            _renderedState != state ||
+            _renderedFrame != frameIndex ||
+            _renderedJumping != jumping)
         {
-            Bitmap?[]? frames = GetFrames(state);
-            if (frames is null || frameIndex >= frames.Length)
+            MyJiuMiState renderState = jumping ? MyJiuMiState.Stretch : state;
+            int renderFrame = jumping ? MyJiuMiMotionRules.JumpFrameIndex : frameIndex;
+            Bitmap?[]? frames = GetFrames(renderState);
+            if (frames is null || renderFrame >= frames.Length)
             {
                 IsFrameVisible = false;
                 Frame = null;
@@ -680,17 +767,17 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             else
             {
                 IsFrameVisible = true;
-                Frame = frames[frameIndex];
+                Frame = frames[renderFrame];
             }
 
             _renderedState = state;
             _renderedFrame = frameIndex;
+            _renderedJumping = jumping;
         }
 
         IsFacingRight = _machine.IsFacingRight;
         PositionX = _machine.PositionX;
 
-        DateTimeOffset now = _timeProvider.GetUtcNow();
         if (_heartHideAt is { } hideAt && now >= hideAt)
         {
             ClearHeart();
@@ -714,6 +801,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         _machine.SetWanderingEnabled(false);
+        EndJump();
         _leaveStartedAt = _timeProvider.GetUtcNow();
         _leaveTrigger = trigger;
         HomeScale = 1;
@@ -1098,6 +1186,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         Frame = null;
         _renderedState = null;
         _renderedFrame = -1;
+        _renderedJumping = false;
+        EndJump();
+        ResetMotion();
     }
 
     private void ReturnHomeFromDesktop()
@@ -1116,6 +1207,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             _machine.Activate(
                 _homeStageWidth,
                 MyJiuMiPositionRules.Clamp(_settingsStore.Current.MyJiuMi.X));
+            StartMotion();
             StartTimer();
             UpdateVisuals(forceFrame: true);
         }

@@ -13,12 +13,12 @@ public static class MyJiuMiInteractionRules
     /// <summary>
     /// Gets the shortest random delay between idle blinks.
     /// </summary>
-    public static TimeSpan BlinkDelayMin { get; } = TimeSpan.FromSeconds(4);
+    public static TimeSpan BlinkDelayMin { get; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Gets the longest random delay between idle blinks.
     /// </summary>
-    public static TimeSpan BlinkDelayMax { get; } = TimeSpan.FromSeconds(8);
+    public static TimeSpan BlinkDelayMax { get; } = TimeSpan.FromSeconds(7);
 
     /// <summary>
     /// Gets the shortest random pause between autonomous wander decisions.

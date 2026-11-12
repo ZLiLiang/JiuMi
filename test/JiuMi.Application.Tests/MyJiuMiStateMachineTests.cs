@@ -54,24 +54,28 @@ public sealed class MyJiuMiStateMachineTests
     {
         (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(random: 0.25);
 
-        Advance(machine, time, TimeSpan.FromSeconds(5));
+        Advance(machine, time, TimeSpan.FromMilliseconds(5500));
         Assert.Equal(MyJiuMiState.Blink, machine.State);
         Assert.Equal(0, machine.FrameIndex);
 
-        time.Advance(TimeSpan.FromMilliseconds(80));
+        time.Advance(TimeSpan.FromMilliseconds(60));
         machine.Update();
         Assert.Equal(1, machine.FrameIndex);
 
-        Advance(machine, time, TimeSpan.FromMilliseconds(160));
+        time.Advance(TimeSpan.FromMilliseconds(90));
+        machine.Update();
+        Assert.Equal(2, machine.FrameIndex);
+
+        Advance(machine, time, TimeSpan.FromMilliseconds(60));
         Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
     }
 
     [Fact]
-    public void Update_GivenTheFastestBlinkRoll_WaitsFourSeconds()
+    public void Update_GivenTheFastestBlinkRoll_WaitsFiveSeconds()
     {
         (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(random: 0);
 
-        Advance(machine, time, TimeSpan.FromMilliseconds(3990));
+        Advance(machine, time, TimeSpan.FromMilliseconds(4990));
         Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
 
         Advance(machine, time, TimeSpan.FromMilliseconds(10));
@@ -79,11 +83,11 @@ public sealed class MyJiuMiStateMachineTests
     }
 
     [Fact]
-    public void Update_GivenTheSlowestBlinkRoll_WaitsEightSeconds()
+    public void Update_GivenTheSlowestBlinkRoll_WaitsSevenSeconds()
     {
         (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(random: 0.999);
 
-        Advance(machine, time, TimeSpan.FromMilliseconds(7990));
+        Advance(machine, time, TimeSpan.FromMilliseconds(6990));
         Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
 
         Advance(machine, time, TimeSpan.FromMilliseconds(10));
@@ -109,7 +113,7 @@ public sealed class MyJiuMiStateMachineTests
     public void Click_GivenBlink_InterruptsIntoReact()
     {
         (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(random: 0.25);
-        Advance(machine, time, TimeSpan.FromSeconds(5));
+        Advance(machine, time, TimeSpan.FromMilliseconds(5500));
         Assert.Equal(MyJiuMiState.Blink, machine.State);
 
         MyJiuMiClickEffect effect = machine.Click();
