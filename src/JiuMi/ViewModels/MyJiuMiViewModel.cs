@@ -172,6 +172,32 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public void EndDrag() => _session.EndHomeDrag();
 
     /// <summary>
+    /// Hands the dragged cat to the desktop at its bottom-centre in physical screen pixels.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="true"/> when the desktop host took over.</returns>
+    public bool TryHandOffToDesktop(PixelPoint anchor) => _session.TryDragOut(anchor);
+
+    /// <summary>
+    /// Shows the temporary desktop preview that keeps the dragged cat visible outside the window.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="true"/> when the preview is on screen.</returns>
+    public bool ShowDragPreview(PixelPoint anchor) => _session.ShowDragPreview(anchor);
+
+    /// <summary>
+    /// Moves the drag preview so its bottom-centre follows <paramref name="anchor"/>.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="false"/> when the preview is no longer on screen.</returns>
+    public bool MoveDragPreview(PixelPoint anchor) => _session.MoveDragPreview(anchor);
+
+    /// <summary>
+    /// Closes the drag preview when the cat returns inside the window.
+    /// </summary>
+    public void CloseDragPreview() => _session.CloseDragPreview();
+
+    /// <summary>
     /// Summons the cat to the double-clicked floor position.
     /// </summary>
     /// <param name="positionX">The normalized click position.</param>

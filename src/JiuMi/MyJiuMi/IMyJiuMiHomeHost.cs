@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using JiuMi.Application.MyJiuMi;
 
 namespace JiuMi.MyJiuMi;
 
@@ -22,4 +23,11 @@ public interface IMyJiuMiHomeHost
     /// </summary>
     /// <returns>The anchor used by the handoff, or <see langword="null"/>.</returns>
     PixelPoint? GetCatScreenAnchor();
+
+    /// <summary>
+    /// Gets the room's visible rectangle in physical screen pixels, or <see langword="null"/> when the
+    /// page is not laid out or nothing of the room is on screen.
+    /// </summary>
+    /// <returns>The visible room, clipped by the page viewport and the window.</returns>
+    MyJiuMiScreenRect? GetRoomScreenRect();
 }

@@ -2,9 +2,12 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using JiuMi.Application.MyJiuMi;
 using JiuMi.MyJiuMi;
 using JiuMi.ViewModels;
@@ -24,10 +27,16 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     private readonly TransformGroup _motionTransform = new();
     private MyJiuMiViewModel? _viewModel;
     private Window? _window;
+    private OverlayLayer? _dragLayer;
+    private Image? _dragCat;
+    private Vector _dragGrabOffset;
     private IPointer? _pointer;
     private Point _pressOrigin;
     private double _dragOffsetX;
     private PixelPoint? _catScreenAnchor;
+    private bool _isDragOverlayActive;
+    private bool _isDragPreviewActive;
+    private bool _isDragPreviewUnavailable;
     private bool _isPressed;
     private bool _isDragging;
     private bool _isSubscribed;
@@ -81,6 +90,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         Unsubscribe();
         _viewModel?.Session.DetachHomeHost(this);
         _catScreenAnchor = null;
+        EndDragOverlay();
         if (_window is not null)
         {
             _window.PropertyChanged -= OnWindowPropertyChanged;
@@ -99,6 +109,8 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     {
         base.OnDataContextChanged(e);
 
+        // A swap while the pointer is down must not leave an overlay image or preview window behind.
+        EndActiveDrag();
         Unsubscribe();
         _viewModel?.Session.DetachHomeHost(this);
         _viewModel = DataContext as MyJiuMiViewModel;
@@ -119,6 +131,57 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         }
 
         return _catScreenAnchor;
+    }
+
+    /// <inheritdoc />
+    public MyJiuMiScreenRect? GetRoomScreenRect()
+    {
+        if (GetRoomRectInWindow() is not { } room || _window is null)
+        {
+            return null;
+        }
+
+        PixelPoint topLeft = _window.PointToScreen(room.TopLeft);
+        PixelPoint bottomRight = _window.PointToScreen(room.BottomRight);
+        var screen = new MyJiuMiScreenRect(
+            topLeft.X,
+            topLeft.Y,
+            bottomRight.X - topLeft.X,
+            bottomRight.Y - topLeft.Y);
+        return screen.IsEmpty ? null : screen;
+    }
+
+    private Rect? GetRoomRectInWindow()
+    {
+        if (_window is null ||
+            !IsHomeVisible ||
+            Room.Bounds.Width <= 0 ||
+            Room.Bounds.Height <= 0)
+        {
+            return null;
+        }
+
+        Point? topLeft = Room.TranslatePoint(default, _window);
+        Point? bottomRight = Room.TranslatePoint(
+            new Point(Room.Bounds.Width, Room.Bounds.Height),
+            _window);
+        if (topLeft is not { } start || bottomRight is not { } end)
+        {
+            return null;
+        }
+
+        var rect = new Rect(start.X, start.Y, end.X - start.X, end.Y - start.Y);
+
+        // The room may be scrolled inside the page; the clipped-away part does not count.
+        if (this.FindAncestorOfType<ScrollViewer>() is { } scroller &&
+            scroller.Bounds.Width > 0 &&
+            scroller.TranslatePoint(default, _window) is { } viewportOrigin)
+        {
+            rect = rect.Intersect(new Rect(viewportOrigin, scroller.Bounds.Size));
+        }
+
+        rect = rect.Intersect(new Rect(_window.ClientSize));
+        return rect.Width > 0 && rect.Height > 0 ? rect : null;
     }
 
     private void Subscribe()
@@ -195,6 +258,11 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         if (e.PropertyName == nameof(MyJiuMiViewModel.Motion))
         {
             ApplyMotion();
+        }
+
+        if (e.PropertyName == nameof(MyJiuMiViewModel.Frame) && _dragCat is not null)
+        {
+            _dragCat.Source = _viewModel?.Frame;
         }
 
         if (e.PropertyName is nameof(MyJiuMiViewModel.CatMargin) or nameof(MyJiuMiViewModel.IsCatVisible))
@@ -304,6 +372,12 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         _isDragging = false;
         _pointer = e.Pointer;
         _pressOrigin = e.GetPosition(RoomWall);
+        if (_window is not null && CatStage.TranslatePoint(default, _window) is { } origin)
+        {
+            // Record the grab offset at the press, not at the first move past the threshold.
+            _dragGrabOffset = e.GetPosition(_window) - origin;
+        }
+
         e.Pointer.Capture(CatHitArea);
         e.Handled = true;
     }
@@ -318,7 +392,10 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         Point current = e.GetPosition(RoomWall);
         if (!_isDragging)
         {
-            if (Math.Abs(current.X - _pressOrigin.X) < MyJiuMiInteractionRules.DragThreshold)
+            double deltaX = current.X - _pressOrigin.X;
+            double deltaY = current.Y - _pressOrigin.Y;
+            double threshold = MyJiuMiInteractionRules.DragThreshold;
+            if ((deltaX * deltaX) + (deltaY * deltaY) < threshold * threshold)
             {
                 return;
             }
@@ -326,6 +403,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
             _isDragging = true;
             _dragOffsetX = _pressOrigin.X - _viewModel.CatCenterX;
             _viewModel.BeginDrag();
+            BeginDragOverlay(e);
         }
 
         if (RoomWall.Bounds.Width > 0)
@@ -334,6 +412,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
             _viewModel.DragTo(targetCenter / RoomWall.Bounds.Width);
         }
 
+        UpdateDragOverlay(e);
         e.Handled = true;
     }
 
@@ -349,7 +428,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 
         if (wasDragging)
         {
-            _viewModel.EndDrag();
+            ReleaseDraggedCat(e);
         }
         else
         {
@@ -357,6 +436,184 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         }
 
         e.Handled = true;
+    }
+
+    private void BeginDragOverlay(PointerEventArgs e)
+    {
+        _isDragPreviewActive = false;
+        _isDragPreviewUnavailable = false;
+        if (_window is null || _viewModel is null)
+        {
+            return;
+        }
+
+        _dragLayer = OverlayLayer.GetOverlayLayer(this);
+        if (_dragLayer is null)
+        {
+            // Without a window overlay the cat stays in the room; the drag still updates its X.
+            return;
+        }
+
+        _dragCat = new Image
+        {
+            Width = MyJiuMiInteractionRules.CatSize,
+            Height = MyJiuMiInteractionRules.CatSize,
+            Stretch = Stretch.Uniform,
+            Source = _viewModel.Frame,
+            IsHitTestVisible = false,
+        };
+        RenderOptions.SetBitmapInterpolationMode(_dragCat, BitmapInterpolationMode.HighQuality);
+        _dragLayer.Children.Add(_dragCat);
+
+        // The lifted cat is a window-level copy; the room cat stays in place but invisible so the
+        // copy can cross the room border and the page header.
+        _isDragOverlayActive = true;
+        CatStage.Opacity = 0;
+        UpdateDragOverlay(e);
+    }
+
+    private void UpdateDragOverlay(PointerEventArgs e)
+    {
+        if (!_isDragOverlayActive || _dragCat is not { } cat || _window is null)
+        {
+            return;
+        }
+
+        Point topLeft = e.GetPosition(_window) - _dragGrabOffset;
+        Canvas.SetLeft(cat, topLeft.X);
+        Canvas.SetTop(cat, topLeft.Y);
+
+        // Once any part of the cat slot leaves the window, a temporary desktop host keeps the cat
+        // visible outside; the page window still owns the pointer capture until the release.
+        Rect client = new(_window.ClientSize);
+        double size = MyJiuMiInteractionRules.CatSize;
+        bool inside = topLeft.X >= client.Left &&
+            topLeft.Y >= client.Top &&
+            topLeft.X + size <= client.Right &&
+            topLeft.Y + size <= client.Bottom;
+        UpdateDragPreview(topLeft, inside);
+    }
+
+    private void UpdateDragPreview(Point topLeft, bool inside)
+    {
+        if (_viewModel is null || _window is null)
+        {
+            return;
+        }
+
+        if (inside)
+        {
+            if (_isDragPreviewActive)
+            {
+                // Show the overlay copy first so the hand-back never leaves an empty frame.
+                if (_dragCat is not null)
+                {
+                    _dragCat.IsVisible = true;
+                }
+
+                _viewModel.CloseDragPreview();
+                _isDragPreviewActive = false;
+            }
+
+            return;
+        }
+
+        if (_isDragPreviewUnavailable)
+        {
+            return;
+        }
+
+        double size = MyJiuMiInteractionRules.CatSize;
+        PixelPoint anchor = _window.PointToScreen(new Point(
+            topLeft.X + (size / 2),
+            topLeft.Y + size));
+
+        if (!_isDragPreviewActive)
+        {
+            _isDragPreviewActive = _viewModel.ShowDragPreview(anchor);
+            if (_isDragPreviewActive)
+            {
+                if (_dragCat is not null)
+                {
+                    _dragCat.IsVisible = false;
+                }
+            }
+            else
+            {
+                _isDragPreviewUnavailable = true;
+            }
+
+            return;
+        }
+
+        if (!_viewModel.MoveDragPreview(anchor))
+        {
+            _isDragPreviewActive = false;
+            if (_dragCat is not null)
+            {
+                _dragCat.IsVisible = true;
+            }
+        }
+    }
+
+    private void EndDragOverlay()
+    {
+        if (_isDragPreviewActive)
+        {
+            _viewModel?.CloseDragPreview();
+            _isDragPreviewActive = false;
+        }
+
+        if (_dragCat is { } cat && _dragLayer is { } layer)
+        {
+            layer.Children.Remove(cat);
+        }
+
+        _dragCat = null;
+        _dragLayer = null;
+        if (_isDragOverlayActive)
+        {
+            _isDragOverlayActive = false;
+            CatStage.Opacity = 1;
+        }
+    }
+
+    private void ReleaseDraggedCat(PointerReleasedEventArgs e)
+    {
+        if (_viewModel is null || _window is null)
+        {
+            EndDragOverlay();
+            _viewModel?.EndDrag();
+            return;
+        }
+
+        Point pointer = e.GetPosition(_window);
+        Point topLeft = pointer - _dragGrabOffset;
+        double catSize = MyJiuMiInteractionRules.CatSize;
+        PixelPoint? anchor = _isDragOverlayActive
+            ? _window.PointToScreen(new Point(
+                topLeft.X + (catSize / 2),
+                topLeft.Y + catSize))
+            : GetCatScreenAnchor();
+        PixelPoint pointerScreen = _window.PointToScreen(pointer);
+        bool commits = anchor is not null &&
+            GetRoomScreenRect() is { } room &&
+            MyJiuMiTransitionRules.ShouldCommitDragOut(
+                room,
+                new MyJiuMiScreenPoint(pointerScreen.X, pointerScreen.Y),
+                _window.RenderScaling);
+
+        if (commits)
+        {
+            // The preview is adopted by the session and only then is the overlay cleaned up, so the
+            // cat never disappears between the two hosts. A failed handoff is bounced by the session.
+            _viewModel.TryHandOffToDesktop(anchor!.Value);
+            EndDragOverlay();
+            return;
+        }
+
+        EndDragOverlay();
+        _viewModel.EndDrag();
     }
 
     private void OnCatPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
@@ -373,6 +630,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     {
         bool wasDragging = _isDragging;
         ReleasePointer();
+        EndDragOverlay();
 
         if (wasDragging)
         {

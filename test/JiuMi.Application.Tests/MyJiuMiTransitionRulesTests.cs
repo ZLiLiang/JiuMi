@@ -14,9 +14,9 @@ public sealed class MyJiuMiTransitionRulesTests
     [Theory]
     [InlineData(MyJiuMiLeaveTrigger.HiddenToTray)]
     [InlineData(MyJiuMiLeaveTrigger.Minimized)]
-    public void ShouldWalkOut_GivenAValidHideTrigger_ReturnsTrue(MyJiuMiLeaveTrigger trigger)
+    public void ShouldLeavePage_GivenAValidHideTrigger_ReturnsTrue(MyJiuMiLeaveTrigger trigger)
     {
-        Assert.True(MyJiuMiTransitionRules.ShouldWalkOut(
+        Assert.True(MyJiuMiTransitionRules.ShouldLeavePage(
             trigger,
             pageCurrent: true,
             catAwake: true,
@@ -26,9 +26,9 @@ public sealed class MyJiuMiTransitionRulesTests
     [Theory]
     [InlineData(MyJiuMiLeaveTrigger.Exiting)]
     [InlineData(MyJiuMiLeaveTrigger.PageLeft)]
-    public void ShouldWalkOut_GivenAnExitOrPageChange_ReturnsFalse(MyJiuMiLeaveTrigger trigger)
+    public void ShouldLeavePage_GivenAnExitOrPageChange_ReturnsFalse(MyJiuMiLeaveTrigger trigger)
     {
-        Assert.False(MyJiuMiTransitionRules.ShouldWalkOut(
+        Assert.False(MyJiuMiTransitionRules.ShouldLeavePage(
             trigger,
             pageCurrent: true,
             catAwake: true,
@@ -36,9 +36,9 @@ public sealed class MyJiuMiTransitionRulesTests
     }
 
     [Fact]
-    public void ShouldWalkOut_GivenASleepingCat_ReturnsFalse()
+    public void ShouldLeavePage_GivenASleepingCat_ReturnsFalse()
     {
-        Assert.False(MyJiuMiTransitionRules.ShouldWalkOut(
+        Assert.False(MyJiuMiTransitionRules.ShouldLeavePage(
             MyJiuMiLeaveTrigger.HiddenToTray,
             pageCurrent: true,
             catAwake: false,
@@ -46,9 +46,9 @@ public sealed class MyJiuMiTransitionRulesTests
     }
 
     [Fact]
-    public void ShouldWalkOut_GivenAnotherPage_ReturnsFalse()
+    public void ShouldLeavePage_GivenAnotherPage_ReturnsFalse()
     {
-        Assert.False(MyJiuMiTransitionRules.ShouldWalkOut(
+        Assert.False(MyJiuMiTransitionRules.ShouldLeavePage(
             MyJiuMiLeaveTrigger.Minimized,
             pageCurrent: false,
             catAwake: true,
@@ -56,13 +56,33 @@ public sealed class MyJiuMiTransitionRulesTests
     }
 
     [Fact]
-    public void ShouldWalkOut_GivenNoDesktopHost_ReturnsFalse()
+    public void ShouldLeavePage_GivenNoDesktopHost_ReturnsFalse()
     {
-        Assert.False(MyJiuMiTransitionRules.ShouldWalkOut(
+        Assert.False(MyJiuMiTransitionRules.ShouldLeavePage(
             MyJiuMiLeaveTrigger.Minimized,
             pageCurrent: true,
             catAwake: true,
             desktopAvailable: false));
+    }
+
+    [Fact]
+    public void ShouldLeavePage_GivenADraggedOutSleepingCat_ReturnsTrue()
+    {
+        Assert.True(MyJiuMiTransitionRules.ShouldLeavePage(
+            MyJiuMiLeaveTrigger.DraggedOut,
+            pageCurrent: true,
+            catAwake: false,
+            desktopAvailable: true));
+    }
+
+    [Fact]
+    public void ShouldLeavePage_GivenADraggedOutCatOnAnotherPage_ReturnsFalse()
+    {
+        Assert.False(MyJiuMiTransitionRules.ShouldLeavePage(
+            MyJiuMiLeaveTrigger.DraggedOut,
+            pageCurrent: false,
+            catAwake: true,
+            desktopAvailable: true));
     }
 
     [Theory]
@@ -179,4 +199,128 @@ public sealed class MyJiuMiTransitionRulesTests
             new MyJiuMiScreenPoint(0, 0),
             []));
     }
+
+    [Fact]
+    public void DragHandoffDuration_GivenTheHandoffContract_Is120Milliseconds()
+    {
+        Assert.Equal(TimeSpan.FromMilliseconds(120), MyJiuMiTransitionRules.DragHandoffDuration);
+    }
+
+    [Fact]
+    public void ShouldCommitDragOut_GivenAPointerInsideTheRoom_ReturnsFalse()
+    {
+        Assert.False(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            Room,
+            new MyJiuMiScreenPoint(300, 250),
+            scaling: 1));
+    }
+
+    [Fact]
+    public void ShouldCommitDragOut_GivenAPointer47DipOutside_ReturnsFalse()
+    {
+        Assert.False(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            Room,
+            new MyJiuMiScreenPoint(547, 250),
+            scaling: 1));
+    }
+
+    [Fact]
+    public void ShouldCommitDragOut_GivenAPointer48DipOutside_ReturnsTrue()
+    {
+        Assert.True(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            Room,
+            new MyJiuMiScreenPoint(548, 250),
+            scaling: 1));
+    }
+
+    [Fact]
+    public void ShouldCommitDragOut_GivenAPointerAboveTheRoom_ReturnsTrue()
+    {
+        Assert.True(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            Room,
+            new MyJiuMiScreenPoint(300, 52),
+            scaling: 1));
+    }
+
+    [Fact]
+    public void ShouldCommitDragOut_GivenA150PercentScreen_UsesTheScaledThreshold()
+    {
+        Assert.False(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            Room,
+            new MyJiuMiScreenPoint(571, 250),
+            scaling: 1.5));
+
+        Assert.True(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            Room,
+            new MyJiuMiScreenPoint(572, 250),
+            scaling: 1.5));
+    }
+
+    [Fact]
+    public void ShouldCommitDragOut_GivenAnEmptyRoom_ReturnsFalse()
+    {
+        Assert.False(MyJiuMiTransitionRules.ShouldCommitDragOut(
+            new MyJiuMiScreenRect(100, 100, 0, 300),
+            new MyJiuMiScreenPoint(900, 900),
+            scaling: 1));
+    }
+
+    [Theory]
+    [InlineData(100, 0)]
+    [InlineData(300, 0.5)]
+    [InlineData(500, 1)]
+    [InlineData(0, 0)]
+    [InlineData(900, 1)]
+    public void ProjectRoomX_GivenAScreenX_ReturnsTheClampedNormalizedPosition(int x, double expected)
+    {
+        Assert.Equal(expected, MyJiuMiTransitionRules.ProjectRoomX(Room, x));
+    }
+
+    [Fact]
+    public void TryProjectRoomX_GivenAReleaseInsideTheRoom_UsesTheCatAnchorX()
+    {
+        bool projected = MyJiuMiTransitionRules.TryProjectRoomX(
+            Room,
+            new MyJiuMiScreenPoint(350, 380),
+            350,
+            out double positionX);
+
+        Assert.True(projected);
+        Assert.Equal(0.625, positionX);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(900, 1)]
+    public void TryProjectRoomX_GivenAnAnchorOutsideTheRoom_ClampsTheNormalizedPosition(
+        int anchorX,
+        double expected)
+    {
+        bool projected = MyJiuMiTransitionRules.TryProjectRoomX(
+            Room,
+            new MyJiuMiScreenPoint(300, 380),
+            anchorX,
+            out double positionX);
+
+        Assert.True(projected);
+        Assert.Equal(expected, positionX);
+    }
+
+    [Fact]
+    public void TryProjectRoomX_GivenAReleaseOutsideTheRoom_ReturnsFalse()
+    {
+        Assert.False(MyJiuMiTransitionRules.TryProjectRoomX(
+            Room,
+            new MyJiuMiScreenPoint(300, 50),
+            300,
+            out _));
+
+        Assert.False(MyJiuMiTransitionRules.TryProjectRoomX(
+            Room,
+            new MyJiuMiScreenPoint(520, 250),
+            520,
+            out _));
+    }
+
+    private static MyJiuMiScreenRect Room => new(100, 100, 400, 300);
 }
