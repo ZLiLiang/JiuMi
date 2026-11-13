@@ -16,6 +16,11 @@ public enum MyJiuMiLeaveTrigger
     Minimized,
 
     /// <summary>
+    /// The user dragged the cat past the room edge and released it outside.
+    /// </summary>
+    DraggedOut,
+
+    /// <summary>
     /// The application is exiting; the window is not hidden and kept.
     /// </summary>
     Exiting,

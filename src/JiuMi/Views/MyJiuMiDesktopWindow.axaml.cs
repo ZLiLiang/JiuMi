@@ -127,8 +127,15 @@ public partial class MyJiuMiDesktopWindow : Window
 
         if (wasDragging)
         {
+            // A release inside the visible room hands the cat back; otherwise the window stays on
+            // the desktop and is clamped into the nearest work area.
+            PixelPoint release = this.PointToScreen(e.GetPosition(this));
+            PixelPoint anchor = this.PointToScreen(new Point(Bounds.Width / 2, Bounds.Height));
             _session.EndDesktopDrag();
-            _session.ClampDesktopWindow();
+            if (!_session.TryReturnHomeFromDesktop(release, anchor))
+            {
+                _session.ClampDesktopWindow();
+            }
         }
         else
         {

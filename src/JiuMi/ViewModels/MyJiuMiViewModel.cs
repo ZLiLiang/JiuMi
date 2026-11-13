@@ -172,6 +172,13 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public void EndDrag() => _session.EndHomeDrag();
 
     /// <summary>
+    /// Hands the dragged cat to the desktop at its bottom-centre in physical screen pixels.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="true"/> when the desktop host took over.</returns>
+    public bool TryHandOffToDesktop(PixelPoint anchor) => _session.TryDragOut(anchor);
+
+    /// <summary>
     /// Summons the cat to the double-clicked floor position.
     /// </summary>
     /// <param name="positionX">The normalized click position.</param>

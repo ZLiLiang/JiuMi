@@ -45,12 +45,14 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private bool _isZzzVisible;
     private bool _isFacingRight;
     private double _positionX = MyJiuMiPositionRules.Default;
+    private double _dragStartPositionX = MyJiuMiPositionRules.Default;
     private double _homeScale = 1;
     private double _desktopOpacity = 1;
     private double _desktopSizeDip = MyJiuMiTransitionRules.DesktopSizeDip;
     private double _homeStageWidth;
     private DateTimeOffset? _heartRevealAt;
     private DateTimeOffset? _heartHideAt;
+    private DateTimeOffset? _homeEntranceStartedAt;
     private DateTimeOffset _leaveStartedAt;
     private DateTimeOffset _motionStartedAt;
     private DateTimeOffset? _jumpStartedAt;
@@ -331,6 +333,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         ClearHeart();
         IsHeartVisible = false;
         EndJump();
+        _homeEntranceStartedAt = null;
+        HomeScale = 1;
+        _dragStartPositionX = _machine.PositionX;
         _machine.BeginDrag();
         UpdateVisuals(forceFrame: true);
     }
@@ -363,6 +368,94 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _machine.EndDrag();
         SavePosition();
         UpdateVisuals(forceFrame: true);
+    }
+
+    /// <summary>
+    /// Ends a page drag released outside the room and hands the cat to the desktop at the release
+    /// anchor. A failed handoff leaves the cat in the room and records a warning.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="true"/> when the desktop host took over.</returns>
+    public bool TryDragOut(PixelPoint anchor)
+    {
+        if (_isDisposed || Presence != MyJiuMiPresence.Home || !_machine.IsActive)
+        {
+            return false;
+        }
+
+        bool wasDragging = _machine.State == MyJiuMiState.Drag;
+        _machine.EndDrag();
+        if (!wasDragging ||
+            !_presence.TryBeginLeave(
+                MyJiuMiLeaveTrigger.DraggedOut,
+                pageCurrent: true,
+                catAwake: _machine.IsAwake,
+                desktopAvailable: true))
+        {
+            _machine.SetWanderingEnabled(true);
+            UpdateVisuals(forceFrame: true);
+            return false;
+        }
+
+        _machine.SetWanderingEnabled(false);
+        EndJump();
+        ClearHeart();
+        IsHeartVisible = false;
+        HomeScale = 1;
+        _leaveTrigger = MyJiuMiLeaveTrigger.DraggedOut;
+        NotifyPresence();
+
+        if (OpenDesktop(anchor, DesktopEntrance.Dragged))
+        {
+            return true;
+        }
+
+        // A failed handoff bounces back to where the drag started; drag-out never writes settings.
+        _machine.SetPosition(_dragStartPositionX);
+        UpdateVisuals(forceFrame: true);
+        return false;
+    }
+
+    /// <summary>
+    /// Returns the desktop cat to the page when the drag is released inside the visible room; the
+    /// desktop window closes and the page cat appears at the projected position.
+    /// </summary>
+    /// <param name="pointerScreen">The pointer's release point in physical screen pixels.</param>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="true"/> when the cat came home.</returns>
+    public bool TryReturnHomeFromDesktop(PixelPoint pointerScreen, PixelPoint anchor)
+    {
+        if (_isDisposed || Presence != MyJiuMiPresence.Desktop)
+        {
+            return false;
+        }
+
+        if (_homeHost is not { IsHomeVisible: true } host ||
+            _homeStageWidth <= 0 ||
+            host.GetRoomScreenRect() is not { } room ||
+            !MyJiuMiTransitionRules.TryProjectRoomX(
+                room,
+                new MyJiuMiScreenPoint(pointerScreen.X, pointerScreen.Y),
+                anchor.X,
+                out double positionX) ||
+            !_presence.TryBeginReturn(pageReachable: true))
+        {
+            return false;
+        }
+
+        CloseDesktopWindow();
+        _leaveTrigger = null;
+        _machine.SetWanderingEnabled(true);
+        _machine.Activate(_homeStageWidth, positionX);
+        _homeEntranceStartedAt = _timeProvider.GetUtcNow();
+        HomeScale = MyJiuMiTransitionRules.DesktopScale;
+        StartMotion();
+        StartTimer();
+        SavePosition(positionX);
+        UpdateVisuals(forceFrame: true);
+        _presence.TryCompleteReturn();
+        NotifyPresence();
+        return true;
     }
 
     /// <summary>
@@ -561,6 +654,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         UpdateMotion();
         UpdateVisuals(forceFrame: false);
         UpdateHomeScale();
+        UpdateHomeEntrance();
         UpdateTrayLeave();
         UpdateDesktopEntrance();
         UpdateDesktopWalk();
@@ -638,6 +732,27 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         double elapsed = (_timeProvider.GetUtcNow() - _leaveStartedAt).TotalMilliseconds;
         double progress = Math.Clamp(elapsed / walkMilliseconds, 0, 1);
         HomeScale = 1 - (0.2 * progress);
+    }
+
+    private void UpdateHomeEntrance()
+    {
+        if (_homeEntranceStartedAt is not { } startedAt)
+        {
+            return;
+        }
+
+        double small = MyJiuMiTransitionRules.DesktopScale;
+        double progress = Math.Clamp(
+            (_timeProvider.GetUtcNow() - startedAt).TotalMilliseconds /
+                MyJiuMiTransitionRules.DragHandoffDuration.TotalMilliseconds,
+            0,
+            1);
+        HomeScale = small + ((1 - small) * progress);
+        if (progress >= 1)
+        {
+            _homeEntranceStartedAt = null;
+            HomeScale = 1;
+        }
     }
 
     private void UpdateTrayLeave()
@@ -883,7 +998,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return null;
         }
 
-        double startSizeDip = entrance == DesktopEntrance.Minimized
+        double startSizeDip = entrance is DesktopEntrance.Minimized or DesktopEntrance.Dragged
             ? MyJiuMiTransitionRules.HomeSizeDip
             : MyJiuMiTransitionRules.DesktopSizeDip;
         MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
@@ -963,6 +1078,21 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         PixelPoint anchor,
         MyJiuMiScreenArea area)
     {
+        if (entrance == DesktopEntrance.Dragged)
+        {
+            // The release already decided the spot: shrink the 200 DIP cat to the 160 DIP host in
+            // place, keeping its bottom-centre on the anchor.
+            _desktopWalk = null;
+            _desktopEntrance = new DesktopEntranceRun(
+                new MyJiuMiScreenPoint(anchor.X, anchor.Y),
+                area,
+                _timeProvider.GetUtcNow(),
+                MyJiuMiTransitionRules.DragHandoffDuration,
+                OpacityFrom: 1);
+            DesktopOpacity = 1;
+            return;
+        }
+
         // The cat keeps walking a short way while the window glides with it; the window, not the
         // normalized home position, carries the cat across the desktop.
         double direction = _machine.State == MyJiuMiState.Walk
@@ -984,7 +1114,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 new MyJiuMiScreenPoint(anchor.X, anchor.Y),
                 area,
                 _timeProvider.GetUtcNow(),
-                MyJiuMiTransitionRules.MinimizeEntrance);
+                MyJiuMiTransitionRules.MinimizeEntrance,
+                OpacityFrom: 0);
             DesktopOpacity = 0;
             return;
         }
@@ -993,7 +1124,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         // same size, so the handoff does not jump.
         _desktopEntrance = null;
         _desktopSizeDip = MyJiuMiTransitionRules.DesktopSizeDip;
-        HomeScale = MyJiuMiTransitionRules.DesktopSizeDip / MyJiuMiTransitionRules.HomeSizeDip;
+        HomeScale = MyJiuMiTransitionRules.DesktopScale;
         DesktopOpacity = 1;
     }
 
@@ -1009,7 +1140,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             ((MyJiuMiTransitionRules.DesktopSizeDip - MyJiuMiTransitionRules.HomeSizeDip) * progress);
         window.Width = _desktopSizeDip;
         window.Height = _desktopSizeDip;
-        DesktopOpacity = progress;
+        DesktopOpacity = run.OpacityFrom + ((1 - run.OpacityFrom) * progress);
 
         if (progress >= 1)
         {
@@ -1178,6 +1309,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private void StopMachine()
     {
         StopTimer();
+        _homeEntranceStartedAt = null;
         _machine.Deactivate();
         ClearHeart();
         IsHeartVisible = false;
@@ -1228,13 +1360,15 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _heartHideAt = null;
     }
 
-    private void SavePosition()
+    private void SavePosition() => SavePosition(_machine.PositionX);
+
+    private void SavePosition(double positionX)
     {
         AppSettings settings = _settingsStore.Current with
         {
             MyJiuMi = new MyJiuMiSettings
             {
-                X = MyJiuMiPositionRules.Clamp(_machine.PositionX),
+                X = MyJiuMiPositionRules.Clamp(positionX),
             },
         };
 
@@ -1302,13 +1436,15 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     {
         Hidden,
         Minimized,
+        Dragged,
     }
 
     private readonly record struct DesktopEntranceRun(
         MyJiuMiScreenPoint Anchor,
         MyJiuMiScreenArea Area,
         DateTimeOffset StartedAt,
-        TimeSpan Duration)
+        TimeSpan Duration,
+        double OpacityFrom)
     {
         public double GetProgress(DateTimeOffset now)
         {

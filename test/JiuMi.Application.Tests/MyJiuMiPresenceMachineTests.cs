@@ -98,6 +98,37 @@ public sealed class MyJiuMiPresenceMachineTests
     }
 
     [Fact]
+    public void TryBeginLeave_GivenADraggedOutSleepingCat_EntersLeaving()
+    {
+        var machine = new MyJiuMiPresenceMachine();
+
+        bool started = machine.TryBeginLeave(
+            MyJiuMiLeaveTrigger.DraggedOut,
+            pageCurrent: true,
+            catAwake: false,
+            desktopAvailable: true);
+
+        Assert.True(started);
+        Assert.Equal(MyJiuMiPresence.Leaving, machine.Presence);
+    }
+
+    [Fact]
+    public void TryCancelLeave_GivenAFailedDragOutHandoff_ReturnsHome()
+    {
+        var machine = new MyJiuMiPresenceMachine();
+        Assert.True(machine.TryBeginLeave(
+            MyJiuMiLeaveTrigger.DraggedOut,
+            pageCurrent: true,
+            catAwake: true,
+            desktopAvailable: true));
+
+        bool cancelled = machine.TryCancelLeave();
+
+        Assert.True(cancelled);
+        Assert.Equal(MyJiuMiPresence.Home, machine.Presence);
+    }
+
+    [Fact]
     public void TryBeginLeave_WhileLeaving_IgnoresRepeatedRequests()
     {
         var machine = new MyJiuMiPresenceMachine();

@@ -36,7 +36,7 @@ public sealed class MyJiuMiPresenceMachine
         bool desktopAvailable)
     {
         if (Presence != MyJiuMiPresence.Home ||
-            !MyJiuMiTransitionRules.ShouldWalkOut(trigger, pageCurrent, catAwake, desktopAvailable))
+            !MyJiuMiTransitionRules.ShouldLeavePage(trigger, pageCurrent, catAwake, desktopAvailable))
         {
             return false;
         }

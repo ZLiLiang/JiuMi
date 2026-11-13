@@ -26,6 +26,22 @@ public static class MyJiuMiTransitionRules
     public const double DesktopWalkDistanceDip = 40;
 
     /// <summary>
+    /// The distance, in DIP, a drag must pass beyond the room's visible edge before the release
+    /// hands the cat to the desktop instead of bouncing back.
+    /// </summary>
+    public const double DragOutCommitDistanceDip = 48;
+
+    /// <summary>
+    /// Gets how long the 200 to 160 DIP handoff takes, anchored at the cat's bottom-centre.
+    /// </summary>
+    public static TimeSpan DragHandoffDuration { get; } = TimeSpan.FromMilliseconds(120);
+
+    /// <summary>
+    /// Gets the scale of the 160 DIP desktop cat relative to the 200 DIP page cat.
+    /// </summary>
+    public static double DesktopScale => DesktopSizeDip / HomeSizeDip;
+
+    /// <summary>
     /// Gets the longest time hiding to the tray waits for the cat to reach the room edge.
     /// </summary>
     public static TimeSpan TrayHideTimeout { get; } = TimeSpan.FromMilliseconds(900);
@@ -42,22 +58,103 @@ public static class MyJiuMiTransitionRules
     public static TimeSpan MinimizeEntrance { get; } = TimeSpan.FromMilliseconds(150);
 
     /// <summary>
-    /// Reports whether the cat may walk out for the given shell action.
+    /// Reports whether the cat may leave the page for the desktop for the given trigger.
     /// </summary>
-    /// <param name="trigger">The action that is about to hide or minimize the shell.</param>
+    /// <param name="trigger">The action that is about to hide or minimize the shell, or the drag release.</param>
     /// <param name="pageCurrent">Whether the My JiuMi page is the page currently shown.</param>
     /// <param name="catAwake">Whether the cat is awake and available.</param>
     /// <param name="desktopAvailable">Whether a desktop host may be attempted.</param>
-    /// <returns><see langword="true"/> when the cat should walk out instead of pausing at home.</returns>
-    public static bool ShouldWalkOut(
+    /// <returns><see langword="true"/> when the cat should leave instead of pausing at home.</returns>
+    /// <remarks>
+    /// A sleeping cat stays home when the shell hides or minimizes, but a drag picks it up directly.
+    /// </remarks>
+    public static bool ShouldLeavePage(
         MyJiuMiLeaveTrigger trigger,
         bool pageCurrent,
         bool catAwake,
-        bool desktopAvailable) =>
-        trigger is MyJiuMiLeaveTrigger.HiddenToTray or MyJiuMiLeaveTrigger.Minimized &&
-        pageCurrent &&
-        catAwake &&
-        desktopAvailable;
+        bool desktopAvailable)
+    {
+        if (!pageCurrent || !desktopAvailable)
+        {
+            return false;
+        }
+
+        return trigger switch
+        {
+            MyJiuMiLeaveTrigger.HiddenToTray or MyJiuMiLeaveTrigger.Minimized => catAwake,
+            MyJiuMiLeaveTrigger.DraggedOut => true,
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// Reports whether releasing a dragged cat should create the desktop host. The pointer must be
+    /// at least <see cref="DragOutCommitDistanceDip"/> beyond the visible room.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="point">The release point in physical screen pixels.</param>
+    /// <param name="scaling">The screen scale factor where 1.0 is 100%.</param>
+    /// <returns><see langword="true"/> when the release commits to the desktop.</returns>
+    public static bool ShouldCommitDragOut(
+        MyJiuMiScreenRect room,
+        MyJiuMiScreenPoint point,
+        double scaling)
+    {
+        if (room.IsEmpty)
+        {
+            return false;
+        }
+
+        long deltaX = point.X < room.X
+            ? room.X - (long)point.X
+            : point.X > room.Right
+                ? point.X - (long)room.Right
+                : 0;
+        long deltaY = point.Y < room.Y
+            ? room.Y - (long)point.Y
+            : point.Y > room.Bottom
+                ? point.Y - (long)room.Bottom
+                : 0;
+        double distance = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
+        double threshold = DragOutCommitDistanceDip * Math.Max(scaling, 0.01d);
+        return distance >= threshold;
+    }
+
+    /// <summary>
+    /// Normalizes a screen X inside the room to <c>0</c>–<c>1</c> and clamps values outside it.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="x">The screen X to normalize.</param>
+    /// <returns>The normalized horizontal position.</returns>
+    public static double ProjectRoomX(MyJiuMiScreenRect room, int x) =>
+        room.IsEmpty
+            ? MyJiuMiPositionRules.Default
+            : MyJiuMiPositionRules.Clamp((x - (double)room.X) / room.Width);
+
+    /// <summary>
+    /// Projects the cat's bottom-centre onto the room floor when the release point lies inside the
+    /// visible room. The vertical position is ignored; only the horizontal position matters.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="releasePoint">The pointer's release point in physical screen pixels.</param>
+    /// <param name="anchorX">The cat's bottom-centre X in physical screen pixels.</param>
+    /// <param name="positionX">The normalized horizontal position when the release is inside.</param>
+    /// <returns><see langword="true"/> when the release point lies inside the visible room.</returns>
+    public static bool TryProjectRoomX(
+        MyJiuMiScreenRect room,
+        MyJiuMiScreenPoint releasePoint,
+        int anchorX,
+        out double positionX)
+    {
+        if (!room.Contains(releasePoint))
+        {
+            positionX = MyJiuMiPositionRules.Default;
+            return false;
+        }
+
+        positionX = ProjectRoomX(room, anchorX);
+        return true;
+    }
 
     /// <summary>
     /// Gets the room edge nearest to a normalized position: <c>0</c> for the left edge and <c>1</c>
