@@ -109,6 +109,8 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     {
         base.OnDataContextChanged(e);
 
+        // A swap while the pointer is down must not leave an overlay image or preview window behind.
+        EndActiveDrag();
         Unsubscribe();
         _viewModel?.Session.DetachHomeHost(this);
         _viewModel = DataContext as MyJiuMiViewModel;
@@ -370,6 +372,12 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         _isDragging = false;
         _pointer = e.Pointer;
         _pressOrigin = e.GetPosition(RoomWall);
+        if (_window is not null && CatStage.TranslatePoint(default, _window) is { } origin)
+        {
+            // Record the grab offset at the press, not at the first move past the threshold.
+            _dragGrabOffset = e.GetPosition(_window) - origin;
+        }
+
         e.Pointer.Capture(CatHitArea);
         e.Handled = true;
     }
@@ -434,14 +442,11 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     {
         _isDragPreviewActive = false;
         _isDragPreviewUnavailable = false;
-        if (_window is null ||
-            _viewModel is null ||
-            CatStage.TranslatePoint(default, _window) is not { } origin)
+        if (_window is null || _viewModel is null)
         {
             return;
         }
 
-        _dragGrabOffset = e.GetPosition(_window) - origin;
         _dragLayer = OverlayLayer.GetOverlayLayer(this);
         if (_dragLayer is null)
         {

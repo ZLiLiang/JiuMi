@@ -105,15 +105,15 @@ public static class MyJiuMiTransitionRules
             return false;
         }
 
-        long deltaX = point.X < room.X
-            ? room.X - (long)point.X
+        double deltaX = point.X < room.X
+            ? room.X - (double)point.X
             : point.X > room.Right
-                ? point.X - (long)room.Right
+                ? point.X - (double)room.Right
                 : 0;
-        long deltaY = point.Y < room.Y
-            ? room.Y - (long)point.Y
+        double deltaY = point.Y < room.Y
+            ? room.Y - (double)point.Y
             : point.Y > room.Bottom
-                ? point.Y - (long)room.Bottom
+                ? point.Y - (double)room.Bottom
                 : 0;
         double distance = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
         double threshold = DragOutCommitDistanceDip * Math.Max(scaling, 0.01d);

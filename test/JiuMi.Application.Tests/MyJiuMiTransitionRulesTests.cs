@@ -201,7 +201,7 @@ public sealed class MyJiuMiTransitionRulesTests
     }
 
     [Fact]
-    public void DragHandoffDuration_Is120Milliseconds()
+    public void DragHandoffDuration_GivenTheHandoffContract_Is120Milliseconds()
     {
         Assert.Equal(TimeSpan.FromMilliseconds(120), MyJiuMiTransitionRules.DragHandoffDuration);
     }

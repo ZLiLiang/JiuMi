@@ -415,7 +415,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         IReadOnlyList<MyJiuMiScreenArea> workAreas = ReadWorkAreas();
         if (workAreas.Count == 0)
         {
-            return true;
+            CloseDragPreview();
+            return false;
         }
 
         MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
@@ -484,6 +485,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         // A failed handoff bounces back to where the drag started; drag-out never writes settings.
         CloseDragPreview();
+        CancelLeave();
         _machine.SetPosition(_dragStartPositionX);
         UpdateVisuals(forceFrame: true);
         return false;
@@ -1313,11 +1315,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         if (progress >= 1)
         {
-            _desktopSizeDip = MyJiuMiTransitionRules.DesktopSizeDip;
-            window.Width = _desktopSizeDip;
-            window.Height = _desktopSizeDip;
-            DesktopOpacity = 1;
-            _desktopEntrance = null;
+            // Re-place the window at the final size so the bottom-centre stays on the anchor.
+            FinishDesktopEntrance();
         }
     }
 
