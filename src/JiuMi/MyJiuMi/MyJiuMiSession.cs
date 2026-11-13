@@ -59,6 +59,11 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private MyJiuMiState? _renderedState;
     private int _renderedFrame = -1;
     private bool _renderedJumping;
+    private Bitmap? _renderedJumpFrame;
+    private Bitmap? _jumpAirborne;
+    private Bitmap? _jumpLanding;
+    private bool _jumpFramesLoaded;
+    private bool _jumpFramesFailed;
     private DesktopEntranceRun? _desktopEntrance;
     private DesktopWalk? _desktopWalk;
     private TrayLeave? _trayLeave;
@@ -539,6 +544,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             }
         }
 
+        _jumpAirborne?.Dispose();
+        _jumpAirborne = null;
+        _jumpLanding?.Dispose();
+        _jumpLanding = null;
         _frames.Clear();
         _failedStates.Clear();
     }
@@ -571,6 +580,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _motionStartedAt = _timeProvider.GetUtcNow();
         _jumpStartedAt = null;
         _renderedJumping = false;
+        _renderedJumpFrame = null;
         ResetMotion();
     }
 
@@ -601,6 +611,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
     private void StartJump(DateTimeOffset now)
     {
+        EnsureJumpFrames();
         if (CanJump())
         {
             _jumpStartedAt = now;
@@ -608,6 +619,59 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     }
 
     private void EndJump() => _jumpStartedAt = null;
+
+    private Bitmap? GetJumpFrame(DateTimeOffset now)
+    {
+        if (_jumpStartedAt is not { } jumpStartedAt)
+        {
+            return null;
+        }
+
+        double progress =
+            (now - jumpStartedAt).TotalSeconds / MyJiuMiMotionRules.JumpDuration.TotalSeconds;
+        if (progress < 0.14 || progress >= 0.84)
+        {
+            return null;
+        }
+
+        return progress < 0.70 ? _jumpAirborne : _jumpLanding;
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Asset loading is a UI boundary; a missing jump frame must fall back to the stand frame.")]
+    private void EnsureJumpFrames()
+    {
+        if (_isDisposed || _jumpFramesLoaded || _jumpFramesFailed)
+        {
+            return;
+        }
+
+        _jumpFramesLoaded = true;
+        try
+        {
+            _jumpAirborne = LoadJumpFrame("jump/airborne.png");
+            _jumpLanding = LoadJumpFrame("jump/landing.png");
+        }
+        catch (Exception exception)
+        {
+            _jumpFramesFailed = true;
+            _jumpAirborne?.Dispose();
+            _jumpAirborne = null;
+            _jumpLanding?.Dispose();
+            _jumpLanding = null;
+            _logger.Warning(
+                exception,
+                "The My JiuMi jump frames could not be loaded; the stand frame is used");
+        }
+    }
+
+    private static Bitmap LoadJumpFrame(string path)
+    {
+        using Stream stream = AssetLoader.Open(new Uri(_assetRoot, path));
+        return new Bitmap(stream);
+    }
 
     private bool IsJumpActive(DateTimeOffset now) =>
         Presence == MyJiuMiPresence.Home &&
@@ -746,33 +810,44 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         int frameIndex = _machine.FrameIndex;
         DateTimeOffset now = _timeProvider.GetUtcNow();
         bool jumping = IsJumpActive(now);
+        Bitmap? jumpFrame = jumping ? GetJumpFrame(now) : null;
         if (forceFrame ||
             _renderedState != state ||
             _renderedFrame != frameIndex ||
-            _renderedJumping != jumping)
+            _renderedJumping != jumping ||
+            !ReferenceEquals(_renderedJumpFrame, jumpFrame))
         {
-            MyJiuMiState renderState = jumping ? MyJiuMiState.Stretch : state;
-            int renderFrame = jumping ? MyJiuMiMotionRules.JumpFrameIndex : frameIndex;
-            Bitmap?[]? frames = GetFrames(renderState);
-            if (frames is null || renderFrame >= frames.Length)
+            if (jumpFrame is not null)
             {
-                IsFrameVisible = false;
-                Frame = null;
-                if (Presence == MyJiuMiPresence.Desktop)
-                {
-                    HandleDesktopFrameLoss();
-                    return;
-                }
+                IsFrameVisible = true;
+                Frame = jumpFrame;
             }
             else
             {
-                IsFrameVisible = true;
-                Frame = frames[renderFrame];
+                MyJiuMiState renderState = jumping ? MyJiuMiState.Stretch : state;
+                int renderFrame = jumping ? MyJiuMiMotionRules.JumpFrameIndex : frameIndex;
+                Bitmap?[]? frames = GetFrames(renderState);
+                if (frames is null || renderFrame >= frames.Length)
+                {
+                    IsFrameVisible = false;
+                    Frame = null;
+                    if (Presence == MyJiuMiPresence.Desktop)
+                    {
+                        HandleDesktopFrameLoss();
+                        return;
+                    }
+                }
+                else
+                {
+                    IsFrameVisible = true;
+                    Frame = frames[renderFrame];
+                }
             }
 
             _renderedState = state;
             _renderedFrame = frameIndex;
             _renderedJumping = jumping;
+            _renderedJumpFrame = jumpFrame;
         }
 
         IsFacingRight = _machine.IsFacingRight;
@@ -1187,6 +1262,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _renderedState = null;
         _renderedFrame = -1;
         _renderedJumping = false;
+        _renderedJumpFrame = null;
         EndJump();
         ResetMotion();
     }

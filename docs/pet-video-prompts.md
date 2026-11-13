@@ -43,6 +43,22 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - 中性底预览：`docs/images/pet/action-source/jiumi-cat-6s-actions-neutral.mp4`
 - 规格：768×768，24 fps，6.58 s。
 - 内容：趴 → 卷成睡球 → 醒 → 坐 → 走 → 蹲 → 小跳 → 落地站立。
-- 用法：按关键动作抽 1–3 帧，按本文的导出流程去背/去阴影、固定缩放与锚点，导出 400×400 RGBA；只把需要的姿态接进 `MyJiuMiAnimationCatalog`。
-- 带“AI生成”水印的原片不进 git；当前页面微动效（呼吸/轻摆/眨眼/小跳）不依赖这段视频。
+- 用法：按关键动作抽 1–3 帧，按本文的导出流程去背/去阴影、固定缩放与锚点，导出 400×400 RGBA；状态帧接进 `MyJiuMiAnimationCatalog`，点击小跳的叠加层用独立的 `jump/` 资产。
+- 带“AI生成”水印的原片不进 git；当前页面微动效（呼吸/轻摆/眨眼）不依赖这段视频。
+
+### 抽帧姿势（2026-11-12）
+
+从上面的绿幕视频抽出 4 个姿势，已抠像、统一缩放并贴地对齐到 400×400 RGBA：
+
+| 姿势 | 文件 | 时间点 | 用途 |
+| --- | --- | --- | --- |
+| 坐姿 | `docs/images/pet/action-source/poses/sit.png` | 3.5 s | 后续休息/起身过渡候选 |
+| 腾空 | `docs/images/pet/action-source/poses/airborne.png` | 5.3 s | 点击小跳的腾空帧 |
+| 落地 | `docs/images/pet/action-source/poses/landing.png` | 5.6 s | 点击小跳的落地帧 |
+| 站姿 | `docs/images/pet/action-source/poses/stand.png` | 6.4 s | 站姿参考；现有 `stretch/03` 已覆盖 |
+
+- 预览：`docs/images/pet/action-source/poses/preview.png`。
+- 腾空/落地已复制到运行时 `src/JiuMi/Assets/MyJiuMi/jump/`，由 `MyJiuMiSession` 的小跳叠加层按 14%/70%/84% 相位换帧；不新增状态。
+- 处理：绿幕抠像；以站姿高度对齐现有 `stretch/03` 的 291 px；坐/落地/站贴地，腾空由小跳的位移层抬升。
+- 已知差异：抽帧线宽比现有帧略细，眼部更圆；200 DIP 下可接受，2× 可见。
 
