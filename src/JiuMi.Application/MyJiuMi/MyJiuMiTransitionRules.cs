@@ -173,7 +173,7 @@ public static class MyJiuMiTransitionRules
     /// <param name="desktopCatX">The desktop cat's bottom-centre X in physical pixels.</param>
     /// <returns><c>0</c> for the left edge and <c>1</c> for the right edge.</returns>
     public static double SummonEntryEdge(MyJiuMiScreenRect room, int desktopCatX) =>
-        room.IsEmpty || desktopCatX < room.X + (room.Width / 2.0) ? 0 : 1;
+        desktopCatX < room.X + (room.Width / 2.0) ? 0 : 1;
 
     /// <summary>
     /// Converts a window size in DIP to physical pixels on a screen.

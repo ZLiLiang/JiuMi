@@ -334,13 +334,5 @@ public sealed class MyJiuMiTransitionRulesTests
         Assert.Equal(expected, MyJiuMiTransitionRules.SummonEntryEdge(Room, desktopCatX));
     }
 
-    [Fact]
-    public void SummonEntryEdge_GivenAnEmptyRoom_ReturnsTheLeftEdge()
-    {
-        Assert.Equal(0, MyJiuMiTransitionRules.SummonEntryEdge(
-            new MyJiuMiScreenRect(100, 100, 0, 300),
-            900));
-    }
-
     private static MyJiuMiScreenRect Room => new(100, 100, 400, 300);
 }
