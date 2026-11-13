@@ -35,6 +35,8 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     private double _dragOffsetX;
     private PixelPoint? _catScreenAnchor;
     private bool _isDragOverlayActive;
+    private bool _isDragPreviewActive;
+    private bool _isDragPreviewUnavailable;
     private bool _isPressed;
     private bool _isDragging;
     private bool _isSubscribed;
@@ -430,6 +432,8 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 
     private void BeginDragOverlay(PointerEventArgs e)
     {
+        _isDragPreviewActive = false;
+        _isDragPreviewUnavailable = false;
         if (_window is null ||
             _viewModel is null ||
             CatStage.TranslatePoint(default, _window) is not { } origin)
@@ -473,10 +477,88 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         Point topLeft = e.GetPosition(_window) - _dragGrabOffset;
         Canvas.SetLeft(cat, topLeft.X);
         Canvas.SetTop(cat, topLeft.Y);
+
+        // Once any part of the cat slot leaves the window, a temporary desktop host keeps the cat
+        // visible outside; the page window still owns the pointer capture until the release.
+        Rect client = new(_window.ClientSize);
+        double size = MyJiuMiInteractionRules.CatSize;
+        bool inside = topLeft.X >= client.Left &&
+            topLeft.Y >= client.Top &&
+            topLeft.X + size <= client.Right &&
+            topLeft.Y + size <= client.Bottom;
+        UpdateDragPreview(topLeft, inside);
+    }
+
+    private void UpdateDragPreview(Point topLeft, bool inside)
+    {
+        if (_viewModel is null || _window is null)
+        {
+            return;
+        }
+
+        if (inside)
+        {
+            if (_isDragPreviewActive)
+            {
+                // Show the overlay copy first so the hand-back never leaves an empty frame.
+                if (_dragCat is not null)
+                {
+                    _dragCat.IsVisible = true;
+                }
+
+                _viewModel.CloseDragPreview();
+                _isDragPreviewActive = false;
+            }
+
+            return;
+        }
+
+        if (_isDragPreviewUnavailable)
+        {
+            return;
+        }
+
+        double size = MyJiuMiInteractionRules.CatSize;
+        PixelPoint anchor = _window.PointToScreen(new Point(
+            topLeft.X + (size / 2),
+            topLeft.Y + size));
+
+        if (!_isDragPreviewActive)
+        {
+            _isDragPreviewActive = _viewModel.ShowDragPreview(anchor);
+            if (_isDragPreviewActive)
+            {
+                if (_dragCat is not null)
+                {
+                    _dragCat.IsVisible = false;
+                }
+            }
+            else
+            {
+                _isDragPreviewUnavailable = true;
+            }
+
+            return;
+        }
+
+        if (!_viewModel.MoveDragPreview(anchor))
+        {
+            _isDragPreviewActive = false;
+            if (_dragCat is not null)
+            {
+                _dragCat.IsVisible = true;
+            }
+        }
     }
 
     private void EndDragOverlay()
     {
+        if (_isDragPreviewActive)
+        {
+            _viewModel?.CloseDragPreview();
+            _isDragPreviewActive = false;
+        }
+
         if (_dragCat is { } cat && _dragLayer is { } layer)
         {
             layer.Children.Remove(cat);
@@ -516,15 +598,16 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
                 new MyJiuMiScreenPoint(pointerScreen.X, pointerScreen.Y),
                 _window.RenderScaling);
 
-        EndDragOverlay();
-
         if (commits)
         {
-            // A failed handoff is bounced back by the session without writing the position.
+            // The preview is adopted by the session and only then is the overlay cleaned up, so the
+            // cat never disappears between the two hosts. A failed handoff is bounced by the session.
             _viewModel.TryHandOffToDesktop(anchor!.Value);
+            EndDragOverlay();
             return;
         }
 
+        EndDragOverlay();
         _viewModel.EndDrag();
     }
 

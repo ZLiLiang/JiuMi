@@ -39,6 +39,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private MainWindow? _shell;
     private IMyJiuMiHomeHost? _homeHost;
     private MyJiuMiDesktopWindow? _desktopWindow;
+    private MyJiuMiDesktopWindow? _dragPreview;
     private Bitmap? _frame;
     private bool _isFrameVisible;
     private bool _isHeartVisible;
@@ -272,6 +273,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         StopMachine();
+        CloseDragPreview();
         HomeScale = 1;
         OnPropertyChanged(nameof(IsMachineActive));
     }
@@ -336,6 +338,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _homeEntranceStartedAt = null;
         HomeScale = 1;
         _dragStartPositionX = _machine.PositionX;
+        CloseDragPreview();
         _machine.BeginDrag();
         UpdateVisuals(forceFrame: true);
     }
@@ -365,9 +368,77 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
+        CloseDragPreview();
         _machine.EndDrag();
         SavePosition();
         UpdateVisuals(forceFrame: true);
+    }
+
+    /// <summary>
+    /// Shows the temporary 200 DIP desktop preview that keeps the dragged cat visible once it leaves
+    /// the main window. The preview does not change the cat's presence; the release still decides.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="true"/> when the preview is on screen.</returns>
+    public bool ShowDragPreview(PixelPoint anchor)
+    {
+        if (_isDisposed || Presence != MyJiuMiPresence.Home)
+        {
+            return false;
+        }
+
+        CloseDragPreview();
+        MyJiuMiDesktopWindow? window = CreateDesktopPreview(anchor);
+        if (window is null)
+        {
+            return false;
+        }
+
+        _dragPreview = window;
+        window.Closed += OnDragPreviewClosed;
+        MoveDragPreview(anchor);
+        return true;
+    }
+
+    /// <summary>
+    /// Moves the drag preview so its bottom-centre follows <paramref name="anchor"/>.
+    /// </summary>
+    /// <param name="anchor">The cat's bottom-centre in physical screen pixels.</param>
+    /// <returns><see langword="false"/> when the preview is no longer on screen.</returns>
+    public bool MoveDragPreview(PixelPoint anchor)
+    {
+        if (_dragPreview is not { } window)
+        {
+            return false;
+        }
+
+        IReadOnlyList<MyJiuMiScreenArea> workAreas = ReadWorkAreas();
+        if (workAreas.Count == 0)
+        {
+            return true;
+        }
+
+        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+            new MyJiuMiScreenPoint(anchor.X, anchor.Y),
+            MyJiuMiTransitionRules.HomeSizeDip,
+            workAreas);
+        window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
+        return true;
+    }
+
+    /// <summary>
+    /// Closes the drag preview without changing the presence, used on re-entry and on a bounce.
+    /// </summary>
+    public void CloseDragPreview()
+    {
+        if (_dragPreview is not { } window)
+        {
+            return;
+        }
+
+        _dragPreview = null;
+        window.Closed -= OnDragPreviewClosed;
+        CloseWindow(window);
     }
 
     /// <summary>
@@ -392,6 +463,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 catAwake: _machine.IsAwake,
                 desktopAvailable: true))
         {
+            CloseDragPreview();
             _machine.SetWanderingEnabled(true);
             UpdateVisuals(forceFrame: true);
             return false;
@@ -405,12 +477,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _leaveTrigger = MyJiuMiLeaveTrigger.DraggedOut;
         NotifyPresence();
 
-        if (OpenDesktop(anchor, DesktopEntrance.Dragged))
+        if (TryAdoptDragPreview(anchor) || OpenDesktop(anchor, DesktopEntrance.Dragged))
         {
             return true;
         }
 
         // A failed handoff bounces back to where the drag started; drag-out never writes settings.
+        CloseDragPreview();
         _machine.SetPosition(_dragStartPositionX);
         UpdateVisuals(forceFrame: true);
         return false;
@@ -612,6 +685,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _trayLeave = null;
         StopHandoffTimer();
         _pendingHandoff = null;
+        CloseDragPreview();
         if (_shell is { } shell)
         {
             shell.Screens.Changed -= OnScreensChanged;
@@ -948,6 +1022,41 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
     }
 
+    private bool TryAdoptDragPreview(PixelPoint anchor)
+    {
+        if (_dragPreview is not { } window)
+        {
+            return false;
+        }
+
+        IReadOnlyList<MyJiuMiScreenArea> workAreas = ReadWorkAreas();
+        if (workAreas.Count == 0)
+        {
+            CloseDragPreview();
+            return false;
+        }
+
+        _dragPreview = null;
+        window.Closed -= OnDragPreviewClosed;
+        window.Closed += OnDesktopWindowClosed;
+        _desktopWindow = window;
+        _desktopSizeDip = MyJiuMiTransitionRules.HomeSizeDip;
+        DesktopOpacity = 1;
+
+        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+            new MyJiuMiScreenPoint(anchor.X, anchor.Y),
+            MyJiuMiTransitionRules.HomeSizeDip,
+            workAreas);
+        window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
+
+        _presence.TryCompleteLeave();
+        NotifyPresence();
+        BeginDesktopEntrance(DesktopEntrance.Dragged, anchor, placement.Area);
+        StartTimer();
+        UpdateVisuals(forceFrame: true);
+        return true;
+    }
+
     private bool OpenDesktop(PixelPoint anchor, DesktopEntrance entrance)
     {
         if (_isDisposed)
@@ -1051,6 +1160,66 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return null;
         }
 
+        return window;
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Window creation is a UI boundary; a missing preview falls back to the clipped overlay.")]
+    private MyJiuMiDesktopWindow? CreateDesktopPreview(PixelPoint anchor)
+    {
+        if (!EnsureDesktopFrames())
+        {
+            return null;
+        }
+
+        IReadOnlyList<MyJiuMiScreenArea> workAreas = ReadWorkAreas();
+        if (workAreas.Count == 0)
+        {
+            return null;
+        }
+
+        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+            new MyJiuMiScreenPoint(anchor.X, anchor.Y),
+            MyJiuMiTransitionRules.HomeSizeDip,
+            workAreas);
+
+        MyJiuMiDesktopWindow window;
+        try
+        {
+            window = new MyJiuMiDesktopWindow(this);
+        }
+        catch (Exception exception)
+        {
+            _logger.Debug(exception, "The My JiuMi drag preview could not be created");
+            return null;
+        }
+
+        window.Width = MyJiuMiTransitionRules.HomeSizeDip;
+        window.Height = MyJiuMiTransitionRules.HomeSizeDip;
+        window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
+        DesktopOpacity = 0;
+
+        try
+        {
+            window.Show();
+        }
+        catch (Exception exception)
+        {
+            _logger.Debug(exception, "The My JiuMi drag preview could not be shown");
+            CloseWindow(window);
+            return null;
+        }
+
+        if (window.ActualTransparencyLevel != WindowTransparencyLevel.Transparent)
+        {
+            _logger.Debug("The My JiuMi drag preview requires transparency");
+            CloseWindow(window);
+            return null;
+        }
+
+        DesktopOpacity = 1;
         return window;
     }
 
@@ -1271,6 +1440,32 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _desktopEntrance = null;
         _logger.Warning("The My JiuMi desktop window closed unexpectedly; the cat returns home");
         ReturnHomeFromDesktop();
+    }
+
+    private void OnDragPreviewClosed(object? sender, EventArgs e)
+    {
+        if (sender is not MyJiuMiDesktopWindow window)
+        {
+            return;
+        }
+
+        window.Closed -= OnDragPreviewClosed;
+        if (ReferenceEquals(_dragPreview, window))
+        {
+            _dragPreview = null;
+        }
+    }
+
+    private static void CloseWindow(MyJiuMiDesktopWindow window)
+    {
+        try
+        {
+            window.Close();
+        }
+        catch (InvalidOperationException)
+        {
+            // Already closing.
+        }
     }
 
     private IReadOnlyList<MyJiuMiScreenArea> ReadWorkAreas()
