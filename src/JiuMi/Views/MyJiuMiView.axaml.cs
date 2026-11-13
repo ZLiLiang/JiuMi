@@ -649,7 +649,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 
     private void OnRoomDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_viewModel is null || !_viewModel.IsActive || RoomWall.Bounds.Width <= 0)
+        if (_viewModel is null || RoomWall.Bounds.Width <= 0)
         {
             return;
         }
@@ -660,7 +660,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
             return;
         }
 
-        _viewModel.Summon(e.GetPosition(RoomWall).X / RoomWall.Bounds.Width);
+        _viewModel.SummonAt(e.GetPosition(RoomWall).X / RoomWall.Bounds.Width);
         e.Handled = true;
     }
 }

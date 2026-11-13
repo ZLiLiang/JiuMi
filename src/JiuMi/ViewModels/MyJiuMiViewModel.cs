@@ -54,6 +54,11 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public double CatCenterX => _catMargin.Left + (MyJiuMiInteractionRules.CatSize / 2);
 
     /// <summary>
+    /// Gets a value indicating whether the empty-room hint explains that the cat is on the desktop.
+    /// </summary>
+    public bool IsDesktopHintVisible => _session.Presence == MyJiuMiPresence.Desktop;
+
+    /// <summary>
     /// Gets a value indicating whether the cat host is shown in the page; it is hidden while the cat
     /// lives on the desktop.
     /// </summary>
@@ -198,10 +203,21 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public void CloseDragPreview() => _session.CloseDragPreview();
 
     /// <summary>
-    /// Summons the cat to the double-clicked floor position.
+    /// Handles a double click on the empty floor: summons the page cat, or calls the desktop cat
+    /// home, depending on where the cat currently lives.
     /// </summary>
     /// <param name="positionX">The normalized click position.</param>
-    public void Summon(double positionX) => _session.Summon(positionX);
+    public void SummonAt(double positionX)
+    {
+        if (_session.Presence == MyJiuMiPresence.Desktop)
+        {
+            _session.TrySummonFromDesktop(positionX);
+        }
+        else if (IsActive)
+        {
+            _session.Summon(positionX);
+        }
+    }
 
     private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -222,6 +238,7 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsCatRootVisible));
                 OnPropertyChanged(nameof(IsCatVisible));
                 OnPropertyChanged(nameof(IsActive));
+                OnPropertyChanged(nameof(IsDesktopHintVisible));
                 break;
 
             case nameof(MyJiuMiSession.IsFrameVisible):

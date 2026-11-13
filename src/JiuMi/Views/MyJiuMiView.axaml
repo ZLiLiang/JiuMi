@@ -96,7 +96,16 @@
             </Grid>
           </Grid>
           <Border Grid.Row="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
-          <Border Grid.Row="2" Background="{DynamicResource SubtleFillColorSecondaryBrush}" />
+          <Grid Grid.Row="2">
+            <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="13"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       IsHitTestVisible="False"
+                       IsVisible="{Binding IsDesktopHintVisible}"
+                       Text="{loc:Localize MyJiuMi.DesktopHint}" />
+          </Grid>
         </Grid>
       </Border>
     </Grid>

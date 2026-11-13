@@ -139,6 +139,44 @@ public sealed class MyJiuMiStateMachineDesktopTests
         Assert.True(walked);
     }
 
+    [Fact]
+    public void Summon_GivenASleepingDesktopCat_WakesAtTheEntryEdgeThenWalksIn()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Advance(machine, time, MyJiuMiInteractionRules.SleepDelay);
+        Advance(machine, time, TimeSpan.FromMilliseconds(450));
+        Assert.Equal(MyJiuMiState.Sleep, machine.State);
+
+        machine.SetPosition(MyJiuMiTransitionRules.SummonEntryEdge(
+            new MyJiuMiScreenRect(0, 0, 400, 300),
+            desktopCatX: 100));
+        machine.Summon(0.8);
+
+        Assert.Equal(MyJiuMiState.Wake, machine.State);
+        Assert.Equal(0, machine.PositionX, 9);
+
+        Advance(machine, time, TimeSpan.FromMilliseconds(450));
+        Assert.Equal(MyJiuMiState.Walk, machine.State);
+        Assert.True(machine.IsFacingRight);
+
+        Advance(machine, time, TimeSpan.FromSeconds(9));
+        Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
+        Assert.Equal(0.8, machine.PositionX, 6);
+    }
+
+    [Fact]
+    public void Summon_GivenADesktopWalkInTargetOutsideTheRoom_ClampsToTheRightEdge()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        machine.SetPosition(0);
+        machine.Summon(2);
+
+        Advance(machine, time, TimeSpan.FromSeconds(10));
+
+        Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
+        Assert.Equal(1, machine.PositionX, 9);
+    }
+
     private static (MyJiuMiStateMachine Machine, ManualTimeProvider Time) CreateMachine(
         double random = 0.25,
         double positionX = 0.5)

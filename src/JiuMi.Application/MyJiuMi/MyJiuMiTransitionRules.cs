@@ -166,6 +166,16 @@ public static class MyJiuMiTransitionRules
         MyJiuMiPositionRules.Clamp(positionX) < 0.5 ? 0 : 1;
 
     /// <summary>
+    /// Gets the room edge a summoned cat walks in from: the edge nearer the desktop cat's last
+    /// screen X.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="desktopCatX">The desktop cat's bottom-centre X in physical pixels.</param>
+    /// <returns><c>0</c> for the left edge and <c>1</c> for the right edge.</returns>
+    public static double SummonEntryEdge(MyJiuMiScreenRect room, int desktopCatX) =>
+        room.IsEmpty || desktopCatX < room.X + (room.Width / 2.0) ? 0 : 1;
+
+    /// <summary>
     /// Converts a window size in DIP to physical pixels on a screen.
     /// </summary>
     /// <param name="sizeDip">The window size in device-independent pixels.</param>

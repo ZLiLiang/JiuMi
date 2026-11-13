@@ -322,5 +322,25 @@ public sealed class MyJiuMiTransitionRulesTests
             out _));
     }
 
+    [Theory]
+    [InlineData(250, 0)]
+    [InlineData(299, 0)]
+    [InlineData(300, 1)]
+    [InlineData(450, 1)]
+    public void SummonEntryEdge_GivenTheDesktopCatX_ReturnsTheNearerRoomEdge(
+        int desktopCatX,
+        double expected)
+    {
+        Assert.Equal(expected, MyJiuMiTransitionRules.SummonEntryEdge(Room, desktopCatX));
+    }
+
+    [Fact]
+    public void SummonEntryEdge_GivenAnEmptyRoom_ReturnsTheLeftEdge()
+    {
+        Assert.Equal(0, MyJiuMiTransitionRules.SummonEntryEdge(
+            new MyJiuMiScreenRect(100, 100, 0, 300),
+            900));
+    }
+
     private static MyJiuMiScreenRect Room => new(100, 100, 400, 300);
 }
