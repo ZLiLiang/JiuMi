@@ -13,6 +13,7 @@
         Background="Transparent"
         ShowInTaskbar="False"
         CanResize="False"
+        Focusable="False"
         ShowActivated="False"
         WindowStartupLocation="Manual">
   <Grid x:Name="CatRoot"
