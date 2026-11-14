@@ -277,17 +277,17 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 尺寸 | 页面 200 DIP ↔ 桌面 160 DIP，底边中心锚点，120 ms 缩放 |
 | 持久化 | 不新增设置键；模式与屏幕坐标只在会话内；重启回页面 |
 | 降级 | 桌面宿主创建失败/帧缺失 → 取消过渡、猫留在家、Warning；显示器/DPI 变化夹回工作区 |
-| 焦点 | 点击会激活桌面窗（[#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已确认无解）；v1 接受 |
+| 焦点 | 点击/拖拽不改变前台窗口（[#156](https://github.com/ZLiLiang/JiuMi/issues/156)：无焦点样式 + `WM_ACTIVATE` 恢复）；双击打开页面时按预期激活主窗口 |
 
 - 桌面窗懒创建、回家即 `Close()`；页面在桌面模式显示空房间，底部提示 `MyJiuMi.DesktopHint`。
 - 走出/拖出的过渡态只允许一次在途迁移；退出、关机、页面切走与失败路径都直接回到 `Home` 或 `Desktop`，不留半状态。
-- 跨窗口连续拖出不在本设计内；spike [#141](https://github.com/ZLiLiang/JiuMi/issues/141) 评估可行性与代价。
+- 跨窗口连续拖出不在本设计内；spike [#141](https://github.com/ZLiLiang/JiuMi/issues/141) 实测可行（Win32 `SetCapture` 交接 23.4 ms、46 次移动跟随），但页面预览已覆盖连续视觉，无额外 UX 收益，继续采用松手提交。无焦点宿主由 [#156](https://github.com/ZLiLiang/JiuMi/issues/156) 交付。
 
 ### 与旧桌面实现的关系
 
 - [#108](https://github.com/ZLiLiang/JiuMi/issues/108) 分支保留作桌面模式参考，不合并；[#109](https://github.com/ZLiLiang/JiuMi/issues/109)、#110 作废；#112 parked。
 - 旧 `PetWindow` / `PetWindowController` / `petEnabled` / `petX` / `petY` 与 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 不进入页面模式；[#119](https://github.com/ZLiLiang/JiuMi/issues/119) 移除旧入口与键。ADR-0016 的桌面模式不复用旧实现与旧键：双宿主、会话内坐标、无设置键。
-- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 的无焦点结论被桌面模式接受：点击/拖拽会把桌面窗带到前台；不再为它做版本分叉。
+- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 的无焦点结论最初被桌面模式接受；[#156](https://github.com/ZLiLiang/JiuMi/issues/156) 已消除点击/拖拽抢前台，不再保留这个限制。
 - 桌面模式与页面模式共用角色、美术、状态机与帧缓存；v1 仍不建 `IPetLayer` 等预抽象，双宿主由 `MyJiuMiSession` 协调。
 
 ## 错误呈现与诊断

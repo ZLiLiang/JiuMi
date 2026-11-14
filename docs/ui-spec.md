@@ -142,18 +142,18 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 桌面模式（设计，未实现）
 
-猫可以被带离页面，作为 160 DIP 的置顶透明窗口留在桌面。页面始终是「家」：默认、重启与回到页面后都在房间里；桌面模式只在本次运行有效。完整权衡见 [ADR-0016](./adr/0016-desktop-mode.md)；实现票见 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)、[#139](https://github.com/ZLiLiang/JiuMi/issues/139)、[#140](https://github.com/ZLiLiang/JiuMi/issues/140)。
+猫可以被带离页面，作为 160 DIP 的置顶透明窗口留在桌面。页面始终是「家」：默认、重启与回到页面后都在房间里；桌面模式只在本次运行有效。完整权衡见 [ADR-0016](./adr/0016-desktop-mode.md)；实现票见 [#138](https://github.com/ZLiLiang/JiuMi/issues/138)、[#139](https://github.com/ZLiLiang/JiuMi/issues/139)、[#140](https://github.com/ZLiLiang/JiuMi/issues/140)、[#156](https://github.com/ZLiLiang/JiuMi/issues/156)。
 
 **窗口**
 
 | 项 | 值 |
 | --- | --- |
 | 尺寸 | 160 × 160 DIP；源帧仍为 400 × 400 |
-| 窗口 | 无边框、透明、置顶、不进任务栏、不可缩放、`ShowActivated=false`、手动定位 |
+| 窗口 | 无边框、透明、置顶、不进任务栏、不可缩放、`Focusable=false`、`ShowActivated=false`、手动定位 |
 | 内容 | 只画猫与爱心/`Zzz`；无房间、无地板、无接触阴影、无底板 |
 | 位置 | 拖出按猫底边中心落在松手位置；走出在窗口边缘；夹回最近工作区 |
 | 命中区 | 160 × 160 矩形，透明角落也会接点击（与 ADR-0014 一致） |
-| 焦点 | 点击/拖拽会把桌面窗带到前台；[#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已确认现有 Windows 方案无法避免，本版接受 |
+| 焦点 | 点击/拖拽不改变前台窗口（[#156](https://github.com/ZLiLiang/JiuMi/issues/156)）；双击打开页面时按预期激活主窗口 |
 
 **过渡**
 

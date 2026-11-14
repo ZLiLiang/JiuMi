@@ -26,7 +26,7 @@ ADR-0015 把 v1 定为页面优先：猫只生活在「我的JiuMi」页面，�
 
 - 页面猫在内容岛里，房间 `ClipToBounds`，约 200 DIP；状态机 `MyJiuMiStateMachine` 在 `JiuMi.Application`，页面视图模型持有计时器、帧缓存与归一化 X 保存。
 - 桌面置顶窗口已在 [#119](https://github.com/ZLiLiang/JiuMi/issues/119) 移除；[#108](https://github.com/ZLiLiang/JiuMi/issues/108) 分支的 `PetWindowController` / `PetPlacement` 只作参考，不能直接续写。
-- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已实测：`WS_EX_NOACTIVATE`、`WM_MOUSEACTIVATE`、`Focusable=false` 的组合仍会让点击把宠物窗带到前台。桌面模式接受这个已知限制。
+- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已实测：`WS_EX_NOACTIVATE`、`WM_MOUSEACTIVATE`、`Focusable=false` 的组合仍会让点击把宠物窗带到前台（Avalonia 在同进程 `WM_LBUTTONDOWN` 里自行 `SetFocus`）。桌面模式最初接受这个已知限制，[#156](https://github.com/ZLiLiang/JiuMi/issues/156) 已在 `WM_ACTIVATE` 中恢复点击前的前台窗口。
 - 仓库对体积与常驻成本敏感：页面离开即停表，桌面模式也不能留下不可见的后台窗口或计时器。
 
 ## 决策
@@ -127,7 +127,7 @@ Returning --失败 / 页面不可见--> Desktop
 
 - 页面房间照旧裁切；拖出时的临时猫层只受主窗口裁切。桌面窗不受主窗口裁切，也不进入任务栏与 Alt+Tab。
 - 桌面窗始终置顶：会盖住普通窗口，也会盖住非独占的全屏应用；独占全屏可能盖住它。v1 接受，自动让位与点击穿透仍留给 [#102](https://github.com/ZLiLiang/JiuMi/issues/102)。
-- 点击/拖拽桌面猫会把桌面窗带到前台（#112 实测无解）；接受，不为它做版本分叉。
+- 点击/拖拽桌面猫不改变用户的前台窗口：桌面宿主使用 `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` 与 `WM_MOUSEACTIVATE -> MA_NOACTIVATE`；当 Avalonia 因同进程点击自行 `SetFocus` 时，在 `WM_ACTIVATE` 恢复点击前记录的前台窗口（#156 消除 #112 的限制）。双击打开页面仍按预期激活主窗口。
 - 页面与桌面窗都只显示猫，不显示房间；两处都不出现底板、描边或背景带。
 
 ### 10. 生命周期、入口与持久化
@@ -157,6 +157,7 @@ Returning --失败 / 页面不可见--> Desktop
 - **UI**：`MyJiuMiSession`（会话、共享帧缓存、计时器、宿主协调）、`MyJiuMiView`（家庭宿主）、`MyJiuMiDesktopWindow`（桌面宿主）、拖出覆盖层与主窗口可见性/外壳钩子。
 - **Infrastructure**：不新增服务；`ISettingsStore` 继续只承载 `myJiuMi.x`。
 - **测试**：`JiuMi.Application.Tests` 覆盖 presence 迁移与守卫、提交阈值、投影/夹取、走回入口侧、失败回退；现有状态机测试保持。UI 用实机验收，不新建 UI 测试项目。
+- **实机验收**：`tools/verify-pet-focus.ps1` 用 PowerShell 驱动真实鼠标与 `GetForegroundWindow()`，覆盖其他应用/同进程前台下的单击、拖拽、双击与拖回；桌面窗焦点回归以它的输出为准。
 - **Spike**：跨窗口连续拖出与无焦点宿主；本版不阻塞桌面模式。
 
 ## 为什么是双宿主
@@ -170,6 +171,8 @@ Returning --失败 / 页面不可见--> Desktop
 跨窗口拖拽需要在一个窗口按住指针、再把同一个手势交给另一个 `HWND`。Avalonia 的 `PointerCapture` 不跨窗口；要连续，就得在新窗口下用 Win32 捕获、轮询按键并伪造按下状态，还要处理拖拽中窗口创建/销毁与 DPI 切换。释放提交只需要在页面窗口里完成一次拖拽，再按松手屏幕点创建桌面窗：行为确定、可单测，也不依赖未验证的 Win32 技巧。连续拖出作为 spike 另行评估，成功后再升级交互动效，不改本 ADR 的宿主与持久化契约。
 
 2026-11-13 补充：页面窗口持有捕获期间提前显示的拖拽预览窗由页面窗口驱动位置，输入与捕获不转移；它只消除猫在主窗口边缘的消失，不等于把拖拽手势交给桌面窗，也不改变释放提交。
+
+2026-11-14 补充：[#141](https://github.com/ZLiLiang/JiuMi/issues/141) spike 实测跨窗口连续拖出可行（Win32 `SetCapture` 交接 23.4 ms，46 次移动全部跟随，全程前台不变），但页面持有的预览窗已经提供连续的视觉拖出，真实交接没有额外 UX 收益，还增加 Win32、竞态与双重提交成本；继续采用释放提交。
 
 ## 备选与取舍
 
@@ -202,7 +205,7 @@ Returning --失败 / 页面不可见--> Desktop
 - 拖出是松手提交，不是按住连续拖拽；连续手感要等 spike。
 - 页面 200 DIP 与桌面 160 DIP 之间有一次可见缩放；交接帧必须对齐底边中心。
 - 最小化路径看不到走路，只有 150 ms 淡入；隐藏路径最多延迟 900 ms。
-- 置顶宠物会盖住全屏应用，点击会抢焦点；这是 #112 已确认、本版接受的限制。
+- 置顶宠物会盖住全屏应用；点击抢焦点已由 #156 消除。
 - 页面在猫离家时是空房间，需要一行提示解释；多一个文案键。
 - 多一个 UI 会话对象与外壳隐藏/最小化钩子，测试缝从“一个页面”扩到一个会话。
 
@@ -218,13 +221,14 @@ Returning --失败 / 页面不可见--> Desktop
 - [#139](https://github.com/ZLiLiang/JiuMi/issues/139)：页面与桌面的拖出、拖回交接。
 - [#140](https://github.com/ZLiLiang/JiuMi/issues/140)：桌面走回召唤与页面空房间提示。
 - [#141](https://github.com/ZLiLiang/JiuMi/issues/141)：跨窗口连续拖出与无焦点宿主（spike，不阻塞）。
+- [#156](https://github.com/ZLiLiang/JiuMi/issues/156)：桌面宿主无焦点，点击/拖拽不改变前台窗口。
 
 ## 不在本 ADR 内
 
 - 页面模式的房间、状态、交互与 v1 验收：[ADR-0015](./0015-my-jiumi-page.md)、[`docs/ui-spec.md`](../ui-spec.md)、[#123](https://github.com/ZLiLiang/JiuMi/issues/123)。
 - 角色、帧数与导出：见 [`docs/pet-art-spec.md`](../pet-art-spec.md)；桌面模式不新增帧。
 - 桌面层、自动让位、点击穿透、跟随鼠标、声音、尺寸档位、Live2D/Spine：[#102](https://github.com/ZLiLiang/JiuMi/issues/102)。
-- 无焦点宿主窗口：[#112](https://github.com/ZLiLiang/JiuMi/issues/112)；本 ADR 接受其结论。
+- 无焦点宿主窗口：[#112](https://github.com/ZLiLiang/JiuMi/issues/112)；已由 [#156](https://github.com/ZLiLiang/JiuMi/issues/156) 消除。
 - 跨窗口连续拖拽：本 ADR 的后续 spike。
 - 多屏边界情况的穷举（混合 DPI、旋转屏、远程桌面）：按夹取与 DIP 规则实现，实机验收时再补清单。
 - 实现分层、设置键、托盘契约与生命周期细节：见 [`docs/architecture.md`](../architecture.md) 的「我的JiuMi」章节。

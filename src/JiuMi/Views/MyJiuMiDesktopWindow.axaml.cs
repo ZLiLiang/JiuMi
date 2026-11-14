@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -19,11 +20,19 @@ namespace JiuMi.Views;
 /// </remarks>
 public partial class MyJiuMiDesktopWindow : Window
 {
+    private const uint WsExNoActivate = 0x08000000;
+    private const uint WsExToolWindow = 0x00000080;
+    private const uint WmActivate = 0x0006;
+    private const uint WmMouseActivate = 0x0021;
+    private const int MaNoActivate = 3;
+    private const int WaActive = 1;
+
     private readonly ScaleTransform _catMirror = new(1, 1);
     private readonly MyJiuMiSession? _session;
     private IPointer? _pointer;
     private PixelPoint _pointerStartScreen;
     private PixelPoint _windowStart;
+    private IntPtr _foregroundBeforeClick;
     private bool _isPressed;
     private bool _isDragging;
 
@@ -36,6 +45,16 @@ public partial class MyJiuMiDesktopWindow : Window
         InitializeComponent();
         CatImage.RenderTransform = _catMirror;
         Closed += OnClosed;
+
+        if (OperatingSystem.IsWindows())
+        {
+            // Avalonia calls SetFocus from WM_LBUTTONDOWN, which bypasses WS_EX_NOACTIVATE when the
+            // foreground window belongs to this process; WM_ACTIVATE puts the previous window back.
+            Win32Properties.AddWindowStylesCallback(
+                this,
+                (style, exStyle) => (style, exStyle | WsExNoActivate | WsExToolWindow));
+            Win32Properties.AddWndProcHookCallback(this, OnWndProc);
+        }
     }
 
     /// <summary>
@@ -50,6 +69,38 @@ public partial class MyJiuMiDesktopWindow : Window
         DataContext = session;
         session.PropertyChanged += OnSessionPropertyChanged;
         ApplyAppearance();
+    }
+
+    private IntPtr OnWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WmMouseActivate)
+        {
+            _foregroundBeforeClick = GetForegroundWindow();
+            handled = true;
+            return (IntPtr)MaNoActivate;
+        }
+
+        if (msg == WmActivate && wParam == (IntPtr)WaActive)
+        {
+            RestoreForeground(hWnd);
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void RestoreForeground(IntPtr hWnd)
+    {
+        IntPtr previous = _foregroundBeforeClick;
+        _foregroundBeforeClick = IntPtr.Zero;
+        if (previous == IntPtr.Zero ||
+            previous == hWnd ||
+            GetForegroundWindow() != hWnd ||
+            !IsWindow(previous))
+        {
+            return;
+        }
+
+        SetForegroundWindow(previous);
     }
 
     private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -190,4 +241,13 @@ public partial class MyJiuMiDesktopWindow : Window
         _pointer = null;
         pointer?.Capture(null);
     }
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern bool IsWindow(IntPtr hWnd);
 }
