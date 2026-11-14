@@ -568,10 +568,21 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return false;
         }
 
-        if (_homeHost is not { IsHomeVisible: true } host ||
-            _homeStageWidth <= 0 ||
-            host.GetRoomScreenRect() is not { } room ||
-            _desktopWindow is not { } window)
+        bool homeVisible = _homeHost is { IsHomeVisible: true };
+        MyJiuMiScreenRect? room = homeVisible ? _homeHost!.GetRoomScreenRect() : null;
+        MyJiuMiDesktopWindow? window = _desktopWindow;
+        int? desktopCatX = window is null
+            ? null
+            : window.Position.X +
+                (MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling) / 2);
+
+        if (!MyJiuMiTransitionRules.CanSummonFromDesktop(
+                homeVisible,
+                _homeStageWidth,
+                room,
+                desktopCatX) ||
+            room is not { } roomRect ||
+            desktopCatX is not { } catX)
         {
             _logger.Warning("The My JiuMi summon was ignored because the page or desktop host is unavailable");
             ClampDesktopWindow();
@@ -579,9 +590,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         double targetX = MyJiuMiPositionRules.Clamp(positionX);
-        int desktopCatX = window.Position.X +
-            (MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling) / 2);
-        double entryX = MyJiuMiTransitionRules.SummonEntryEdge(room, desktopCatX);
+        double entryX = MyJiuMiTransitionRules.SummonEntryEdge(roomRect, catX);
 
         if (!_presence.TryBeginReturn(pageReachable: true))
         {

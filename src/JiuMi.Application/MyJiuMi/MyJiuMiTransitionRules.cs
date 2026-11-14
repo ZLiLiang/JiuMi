@@ -176,6 +176,26 @@ public static class MyJiuMiTransitionRules
         desktopCatX < room.X + (room.Width / 2.0) ? 0 : 1;
 
     /// <summary>
+    /// Reports whether a double click on the page floor can call the desktop cat home: the page must
+    /// be visible and laid out, and the desktop cat must have a room and a position to walk from.
+    /// </summary>
+    /// <param name="homeVisible">Whether the page is visible and can receive the cat.</param>
+    /// <param name="stageWidth">The page stage width in DIP; zero before the first layout pass.</param>
+    /// <param name="room">The visible room in physical screen pixels, when it can be measured.</param>
+    /// <param name="desktopCatX">The desktop cat's bottom-centre X, when a desktop window exists.</param>
+    /// <returns><see langword="true"/> when the summon may start; otherwise the cat stays on the desktop.</returns>
+    public static bool CanSummonFromDesktop(
+        bool homeVisible,
+        double stageWidth,
+        MyJiuMiScreenRect? room,
+        int? desktopCatX) =>
+        homeVisible &&
+        stageWidth > 0 &&
+        room is { } rect &&
+        !rect.IsEmpty &&
+        desktopCatX.HasValue;
+
+    /// <summary>
     /// Converts a window size in DIP to physical pixels on a screen.
     /// </summary>
     /// <param name="sizeDip">The window size in device-independent pixels.</param>
