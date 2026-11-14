@@ -228,6 +228,19 @@ public sealed class MyJiuMiPresenceMachineTests
     }
 
     [Fact]
+    public void TryBeginReturn_AfterAFailedReturn_RetriesFromTheDesktop()
+    {
+        MyJiuMiPresenceMachine machine = CreateDesktopMachine();
+        Assert.True(machine.TryBeginReturn(pageReachable: true));
+        Assert.True(machine.TryAbortReturn());
+
+        bool retried = machine.TryBeginReturn(pageReachable: true);
+
+        Assert.True(retried);
+        Assert.Equal(MyJiuMiPresence.Returning, machine.Presence);
+    }
+
+    [Fact]
     public void Reset_GivenDesktop_ReturnsHome()
     {
         MyJiuMiPresenceMachine machine = CreateDesktopMachine();

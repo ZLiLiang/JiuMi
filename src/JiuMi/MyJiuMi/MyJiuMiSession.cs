@@ -555,6 +555,76 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Summons the desktop cat home after a double click on the empty page floor: the desktop window
+    /// closes, the cat walks in from the edge nearer its last screen X and the target is saved. A
+    /// failed handoff keeps the cat on the desktop, clamped into the nearest work area.
+    /// </summary>
+    /// <param name="positionX">The double-clicked normalized position.</param>
+    /// <returns><see langword="true"/> when the cat came home.</returns>
+    public bool TrySummonFromDesktop(double positionX)
+    {
+        if (_isDisposed || Presence != MyJiuMiPresence.Desktop || !_machine.IsActive)
+        {
+            return false;
+        }
+
+        IMyJiuMiHomeHost? homeHost = _homeHost is { IsHomeVisible: true } host ? host : null;
+        MyJiuMiScreenRect? room = homeHost?.GetRoomScreenRect();
+        MyJiuMiDesktopWindow? window = _desktopWindow;
+        int? desktopCatX = window is null
+            ? null
+            : window.Position.X +
+                (MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling) / 2);
+
+        if (!MyJiuMiTransitionRules.CanSummonFromDesktop(
+                homeHost is not null,
+                _homeStageWidth,
+                room,
+                desktopCatX) ||
+            room is not { } roomRect ||
+            desktopCatX is not { } catX)
+        {
+            _logger.Warning("The My JiuMi summon was ignored because the page or desktop host is unavailable");
+            ClampDesktopWindow();
+            return false;
+        }
+
+        double targetX = MyJiuMiPositionRules.Clamp(positionX);
+        double entryX = MyJiuMiTransitionRules.SummonEntryEdge(roomRect, catX);
+
+        if (!_presence.TryBeginReturn(pageReachable: true))
+        {
+            return false;
+        }
+
+        if (!TryCloseDesktopWindowForSummon())
+        {
+            _presence.TryAbortReturn();
+            NotifyPresence();
+            ClampDesktopWindow();
+            return false;
+        }
+
+        _leaveTrigger = null;
+        _machine.SetWanderingEnabled(true);
+        _machine.SetPosition(entryX);
+        _machine.Summon(targetX);
+        // A double click on the desktop cat already reacted; the walking cat must not carry that
+        // heart onto the page.
+        ClearHeart();
+        IsHeartVisible = false;
+        EndJump();
+        HomeScale = 1;
+        StartMotion();
+        StartTimer();
+        SavePosition(targetX);
+        UpdateVisuals(forceFrame: true);
+        _presence.TryCompleteReturn();
+        NotifyPresence();
+        return true;
+    }
+
+    /// <summary>
     /// Starts dragging the desktop cat; the window, not the normalized home position, is moved.
     /// </summary>
     public void BeginDesktopDrag()
@@ -1466,6 +1536,49 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             anchor.Y - pixelSize);
         MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.ResolveOrigin(desired, workAreas);
         window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Window closing is a UI boundary; a failed close must keep the cat on the desktop.")]
+    private bool TryCloseDesktopWindowForSummon()
+    {
+        if (_desktopWindow is not { } window)
+        {
+            return true;
+        }
+
+        DesktopWalk? walk = _desktopWalk;
+        DesktopEntranceRun? entrance = _desktopEntrance;
+        StopHandoffTimer();
+        _pendingHandoff = null;
+        _desktopWindow = null;
+        _desktopWalk = null;
+        _desktopEntrance = null;
+        window.Closed -= OnDesktopWindowClosed;
+
+        try
+        {
+            window.Close();
+            return true;
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.Debug(exception, "The My JiuMi desktop window was already gone");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(
+                exception,
+                "The My JiuMi desktop window could not be closed; the cat stays on the desktop");
+            _desktopWindow = window;
+            _desktopWalk = walk;
+            _desktopEntrance = entrance;
+            window.Closed += OnDesktopWindowClosed;
+            return false;
+        }
     }
 
     private void CloseDesktopWindow()

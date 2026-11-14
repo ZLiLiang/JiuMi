@@ -57,6 +57,7 @@
   "MyJiuMi.Title": "My JiuMi",
   "MyJiuMi.Subtitle": "The cat lives here, taking naps and stretching now and then.",
   "MyJiuMi.Cat.AutomationName": "JiuMi cat",
+  "MyJiuMi.DesktopHint": "The cat is on your desktop. Double-click the floor to call it back.",
   "Tool.FileRename.Name": "Batch rename",
   "Tool.FileRename.Description": "Rename the files or folders in a folder by rule.",
   "Tool.ImageConvert.Name": "Image conversion",

@@ -322,5 +322,49 @@ public sealed class MyJiuMiTransitionRulesTests
             out _));
     }
 
+    [Theory]
+    [InlineData(250, 0)]
+    [InlineData(299, 0)]
+    [InlineData(300, 1)]
+    [InlineData(450, 1)]
+    public void SummonEntryEdge_GivenTheDesktopCatX_ReturnsTheNearerRoomEdge(
+        int desktopCatX,
+        double expected)
+    {
+        Assert.Equal(expected, MyJiuMiTransitionRules.SummonEntryEdge(Room, desktopCatX));
+    }
+
+    [Theory]
+    [InlineData(true, 400, true, true, true)]
+    [InlineData(false, 400, true, true, false)]
+    [InlineData(true, 0, true, true, false)]
+    [InlineData(true, 400, false, true, false)]
+    [InlineData(true, 400, true, false, false)]
+    public void CanSummonFromDesktop_GivenTheHostReadiness_ReturnsWhetherTheCatCanBeCalledHome(
+        bool homeVisible,
+        double stageWidth,
+        bool hasRoom,
+        bool hasDesktopCat,
+        bool expected)
+    {
+        bool canSummon = MyJiuMiTransitionRules.CanSummonFromDesktop(
+            homeVisible,
+            stageWidth,
+            hasRoom ? Room : null,
+            hasDesktopCat ? 150 : null);
+
+        Assert.Equal(expected, canSummon);
+    }
+
+    [Fact]
+    public void CanSummonFromDesktop_GivenAnEmptyRoom_ReturnsFalse()
+    {
+        Assert.False(MyJiuMiTransitionRules.CanSummonFromDesktop(
+            homeVisible: true,
+            stageWidth: 400,
+            new MyJiuMiScreenRect(100, 100, 0, 300),
+            desktopCatX: 150));
+    }
+
     private static MyJiuMiScreenRect Room => new(100, 100, 400, 300);
 }
