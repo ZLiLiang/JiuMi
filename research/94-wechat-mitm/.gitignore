@@ -1,0 +1,8 @@
+logs/
+bin/
+obj/
+*.pfx
+*.ndjson
+STOP
+*.html
+curl-*.txt
