@@ -568,8 +568,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return false;
         }
 
-        bool homeVisible = _homeHost is { IsHomeVisible: true };
-        MyJiuMiScreenRect? room = homeVisible ? _homeHost!.GetRoomScreenRect() : null;
+        IMyJiuMiHomeHost? homeHost = _homeHost is { IsHomeVisible: true } host ? host : null;
+        MyJiuMiScreenRect? room = homeHost?.GetRoomScreenRect();
         MyJiuMiDesktopWindow? window = _desktopWindow;
         int? desktopCatX = window is null
             ? null
@@ -577,7 +577,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 (MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling) / 2);
 
         if (!MyJiuMiTransitionRules.CanSummonFromDesktop(
-                homeVisible,
+                homeHost is not null,
                 _homeStageWidth,
                 room,
                 desktopCatX) ||
