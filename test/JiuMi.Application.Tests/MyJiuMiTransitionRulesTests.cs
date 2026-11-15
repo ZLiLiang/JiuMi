@@ -335,23 +335,26 @@ public sealed class MyJiuMiTransitionRulesTests
     }
 
     [Theory]
-    [InlineData(true, 400, true, true, true)]
-    [InlineData(false, 400, true, true, false)]
-    [InlineData(true, 0, true, true, false)]
-    [InlineData(true, 400, false, true, false)]
-    [InlineData(true, 400, true, false, false)]
+    [InlineData(true, 400, true, true, true, true)]
+    [InlineData(false, 400, true, true, true, false)]
+    [InlineData(true, 0, true, true, true, false)]
+    [InlineData(true, 400, false, true, true, false)]
+    [InlineData(true, 400, true, false, true, false)]
+    [InlineData(true, 400, true, true, false, false)]
     public void CanSummonFromDesktop_GivenTheHostReadiness_ReturnsWhetherTheCatCanBeCalledHome(
         bool homeVisible,
         double stageWidth,
         bool hasRoom,
         bool hasDesktopCat,
+        bool hasFloor,
         bool expected)
     {
         bool canSummon = MyJiuMiTransitionRules.CanSummonFromDesktop(
             homeVisible,
             stageWidth,
             hasRoom ? Room : null,
-            hasDesktopCat ? 150 : null);
+            hasDesktopCat ? 150 : null,
+            hasFloor ? 400 : null);
 
         Assert.Equal(expected, canSummon);
     }
@@ -363,7 +366,76 @@ public sealed class MyJiuMiTransitionRulesTests
             homeVisible: true,
             stageWidth: 400,
             new MyJiuMiScreenRect(100, 100, 0, 300),
-            desktopCatX: 150));
+            desktopCatX: 150,
+            floorY: 400));
+    }
+
+    [Theory]
+    [InlineData(0, 800, 0.125)]
+    [InlineData(1, 800, 0.875)]
+    [InlineData(0, 200, 0.5)]
+    [InlineData(1, 200, 0.5)]
+    [InlineData(0, 0, 0.5)]
+    [InlineData(1, 0, 0.5)]
+    public void SummonHandoffPositionX_GivenTheEntryEdge_KeepsOneCatRadiusInside(
+        double entryEdge,
+        double stageWidth,
+        double expected)
+    {
+        Assert.Equal(
+            expected,
+            MyJiuMiTransitionRules.SummonHandoffPositionX(entryEdge, stageWidth),
+            9);
+    }
+
+    [Fact]
+    public void SummonHandoffAnchor_GivenTheRoomAndFloor_ReturnsTheScreenPoint()
+    {
+        MyJiuMiScreenPoint anchor = MyJiuMiTransitionRules.SummonHandoffAnchor(
+            Room,
+            positionX: 0.125,
+            floorY: 400);
+
+        Assert.Equal(new MyJiuMiScreenPoint(150, 400), anchor);
+    }
+
+    [Fact]
+    public void SummonWalkDuration_GivenTheScreenDistance_UsesTheSummonSpeed()
+    {
+        TimeSpan duration = MyJiuMiTransitionRules.SummonWalkDuration(
+            new MyJiuMiScreenPoint(0, 0),
+            new MyJiuMiScreenPoint(800, 0),
+            scaling: 1);
+
+        Assert.Equal(800 / MyJiuMiInteractionRules.SummonWalkSpeed, duration.TotalSeconds, 6);
+    }
+
+    [Fact]
+    public void SummonWalkDuration_GivenA200PercentScreen_DividesThePhysicalDistanceByTheScaling()
+    {
+        TimeSpan duration = MyJiuMiTransitionRules.SummonWalkDuration(
+            new MyJiuMiScreenPoint(0, 0),
+            new MyJiuMiScreenPoint(800, 0),
+            scaling: 2);
+
+        Assert.Equal(400 / MyJiuMiInteractionRules.SummonWalkSpeed, duration.TotalSeconds, 6);
+    }
+
+    [Fact]
+    public void SummonWalkDuration_GivenNoDistance_IsZero()
+    {
+        Assert.Equal(
+            TimeSpan.Zero,
+            MyJiuMiTransitionRules.SummonWalkDuration(
+                new MyJiuMiScreenPoint(300, 400),
+                new MyJiuMiScreenPoint(300, 400),
+                scaling: 1));
+    }
+
+    [Fact]
+    public void SummonWalkSpeed_GivenTheWalkBackPace_IsSixtyPercentFasterThanWalking()
+    {
+        Assert.Equal(167, MyJiuMiInteractionRules.SummonWalkSpeed);
     }
 
     private static MyJiuMiScreenRect Room => new(100, 100, 400, 300);

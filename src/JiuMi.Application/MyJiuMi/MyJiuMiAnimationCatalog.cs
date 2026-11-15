@@ -25,6 +25,16 @@ public static class MyJiuMiAnimationCatalog
     private static readonly MyJiuMiAnimationClip _wake = Create("wake", 3, 150, loops: false);
     private static readonly MyJiuMiAnimationClip _stretch = Create("stretch", 4, 120, loops: false);
     private static readonly MyJiuMiAnimationClip _walk = Create("walk", 33, 26, loops: true);
+    private static readonly MyJiuMiAnimationClip _summonWalk = Create(
+        "walk",
+        33,
+        MyJiuMiInteractionRules.SummonWalkFrameMilliseconds,
+        loops: true);
+
+    /// <summary>
+    /// Gets the fast walk used by the summon: the same frames at the 1.6x pace.
+    /// </summary>
+    public static MyJiuMiAnimationClip SummonWalk => _summonWalk;
 
     /// <summary>
     /// Gets the frames, timing and looping rule of a state.

@@ -151,6 +151,29 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         return screen.IsEmpty ? null : screen;
     }
 
+    /// <inheritdoc />
+    public int? GetFloorScreenY()
+    {
+        if (_window is null ||
+            GetRoomRectInWindow() is not { } visibleRoom ||
+            RoomWall.Bounds.Height <= 0)
+        {
+            return null;
+        }
+
+        Point? floor = RoomWall.TranslatePoint(
+            new Point(RoomWall.Bounds.Width / 2, RoomWall.Bounds.Height),
+            _window);
+        if (floor is not { } point ||
+            point.Y < visibleRoom.Top ||
+            point.Y > visibleRoom.Bottom)
+        {
+            return null;
+        }
+
+        return _window.PointToScreen(point).Y;
+    }
+
     private Rect? GetRoomRectInWindow()
     {
         if (_window is null ||
@@ -363,6 +386,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     {
         if (_isPressed ||
             _viewModel is null ||
+            _viewModel.Session.IsSummoning ||
             !e.GetCurrentPoint(CatHitArea).Properties.IsLeftButtonPressed)
         {
             return;

@@ -176,24 +176,84 @@ public static class MyJiuMiTransitionRules
         desktopCatX < room.X + (room.Width / 2.0) ? 0 : 1;
 
     /// <summary>
+    /// Gets the normalized handoff X for a summoned cat: one page-cat radius inside the entry edge,
+    /// so the whole desktop cat body is already inside the room when the page cat takes over.
+    /// </summary>
+    /// <param name="entryEdge"><c>0</c> for the left edge and <c>1</c> for the right edge.</param>
+    /// <param name="stageWidth">The room width in DIP.</param>
+    /// <returns>The normalized handoff position, clamped into the room.</returns>
+    public static double SummonHandoffPositionX(double entryEdge, double stageWidth)
+    {
+        if (!(stageWidth > 0))
+        {
+            return MyJiuMiPositionRules.Default;
+        }
+
+        double inset = (HomeSizeDip / 2) / stageWidth;
+        return MyJiuMiPositionRules.Clamp(entryEdge < 0.5 ? inset : 1 - inset);
+    }
+
+    /// <summary>
+    /// Gets the screen point where the desktop and page cats hand over: the normalized X inside the
+    /// visible room and the page floor line.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="positionX">The normalized handoff position.</param>
+    /// <param name="floorY">The page floor line in physical screen pixels.</param>
+    /// <returns>The handoff anchor in physical screen pixels.</returns>
+    public static MyJiuMiScreenPoint SummonHandoffAnchor(
+        MyJiuMiScreenRect room,
+        double positionX,
+        int floorY) =>
+        new(
+            room.X +
+                (int)Math.Round(
+                    room.Width * MyJiuMiPositionRules.Clamp(positionX),
+                    MidpointRounding.AwayFromZero),
+            floorY);
+
+    /// <summary>
+    /// Gets how long the desktop cat takes to walk home at <see cref="MyJiuMiInteractionRules.SummonWalkSpeed"/>.
+    /// </summary>
+    /// <param name="from">The start anchor in physical screen pixels.</param>
+    /// <param name="to">The handoff anchor in physical screen pixels.</param>
+    /// <param name="scaling">The screen scale of the desk the cat walks on.</param>
+    /// <returns>The walk duration; zero when the two points coincide.</returns>
+    public static TimeSpan SummonWalkDuration(
+        MyJiuMiScreenPoint from,
+        MyJiuMiScreenPoint to,
+        double scaling)
+    {
+        double deltaX = to.X - (double)from.X;
+        double deltaY = to.Y - (double)from.Y;
+        double distanceDip =
+            Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY)) / Math.Max(scaling, 0.01d);
+        return TimeSpan.FromSeconds(distanceDip / MyJiuMiInteractionRules.SummonWalkSpeed);
+    }
+
+    /// <summary>
     /// Reports whether a double click on the page floor can call the desktop cat home: the page must
-    /// be visible and laid out, and the desktop cat must have a room and a position to walk from.
+    /// be visible and laid out, and the desktop cat must have a room, a floor and a position to walk
+    /// from.
     /// </summary>
     /// <param name="homeVisible">Whether the page is visible and can receive the cat.</param>
     /// <param name="stageWidth">The page stage width in DIP; zero before the first layout pass.</param>
     /// <param name="room">The visible room in physical screen pixels, when it can be measured.</param>
     /// <param name="desktopCatX">The desktop cat's bottom-centre X, when a desktop window exists.</param>
+    /// <param name="floorY">The page floor line in physical screen pixels, when it can be measured.</param>
     /// <returns><see langword="true"/> when the summon may start; otherwise the cat stays on the desktop.</returns>
     public static bool CanSummonFromDesktop(
         bool homeVisible,
         double stageWidth,
         MyJiuMiScreenRect? room,
-        int? desktopCatX) =>
+        int? desktopCatX,
+        int? floorY) =>
         homeVisible &&
         stageWidth > 0 &&
         room is { } rect &&
         !rect.IsEmpty &&
-        desktopCatX.HasValue;
+        desktopCatX.HasValue &&
+        floorY.HasValue;
 
     /// <summary>
     /// Converts a window size in DIP to physical pixels on a screen.

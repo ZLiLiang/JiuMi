@@ -164,6 +164,157 @@ public sealed class MyJiuMiStateMachineDesktopTests
         Assert.Equal(1, machine.PositionX, 9);
     }
 
+    [Fact]
+    public void BeginSummonDesktopWalk_GivenAnIdleCat_WalksInPlaceFacingTheRequestedSide()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: true));
+
+        Assert.Equal(MyJiuMiState.Walk, machine.State);
+        Assert.True(machine.IsFacingRight);
+
+        Advance(machine, time, TimeSpan.FromSeconds(2));
+        Assert.Equal(MyJiuMiState.Walk, machine.State);
+        Assert.Equal(0.5, machine.PositionX, 9);
+    }
+
+    [Fact]
+    public void BeginSummonDesktopWalk_GivenTheSummonPace_PlaysTheFastWalkFrames()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine();
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: true));
+        Assert.Equal(0, machine.FrameIndex);
+
+        time.Advance(TimeSpan.FromMilliseconds(16));
+        machine.Update();
+        Assert.Equal(1, machine.FrameIndex);
+
+        time.Advance(TimeSpan.FromMilliseconds(16));
+        machine.Update();
+        Assert.Equal(2, machine.FrameIndex);
+    }
+
+    [Fact]
+    public void WalkTo_GivenTheNormalPace_KeepsTheTwentySixMillisecondFrames()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine();
+        Assert.True(machine.WalkTo(0.9));
+
+        time.Advance(TimeSpan.FromMilliseconds(16));
+        machine.Update();
+
+        Assert.Equal(0, machine.FrameIndex);
+    }
+
+    [Fact]
+    public void BeginSummonDesktopWalk_GivenASleepingCat_WakesFirstThenWalksInPlace()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Sleep(machine, time);
+        double start = machine.PositionX;
+
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: false));
+        Assert.Equal(MyJiuMiState.Wake, machine.State);
+
+        Advance(machine, time, TimeSpan.FromMilliseconds(450));
+        Assert.Equal(MyJiuMiState.Walk, machine.State);
+        Assert.False(machine.IsFacingRight);
+        Assert.Equal(start, machine.PositionX, 9);
+    }
+
+    [Fact]
+    public void CancelSummonDesktopWalk_GivenAHeldWalk_StopsInPlace()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: false));
+
+        machine.CancelSummonDesktopWalk();
+        Advance(machine, time, TimeSpan.FromSeconds(1));
+
+        Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
+        Assert.Equal(0.5, machine.PositionX, 9);
+    }
+
+    [Fact]
+    public void CancelSummonDesktopWalk_GivenAWakingCat_SettlesIdleAfterTheWake()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Sleep(machine, time);
+        double start = machine.PositionX;
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: false));
+
+        machine.CancelSummonDesktopWalk();
+        Advance(machine, time, TimeSpan.FromMilliseconds(450));
+
+        Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
+        Assert.Equal(start, machine.PositionX, 9);
+    }
+
+    [Fact]
+    public void SummonWalkTo_GivenTheHandoffPosition_MovesAtTheSummonSpeed()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: true));
+        machine.SetPosition(0.125);
+
+        Assert.True(machine.SummonWalkTo(0.5));
+        Advance(machine, time, TimeSpan.FromSeconds(1));
+
+        double expected = 0.125 + (MyJiuMiInteractionRules.SummonWalkSpeed / DefaultWidth);
+        Assert.Equal(expected, machine.PositionX, 6);
+    }
+
+    [Fact]
+    public void SummonWalkTo_GivenAHeldWalk_KeepsTheFastFrameCycle()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: true));
+        time.Advance(TimeSpan.FromMilliseconds(16));
+        machine.Update();
+        Assert.Equal(1, machine.FrameIndex);
+
+        machine.SetPosition(0.125);
+        Assert.True(machine.SummonWalkTo(0.5));
+
+        Assert.Equal(MyJiuMiState.Walk, machine.State);
+        Assert.Equal(1, machine.FrameIndex);
+    }
+
+    [Fact]
+    public void SummonWalkTo_GivenTheCurrentPosition_SettlesIdle()
+    {
+        (MyJiuMiStateMachine machine, _) = CreateMachine(positionX: 0.5);
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: true));
+        machine.SetPosition(0.25);
+
+        Assert.False(machine.SummonWalkTo(0.25));
+
+        Assert.Equal(MyJiuMiState.LyingIdle, machine.State);
+        Assert.Equal(0.25, machine.PositionX, 9);
+    }
+
+    [Fact]
+    public void WalkTo_AfterASummonWalk_UsesTheNormalSpeedAgain()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateMachine(positionX: 0.5);
+        Assert.True(machine.BeginSummonDesktopWalk(facingRight: true));
+        machine.CancelSummonDesktopWalk();
+
+        Assert.True(machine.WalkTo(0.9));
+        Advance(machine, time, TimeSpan.FromSeconds(1));
+
+        double expected = 0.5 + (MyJiuMiInteractionRules.WalkSpeed / DefaultWidth);
+        Assert.Equal(expected, machine.PositionX, 6);
+    }
+
+    private static void Sleep(MyJiuMiStateMachine machine, ManualTimeProvider time)
+    {
+        Advance(machine, time, MyJiuMiInteractionRules.SleepDelay);
+        Advance(machine, time, TimeSpan.FromMilliseconds(450));
+        Assert.Equal(MyJiuMiState.Sleep, machine.State);
+    }
+
     private static (MyJiuMiStateMachine Machine, ManualTimeProvider Time) CreateMachine(
         double random = 0.25,
         double positionX = 0.5)
