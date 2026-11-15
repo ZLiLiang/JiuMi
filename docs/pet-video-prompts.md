@@ -131,6 +131,20 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 | `greet` | `_refs/stand-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00.png` 255×240 · `greet/01.png` 260×240 | 2 | 300 ms | 一次性 |
 | `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 |
 
+### 已有素材复用清单（2026-11-15）
+
+先挖后生成：以下判定基于实际抽帧与尺寸比对，不是凭印象。
+
+| 已有素材 | 本票是否复用 | 说明 |
+| --- | --- | --- |
+| `poses/sit.png` | ✅ 复用 | 3.50 s 抽帧，278×208；P1 的 `sit` 静态帧直接用 |
+| 6.58 s 源的 3.00 s 趴姿 / 1.75–2.75 s 睡球 | ✅ 复用 | P1 的 `loaf`、`sleep-twitch` 基底，缩到趴族 176 |
+| 6.58 s 源的 站→坐→趴 序列 | ❌ 不复用 | 源站姿是正侧面（576×297，比 1.94），现有 `walk` 是 3/4（354×240，1.47），无缩放比可同时对齐且不超 400 画布；挖出的趴姿还小约 20%。`settle` 只能生成 |
+| 6.58 s 源的 `crouch` | ❌ 不复用 | 属 P2，不在本票 |
+| `react/` | ❌ 不复用 | 只竖耳弹起、不抬头，`look-up` 用改图另做 |
+| `blink/` | ❌ 不复用 | 3 帧趴姿眨眼，`greet` 是站姿慢眨眼，姿势族不同 |
+| `jump/airborne` `landing` | ❌ 不复用 | 本票没有跳跃动作 |
+
 ### 两条踩过的坑（2026-11-15）
 
 1. **不能用 `walk.png` 当站姿动作的首末帧。** 它本身就是"走路中"的姿态，模型会顺着它继续迈腿——`annoyed`/`greet` 的首跑两条片子猫一直在走，帧完全不可用。改用 `poses/stand.png`（真正的静止站姿）后两条一次通过。`walk.png` 只适合做 `settle` 的起始帧。
