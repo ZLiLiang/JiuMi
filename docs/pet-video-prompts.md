@@ -62,20 +62,80 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - 处理：绿幕抠像；以站姿高度对齐现有 `stretch/03` 的 291 px；坐/落地/站贴地，腾空由小跳的位移层抬升。
 - 已知差异：抽帧线宽比现有帧略细，眼部更圆；200 DIP 下可接受，2× 可见。
 
-### 抽帧姿势（2026-11-12）
+## 交互动作抽帧（#161，2026-11-15 起）
 
-从上面的绿幕视频抽出 4 个候选姿势，已抠像、统一缩放并贴地对齐到 400×400 RGBA：
+按 #161 的 10 条片子计划逐条交付。单条源视频 **≤5 s**（成本上限），运行时**不播放源视频**，只按下方清单重定时。
 
-| 姿势 | 文件 | 时间点 | 用途 |
-| --- | --- | --- | --- |
-| 坐姿 | `docs/images/pet/action-source/poses/sit.png` | 3.5 s | 新的休息/起身过渡姿势 |
-| 腾空 | `docs/images/pet/action-source/poses/airborne.png` | 5.3 s | 点击小跳的腾空帧 |
-| 落地 | `docs/images/pet/action-source/poses/landing.png` | 5.6 s | 跳跃落地/蹲伏 |
-| 站姿 | `docs/images/pet/action-source/poses/stand.png` | 6.4 s | 站姿参考；现有 `stretch/03` 已覆盖 |
+- 生成：VideoGen `image-to-video`，首帧＝该片段的起始姿势参考，末帧＝结束姿势参考，1:1，24 fps。
+- 参考图：趴姿用 `lying-idle.png`，站姿用 `walk.png`，身份检查用 `face-closeup.png`。
+- 后处理：按背景色距离抠像（不用 HSV 色带，容易漏边）→ 统一缩放 → 每帧底边 `y=399`、中心 `x=200` 导出 400×400 RGBA。
+- 尺寸基准（实测自运行时帧）：趴 176 px、坐 208 px、站 240 px、伸展 291 px、睡球 148 px。运行时把 400×400 图按 `Stretch="Uniform"` 画进 200 DIP 方格，**不做尺寸归一**，所以导出尺寸就是唯一杠杆。
 
-- 预览：`docs/images/pet/action-source/poses/preview.png`。
-- 处理：绿幕抠像；以站姿高度对齐现有 `stretch/03` 的 291 px；坐/落地/站贴地，腾空在播放跳跃时额外上移约 40 DIP。
-- 已知差异：抽帧线宽比现有帧略细，眼部更圆；200 DIP 下可接受，2× 可见。接入 `src/JiuMi/Assets/MyJiuMi/` 前需要做一轮描边/眼部确认。
-- 状态：候选素材，尚未接入运行时；先归档保留。
+### settle（P0-1）
+
+- 源：`docs/images/pet/action-source/interaction/p0-1-settle/settle-source.mp4`（768×768，24 fps，124 帧，5.17 s）
+- 首帧参考 `walk.png`（站）、末帧参考 `lying-idle.png`（趴）；抠的是 `#F1EBE4` 平底（当次模型没按提示出绿幕，抠像仍干净）
+- 四帧：`00` 站 0.08 s · `01` 坐 2.50 s · `02` 折 3.54 s · `03` 趴 4.58 s；统一缩放 0.55，底边 y=399、中心 x=200
+- 预览：`docs/images/pet/action-source/interaction/preview-{light,dark}.png`
+
+**为什么采用「有坐姿」的那一版**：坐姿阶段整只猫的轮廓高度从 413 涨到 487 px（+18%），一开始被判断成「猫走近镜头了」。用头宽复核后否掉了这个判断——全程头宽恒定（193 / 192 / 193 / 171 px），说明**角色缩放没变**，+18% 只是「直立坐、前腿撑直」这个姿势本身更高（对照 `stretch/03` 直立站姿 291 px，坐姿 268 px 属同一量级）。两版与相邻帧的咬合也做了并排对比：这一版的首帧更接近 `walk/00`、末帧更接近 `lying-idle/00`，所以采用它，第一版（无坐姿、连续下降）退为备选。
+
+**已知偏离**：① 坐姿相对头宽比 `poses/sit.png` 高约 15%，是更直立的坐姿；② 中途视角由侧面转到正面，120 ms 内有一次「转身坐下」；③ 首帧 228 px（`walk` 240，−5%）、末帧 186 px（`lying-idle` 176，+6%），是单一缩放下的残余误差，接入票里补 2–3 帧缩放过渡即可。
+
+**对照**:两版对照图在 `artifacts/161/compare/`（不进 git）。
+
+| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 | 触发场景 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `settle` | 0.083 s | `settle/00.png` 357×228 站 | 4 | 120 ms | 一次性 | `Walk` 结束、召唤到达 |
+| `settle` | 2.500 s | `settle/01.png` 232×268 坐 | | 120 ms | 一次性 | 同上 |
+| `settle` | 3.542 s | `settle/02.png` 273×240 折 | | 120 ms | 一次性 | 同上 |
+| `settle` | 4.583 s | `settle/03.png` 360×186 趴 | | 120 ms | 一次性 | 同上；末帧接 `LyingIdle` |
+
+### yawn / happy（P0-2，同一条片子）
+
+- 源：`.../p0-2-yawn-happy/yawn-happy-source.mp4`（768×768，24 fps，5.17 s）；首末帧都用 `lying-idle.png` 锁定趴姿中性
+- 缩放 0.5207（中性帧 338 px → 176 px），趴姿族
+- 哈欠在 0.42–1.88 s，张开度最大约 1.04–1.33 s
+
+| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 |
+| --- | --- | --- | --- | --- | --- |
+| `yawn` | 0.625 s | `yawn/00.png` 342×177 张口 | 4 | 300 ms | 一次性 |
+| `yawn` | 1.042 s | `yawn/01.png` 343×169 最大 | | 300 ms | 一次性 |
+| `yawn` | 1.333 s | `yawn/02.png` 343×170 头后仰 | | 300 ms | 一次性 |
+| `yawn` | 1.708 s | `yawn/03.png` 343×172 收回 | | 300 ms | 一次性 |
+| `happy` | 2.917 s | `happy/00.png` 342×177 眯眼 | 2 | 600 ms | 循环 |
+| `happy` | 3.750 s | `happy/01.png` 342×176 慢呼吸 | | 600 ms | 循环 |
+
+### annoyed / startle（P0-4，同一条片子）
+
+- 源：`.../p0-4-annoyed-startle/annoyed-startle-source.mp4`（768×768，24 fps，5.17 s）；首末帧用 `poses/stand.png` 锁定站姿
+- 缩放 0.4278（中性帧 561 px → 240 px），站姿族
+- 耳朵后压在 0.42–1.25 s；瞪眼/后缩在 2.71–3.33 s
+
+| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 |
+| --- | --- | --- | --- | --- | --- |
+| `annoyed` | 0.417 s | `annoyed/00.png` 267×237 耳朵后压 | 3 | 250 ms | 一次性 |
+| `annoyed` | 0.833 s | `annoyed/01.png` 267×221 保持 | | 250 ms | 一次性 |
+| `annoyed` | 1.458 s | `annoyed/02.png` 267×223 收回 | | 250 ms | 一次性 |
+| `startle` | 2.708 s | `startle/00.png` 253×241 瞪眼 | 2 | 150 ms | 一次性 |
+| `startle` | 3.125 s | `startle/01.png` 245×228 后缩 | | 150 ms | 一次性 |
+
+### ear-flick / tail-flick / greet / look-up（静态图源）
+
+这四个动作幅度太小，视频模型做不出来（`ear-flick` 两次试跑的抽动都读不出，`greet` 的慢眨眼也没出现），改用**改图**：以已确认帧为底，只改耳朵 / 尾尖 / 眼皮 / 头颈。源图归档在同一目录，文件名带 `neutral` / 动作名。改图后用**固定的族内缩放**（趴族 176/450），不按单帧高度归一，这样抬头帧自然比趴姿高几像素（181 vs 176）而不是被压回同一高度。
+
+| 动作 | 源（中性底统一放 `interaction/_refs/`） | 帧 | 帧数 | 每帧 | 类型 |
+| --- | --- | --- | --- | --- | --- |
+| `ear-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/ear-flick-01-ear-back.png` | `ear-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
+| `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
+| `greet` | `_refs/stand-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00.png` 255×240 · `greet/01.png` 260×240 | 2 | 300 ms | 一次性 |
+| `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 |
+
+### 两条踩过的坑（2026-11-15）
+
+1. **不能用 `walk.png` 当站姿动作的首末帧。** 它本身就是"走路中"的姿态，模型会顺着它继续迈腿——`annoyed`/`greet` 的首跑两条片子猫一直在走，帧完全不可用。改用 `poses/stand.png`（真正的静止站姿）后两条一次通过。`walk.png` 只适合做 `settle` 的起始帧。
+2. **幅度只有"眼睛/耳朵/尾巴"的小动作不要用视频。** 模型对这类微动几乎无响应（`ear-flick` 两次都没做出抽动，`greet` 的慢眨眼也没出现）。这类 2 帧动作直接改图：一次 5–10 credits，且姿势/尺寸完全一致。
+
+
 
 
