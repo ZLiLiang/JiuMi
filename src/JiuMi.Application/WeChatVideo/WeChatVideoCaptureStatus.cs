@@ -11,7 +11,7 @@ public enum WeChatVideoCaptureStatus
     /// <summary>The certificate, listener, proxy and system proxy are being brought up.</summary>
     Starting,
 
-    /// <summary>The system HTTPS proxy points at the local capture proxy.</summary>
+    /// <summary>The system PAC sends the WeChat page host to the local capture proxy.</summary>
     Running,
 
     /// <summary>The local proxy is being torn down and the system proxy restored.</summary>

@@ -16,9 +16,11 @@ internal sealed class WeChatCaptureListener : IDisposable
 
     private readonly Action<WeChatVideoCaptureItem> _onItem;
     private readonly Serilog.ILogger _logger;
+    private readonly string _pacScript;
     private readonly CancellationTokenSource _cancellation = new();
     private HttpListener? _listener;
     private string? _path;
+    private string? _pacPath;
     private bool _disposed;
 
     /// <summary>
@@ -26,12 +28,18 @@ internal sealed class WeChatCaptureListener : IDisposable
     /// </summary>
     /// <param name="onItem">Receives every valid captured item.</param>
     /// <param name="logger">Records protocol failures at debug level.</param>
-    public WeChatCaptureListener(Action<WeChatVideoCaptureItem> onItem, Serilog.ILogger logger)
+    /// <param name="pacScript">The PAC body served to WinINet for this session.</param>
+    public WeChatCaptureListener(
+        Action<WeChatVideoCaptureItem> onItem,
+        Serilog.ILogger logger,
+        string pacScript)
     {
         ArgumentNullException.ThrowIfNull(onItem);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pacScript);
         _onItem = onItem;
         _logger = logger;
+        _pacScript = pacScript;
     }
 
     /// <summary>
@@ -64,12 +72,16 @@ internal sealed class WeChatCaptureListener : IDisposable
 
             _listener = listener;
             _path = path;
+            _pacPath = path + "proxy.pac";
             _ = Task.Run(() => AcceptLoopAsync(listener, _cancellation.Token));
             return new WeChatCaptureListenerStart(
                 port,
                 new Uri(string.Create(
                     CultureInfo.InvariantCulture,
-                    $"http://127.0.0.1:{port}{path}")));
+                    $"http://127.0.0.1:{port}{path}")),
+                new Uri(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"http://127.0.0.1:{port}{_pacPath}")));
         }
 
         throw new InvalidOperationException("No loopback port could be reserved for the WeChat capture listener.");
@@ -124,7 +136,14 @@ internal sealed class WeChatCaptureListener : IDisposable
     {
         try
         {
-            if (!string.Equals(context.Request.Url?.AbsolutePath, _path, StringComparison.Ordinal))
+            string? path = context.Request.Url?.AbsolutePath;
+            if (string.Equals(path, _pacPath, StringComparison.Ordinal))
+            {
+                await WritePacAsync(context, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            if (!string.Equals(path, _path, StringComparison.Ordinal))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.NotFound;
                 return;
@@ -186,6 +205,23 @@ internal sealed class WeChatCaptureListener : IDisposable
         }
     }
 
+    private async Task WritePacAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(context.Request.HttpMethod, "GET", StringComparison.Ordinal))
+        {
+            context.Response.Headers.Add("Allow", "GET");
+            context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+            return;
+        }
+
+        byte[] body = Encoding.UTF8.GetBytes(_pacScript);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        context.Response.ContentType = "application/x-ns-proxy-autoconfig";
+        context.Response.Headers.Add("Cache-Control", "no-store");
+        context.Response.ContentLength64 = body.Length;
+        await context.Response.OutputStream.WriteAsync(body, cancellationToken).ConfigureAwait(false);
+    }
+
     private static async Task<byte[]?> ReadBodyAsync(Stream stream, CancellationToken cancellationToken)
     {
         using var buffer = new MemoryStream();
@@ -206,8 +242,9 @@ internal sealed class WeChatCaptureListener : IDisposable
 }
 
 /// <summary>
-/// Where the listener accepts captures for this session.
+/// Where the listener accepts captures and serves the PAC for this session.
 /// </summary>
 /// <param name="Port">The loopback port.</param>
 /// <param name="ReceiverUrl">The URL including the random path token.</param>
-internal sealed record WeChatCaptureListenerStart(int Port, Uri ReceiverUrl);
+/// <param name="PacUrl">The loopback PAC URL including the random path token.</param>
+internal sealed record WeChatCaptureListenerStart(int Port, Uri ReceiverUrl, Uri PacUrl);

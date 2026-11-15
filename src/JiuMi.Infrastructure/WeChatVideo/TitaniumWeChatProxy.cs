@@ -177,6 +177,11 @@ internal sealed class TitaniumWeChatProxy : IDisposable
             {
                 e.SetResponseBody(Encoding.UTF8.GetBytes(injected));
             }
+
+            // A cached page never reaches this hook, so its script would be missing; keep the page
+            // fresh for the next open as well.
+            response.Headers.RemoveHeader("Cache-Control");
+            response.Headers.AddHeader("Cache-Control", "no-store");
         }
         catch (Exception exception)
         {

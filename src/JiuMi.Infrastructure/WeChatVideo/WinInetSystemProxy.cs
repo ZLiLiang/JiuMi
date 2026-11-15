@@ -48,17 +48,14 @@ internal sealed class WinInetSystemProxy
     }
 
     /// <summary>
-    /// Points HTTPS at the local capture proxy, leaving the other protocols and the bypass list alone.
+    /// Points WinINet at the local PAC, which then sends only the WeChat page host to the capture proxy.
     /// </summary>
-    /// <param name="port">The local capture proxy port.</param>
-    public void ApplyHttpsProxy(int port)
+    /// <param name="pacUrl">The loopback PAC URL served by the capture listener.</param>
+    public void ApplyPac(string pacUrl)
     {
-        string? existing = _registry.ReadString("ProxyServer");
-        _registry.WriteString("ProxyServer", WinInetProxyServerValue.ForHttps(existing, port));
-        _registry.WriteInt32("ProxyEnable", 1);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pacUrl);
 
-        // A PAC script or auto-detection would bypass the fixed local proxy.
-        _registry.Delete("AutoConfigURL");
+        _registry.WriteString("AutoConfigURL", pacUrl);
         _registry.WriteInt32("AutoDetect", 0);
         _refresh();
     }

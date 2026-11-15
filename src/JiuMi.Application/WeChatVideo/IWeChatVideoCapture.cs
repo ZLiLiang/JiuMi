@@ -28,8 +28,9 @@ public interface IWeChatVideoCapture
     event EventHandler<WeChatVideoCaptureItem>? ItemCaptured;
 
     /// <summary>
-    /// Installs the root certificate if needed, starts the local proxy and listener, and points the
-    /// system HTTPS proxy at the local port. The first call may show the Windows certificate trust prompt.
+    /// Installs the root certificate if needed, starts the local proxy and listener, and sets a local
+    /// PAC that sends only the WeChat page host to the local proxy. The first call may show the
+    /// Windows certificate trust prompt.
     /// </summary>
     /// <param name="cancellationToken">Cancels the start-up work before the proxy is switched.</param>
     /// <returns>A task that completes when capture is running.</returns>

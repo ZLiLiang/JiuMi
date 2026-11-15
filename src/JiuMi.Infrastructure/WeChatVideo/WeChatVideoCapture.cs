@@ -273,12 +273,14 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
 
         _certificate = _certificateStore.EnsureInstalled();
 
-        var listener = new WeChatCaptureListener(OnItemCaptured, _logger);
+        int proxyPort = LoopbackPortAllocator.Allocate();
+        WinInetProxySnapshot snapshot = _systemProxy.CaptureSnapshot();
+        string pacScript = WeChatPacScript.Build(snapshot.ProxyEnable, snapshot.ProxyServer, proxyPort);
+
+        var listener = new WeChatCaptureListener(OnItemCaptured, _logger, pacScript);
         WeChatCaptureListenerStart listenerStart = listener.Start();
         _listener = listener;
 
-        int proxyPort = LoopbackPortAllocator.Allocate();
-        WinInetProxySnapshot snapshot = _systemProxy.CaptureSnapshot();
         var state = new WeChatCaptureState(
             proxyPort,
             listenerStart.Port,
@@ -298,7 +300,7 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
         _proxy = proxy;
         proxy.Start(proxyPort);
 
-        _systemProxy.ApplyHttpsProxy(proxyPort);
+        _systemProxy.ApplyPac(listenerStart.PacUrl.AbsoluteUri);
     }
 
     private void CleanupAfterFailedStart()

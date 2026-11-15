@@ -46,23 +46,31 @@ public sealed class WinInetSystemProxyTests
     }
 
     [Fact]
-    public void ApplyHttpsProxy_GivenPlainProxy_KeepsHttpAndPointsHttpsAtTheLocalPort()
+    public void ApplyPac_GivenExistingProxy_SetsOnlyTheAutomaticConfigurationUrl()
     {
         _registry.Set("ProxyEnable", 1);
         _registry.Set("ProxyServer", "127.0.0.1:7897");
         _registry.Set("ProxyOverride", "localhost");
-        _registry.Set("AutoConfigURL", "http://pac.example/proxy.pac");
+        _registry.Set("AutoConfigURL", "http://old.example/proxy.pac");
         _registry.Set("AutoDetect", 1);
 
-        _proxy.ApplyHttpsProxy(51234);
+        _proxy.ApplyPac("http://127.0.0.1:51234/proxy.pac");
 
-        Assert.Equal("http=127.0.0.1:7897;https=127.0.0.1:51234", _registry.ReadString("ProxyServer"));
+        Assert.Equal("127.0.0.1:7897", _registry.ReadString("ProxyServer"));
         Assert.Equal(1, _registry.ReadInt32("ProxyEnable"));
         Assert.Equal("localhost", _registry.ReadString("ProxyOverride"));
-        Assert.Null(_registry.ReadString("AutoConfigURL"));
+        Assert.Equal("http://127.0.0.1:51234/proxy.pac", _registry.ReadString("AutoConfigURL"));
         Assert.Equal(0, _registry.ReadInt32("AutoDetect"));
-        Assert.Equal(4, _registry.WriteCount);
+        Assert.Equal(2, _registry.WriteCount);
         Assert.Equal(1, _refreshCount);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ApplyPac_GivenBlankUrl_Throws(string pacUrl)
+    {
+        Assert.Throws<ArgumentException>(() => _proxy.ApplyPac(pacUrl));
     }
 
     [Fact]
