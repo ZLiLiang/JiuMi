@@ -7,6 +7,7 @@ using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.WeChatVideo;
 using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
@@ -80,6 +81,7 @@ internal static class Program
             [
                 () => Task.Run(() => RunConfigProbe(services)),
                 () => Task.Run(() => ReportStartupIssues(services)),
+                () => services.GetRequiredService<IWeChatVideoCapture>().RestoreResidualAsync(),
                 () => RunLocalizationAsync(services),
                 () =>
                 {

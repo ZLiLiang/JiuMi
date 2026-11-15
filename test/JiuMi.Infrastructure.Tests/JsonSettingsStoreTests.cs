@@ -2,6 +2,7 @@
 using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Settings;
+using JiuMi.Application.WeChatVideo;
 using JiuMi.Infrastructure.Settings;
 
 namespace JiuMi.Infrastructure.Tests;
@@ -266,6 +267,43 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
         Assert.Null(settings.OutputDirectory);
         Assert.Equal(ImageRgbColor.White, settings.JpegBackgroundColor);
+    }
+
+    [Fact]
+    public void Save_GivenWeChatVideoSettings_RoundTripsOnlyTheDownloadDirectory()
+    {
+        JsonSettingsStore store = CreateStore();
+        store.Load();
+
+        SettingsSaveResult result = store.Save(new AppSettings
+        {
+            WeChatVideo = new WeChatVideoSettings
+            {
+                DownloadDirectory = @"D:\videos",
+            },
+        });
+
+        Assert.True(result.Persisted);
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_settingsPath));
+        JsonElement weChatVideo = document.RootElement.GetProperty("weChatVideo");
+        Assert.Equal(@"D:\videos", weChatVideo.GetProperty("downloadDirectory").GetString());
+        Assert.Single(weChatVideo.EnumerateObject());
+
+        WeChatVideoSettings reloaded = CreateStore().Load().Settings.WeChatVideo;
+        Assert.Equal(@"D:\videos", reloaded.DownloadDirectory);
+    }
+
+    [Theory]
+    [InlineData("""{ "language": "en-US" }""")]
+    [InlineData("""{ "weChatVideo": "not an object" }""")]
+    [InlineData("""{ "weChatVideo": { "downloadDirectory": "   " } }""")]
+    public void Load_GivenMissingOrInvalidWeChatVideo_UsesNoDirectory(string json)
+    {
+        WriteSettings(json);
+
+        WeChatVideoSettings settings = CreateStore().Load().Settings.WeChatVideo;
+
+        Assert.Null(settings.DownloadDirectory);
     }
 
     [Fact]

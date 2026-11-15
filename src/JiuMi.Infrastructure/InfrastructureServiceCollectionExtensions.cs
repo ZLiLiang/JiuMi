@@ -10,6 +10,7 @@ using JiuMi.Application.Logging;
 using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.WeChatVideo;
 using JiuMi.Application.WorldClock;
 using JiuMi.Infrastructure.Diagnostics;
 using JiuMi.Infrastructure.Errors;
@@ -20,6 +21,7 @@ using JiuMi.Infrastructure.Logging;
 using JiuMi.Infrastructure.Notifications;
 using JiuMi.Infrastructure.Settings;
 using JiuMi.Infrastructure.Shell;
+using JiuMi.Infrastructure.WeChatVideo;
 using JiuMi.Infrastructure.WorldClock;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -78,10 +80,12 @@ public static class InfrastructureServiceCollectionExtensions
 
         if (OperatingSystem.IsWindows())
         {
+            services.AddSingleton<IWeChatVideoCapture, WeChatVideoCapture>();
             AddWindowsTray(services);
         }
         else
         {
+            services.AddSingleton<IWeChatVideoCapture, NullWeChatVideoCapture>();
             services.AddSingleton<ITrayIcon, NullTrayIcon>();
             services.AddSingleton<IUserNotification, NullUserNotification>();
         }
