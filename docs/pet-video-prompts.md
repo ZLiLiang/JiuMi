@@ -99,14 +99,14 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - 缩放 0.5207（中性帧 338 px → 176 px），趴姿族
 - 哈欠在 0.42–1.88 s，张开度最大约 1.04–1.33 s
 
-| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 |
-| --- | --- | --- | --- | --- | --- |
-| `yawn` | 0.625 s | `yawn/00.png` 342×177 张口 | 4 | 300 ms | 一次性 |
-| `yawn` | 1.042 s | `yawn/01.png` 343×169 最大 | | 300 ms | 一次性 |
-| `yawn` | 1.333 s | `yawn/02.png` 343×170 头后仰 | | 300 ms | 一次性 |
-| `yawn` | 1.708 s | `yawn/03.png` 343×172 收回 | | 300 ms | 一次性 |
-| `happy` | 2.917 s | `happy/00.png` 342×177 眯眼 | 2 | 600 ms | 循环 |
-| `happy` | 3.750 s | `happy/01.png` 342×176 慢呼吸 | | 600 ms | 循环 |
+| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 | 触发场景 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `yawn` | 0.625 s | `yawn/00.png` 342×177 张口 | 4 | 300 ms | 一次性 | 睡前 / 4–5 min 无交互时的随机 |
+| `yawn` | 1.042 s | `yawn/01.png` 343×169 最大 | | 300 ms | 一次性 | 同上 |
+| `yawn` | 1.333 s | `yawn/02.png` 343×170 头后仰 | | 300 ms | 一次性 | 同上 |
+| `yawn` | 1.708 s | `yawn/03.png` 343×172 收回 | | 300 ms | 一次性 | 同上 |
+| `happy` | 2.917 s | `happy/00.png` 342×177 眯眼 | 2 | 600 ms | 循环 | 工具完成、长按抚摸 |
+| `happy` | 3.750 s | `happy/01.png` 342×176 慢呼吸 | | 600 ms | 循环 | 同上 |
 
 ### annoyed / startle（P0-4，同一条片子，2026-11-15 重抽）
 
@@ -114,24 +114,24 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - 首末帧用**修正后的竖尾基准** `_refs/stand-tail-neutral.png`（见下方「尾巴标准」），缩放 0.4478（中性帧 536 px → 240 px）
 - 耳朵后压在 1.25–2.29 s；瞪眼/后缩在 3.12–3.54 s
 
-| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 |
-| --- | --- | --- | --- | --- | --- |
-| `annoyed` | 1.250 s | `annoyed/00.png` 276×226 耳朵后压 | 3 | 250 ms | 一次性 |
-| `annoyed` | 1.667 s | `annoyed/01.png` 275×239 保持 | | 250 ms | 一次性 |
-| `annoyed` | 2.292 s | `annoyed/02.png` 264×236 收回 | | 250 ms | 一次性 |
-| `startle` | 3.125 s | `startle/00.png` 256×230 瞪眼 | 2 | 150 ms | 一次性 |
-| `startle` | 3.542 s | `startle/01.png` 256×230 后缩 | | 150 ms | 一次性 |
+| 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 | 触发场景 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `annoyed` | 1.250 s | `annoyed/00.png` 276×226 耳朵后压 | 3 | 250 ms | 一次性 | 连续点击（3 s 内 ≥3 次） |
+| `annoyed` | 1.667 s | `annoyed/01.png` 275×239 保持 | | 250 ms | 一次性 | 同上 |
+| `annoyed` | 2.292 s | `annoyed/02.png` 264×236 收回 | | 250 ms | 一次性 | 同上 |
+| `startle` | 3.125 s | `startle/00.png` 256×230 瞪眼 | 2 | 150 ms | 一次性 | 拖起（开始拖动） |
+| `startle` | 3.542 s | `startle/01.png` 256×230 后缩 | | 150 ms | 一次性 | 同上 |
 
 ### ear-flick / tail-flick / greet / look-up（静态图源）
 
 这四个动作幅度太小，视频模型做不出来（`ear-flick` 两次试跑的抽动都读不出，`greet` 的慢眨眼也没出现），改用**改图**：以已确认帧为底，只改耳朵 / 尾尖 / 眼皮 / 头颈。改图后用**固定的族内缩放**（趴族 176/450），不按单帧高度归一，这样抬头帧自然比趴姿高几像素（181 vs 176）而不是被压回同一高度。
 
-| 动作 | 源（中性底统一放 `interaction/_refs/`） | 帧 | 帧数 | 每帧 | 类型 |
-| --- | --- | --- | --- | --- | --- |
-| `ear-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/ear-flick-01-ear-back.png` | `ear-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
-| `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00.png` 341×176 · `tail-flick/01.png` 370×186 | 2 | 150 ms | 一次性 |
-| `greet` | `_refs/stand-tail-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00-01.png` 263×238 | 2 | 300 ms | 一次性 |
-| `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 |
+| 动作 | 源（中性底统一放 `interaction/_refs/`） | 帧 | 帧数 | 每帧 | 类型 | 触发场景 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ear-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/ear-flick-01-ear-back.png` | `ear-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 | 指针靠近、随机被打扰 |
+| `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00.png` 341×176 · `tail-flick/01.png` 370×186 | 2 | 150 ms | 一次性 | 同上 |
+| `greet` | `_refs/stand-tail-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00-01.png` 263×238 | 2 | 300 ms | 一次性 | 页面进入 / 切回我的JiuMi |
+| `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 | 房间内指针移动 / 靠近 |
 
 ### 尾巴标准（2026-11-15 定）
 
