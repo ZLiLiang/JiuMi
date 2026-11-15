@@ -1,6 +1,7 @@
 ﻿using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.MyJiuMi;
+using JiuMi.Application.WeChatVideo;
 using JiuMi.Application.WorldClock;
 
 namespace JiuMi.Application.Settings;
@@ -99,6 +100,15 @@ public sealed record AppSettings
         get;
         init;
     } = MyJiuMiSettings.CreateDefault();
+
+    /// <summary>
+    /// Gets the persisted WeChat video download parameters.
+    /// </summary>
+    public WeChatVideoSettings WeChatVideo
+    {
+        get;
+        init;
+    } = WeChatVideoSettings.CreateDefault();
 
     /// <summary>
     /// Creates the settings used when the file is missing or unusable.
