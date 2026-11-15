@@ -106,30 +106,40 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 | `happy` | 2.917 s | `happy/00.png` 342×177 眯眼 | 2 | 600 ms | 循环 |
 | `happy` | 3.750 s | `happy/01.png` 342×176 慢呼吸 | | 600 ms | 循环 |
 
-### annoyed / startle（P0-4，同一条片子）
+### annoyed / startle（P0-4，同一条片子，2026-11-15 重抽）
 
-- 源：`.../p0-4-annoyed-startle/annoyed-startle-source.mp4`（768×768，24 fps，5.17 s）；首末帧用 `poses/stand.png` 锁定站姿
-- 缩放 0.4278（中性帧 561 px → 240 px），站姿族
-- 耳朵后压在 0.42–1.25 s；瞪眼/后缩在 2.71–3.33 s
+- 源：`.../p0-4-annoyed-startle/annoyed-startle-source.mp4`（768×768，24 fps，5.17 s）
+- 首末帧用**修正后的竖尾基准** `_refs/stand-tail-neutral.png`（见下方「尾巴标准」），缩放 0.4478（中性帧 536 px → 240 px）
+- 耳朵后压在 1.25–2.29 s；瞪眼/后缩在 3.12–3.54 s
 
 | 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 |
 | --- | --- | --- | --- | --- | --- |
-| `annoyed` | 0.417 s | `annoyed/00.png` 267×237 耳朵后压 | 3 | 250 ms | 一次性 |
-| `annoyed` | 0.833 s | `annoyed/01.png` 267×221 保持 | | 250 ms | 一次性 |
-| `annoyed` | 1.458 s | `annoyed/02.png` 267×223 收回 | | 250 ms | 一次性 |
-| `startle` | 2.708 s | `startle/00.png` 253×241 瞪眼 | 2 | 150 ms | 一次性 |
-| `startle` | 3.125 s | `startle/01.png` 245×228 后缩 | | 150 ms | 一次性 |
+| `annoyed` | 1.250 s | `annoyed/00.png` 283×227 耳朵后压 | 3 | 250 ms | 一次性 |
+| `annoyed` | 1.667 s | `annoyed/01.png` 283×240 保持 | | 250 ms | 一次性 |
+| `annoyed` | 2.292 s | `annoyed/02.png` 272×237 收回 | | 250 ms | 一次性 |
+| `startle` | 3.125 s | `startle/00.png` 257×230 瞪眼 | 2 | 150 ms | 一次性 |
+| `startle` | 3.542 s | `startle/01.png` 257×230 后缩 | | 150 ms | 一次性 |
 
 ### ear-flick / tail-flick / greet / look-up（静态图源）
 
-这四个动作幅度太小，视频模型做不出来（`ear-flick` 两次试跑的抽动都读不出，`greet` 的慢眨眼也没出现），改用**改图**：以已确认帧为底，只改耳朵 / 尾尖 / 眼皮 / 头颈。源图归档在同一目录，文件名带 `neutral` / 动作名。改图后用**固定的族内缩放**（趴族 176/450），不按单帧高度归一，这样抬头帧自然比趴姿高几像素（181 vs 176）而不是被压回同一高度。
+这四个动作幅度太小，视频模型做不出来（`ear-flick` 两次试跑的抽动都读不出，`greet` 的慢眨眼也没出现），改用**改图**：以已确认帧为底，只改耳朵 / 尾尖 / 眼皮 / 头颈。改图后用**固定的族内缩放**（趴族 176/450），不按单帧高度归一，这样抬头帧自然比趴姿高几像素（181 vs 176）而不是被压回同一高度。
 
 | 动作 | 源（中性底统一放 `interaction/_refs/`） | 帧 | 帧数 | 每帧 | 类型 |
 | --- | --- | --- | --- | --- | --- |
 | `ear-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/ear-flick-01-ear-back.png` | `ear-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
 | `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
-| `greet` | `_refs/stand-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00.png` 255×240 · `greet/01.png` 260×240 | 2 | 300 ms | 一次性 |
+| `greet` | `_refs/stand-tail-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00-01.png` 267×240 | 2 | 300 ms | 一次性 |
 | `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 |
+
+### 尾巴标准（2026-11-15 定）
+
+逐张数过已发布素材：**54 帧里 51 帧的尾巴是「粗短 + 末端白尖」**，只有 `stretch/03`、`jump/airborne`、`jump/landing` 三帧是「细长鞭状、无白尖」——那三帧全部来自 6.58 s 动作源。所以：
+
+- **多数派（粗短 + 白尖）是标准**，细长无白尖的是抽帧管线的缺陷。
+- 方向稿 `d117` 四张（趴/走/伸展/睡）**没有一张是竖尾**，所以竖尾造型从来没有被定义过。`_refs/stand-tail-neutral.png` 就是补出来的竖尾基准：以 `stretch/03` 为底，把尾巴换成多数派的粗短白尖形状。
+- `poses/stand.png` **不能当站姿参考**——它就是那条细长无白尖的尾巴，用它生成会把缺陷放大（P0 首跑就是这么错的）。
+- `stretch/03` 和 `jump/*` 的同类缺陷在线上，属已发布资产，单独修复，不在本票处理。
+
 
 ### 已有素材复用清单（2026-11-15）
 
