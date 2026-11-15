@@ -9,7 +9,7 @@ namespace JiuMi.Infrastructure.WeChatVideo;
 internal static class WeChatRootCertificateFactory
 {
     /// <summary>The common name shown in the Windows trust prompt.</summary>
-    public const string CommonName = "JiuMi 微信视频下载";
+    public const string CommonName = "JiuMi";
 
     /// <summary>How long a newly created root stays valid.</summary>
     public const int ValidYears = 5;
