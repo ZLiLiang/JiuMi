@@ -67,4 +67,18 @@ public sealed class MyJiuMiAnimationCatalogTests
             TimeSpan.FromMilliseconds(858),
             MyJiuMiAnimationCatalog.GetClip(MyJiuMiState.Walk).Duration);
     }
+
+    [Fact]
+    public void SummonWalk_GivenTheWalkBackPace_ReusesTheWalkFramesAtSixteenMilliseconds()
+    {
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.SummonWalk;
+
+        Assert.Equal("walk", clip.AssetFolder);
+        Assert.Equal(33, clip.FrameDurations.Count);
+        Assert.All(
+            clip.FrameDurations,
+            duration => Assert.Equal(TimeSpan.FromMilliseconds(16), duration));
+        Assert.True(clip.Loops);
+        Assert.Equal(TimeSpan.FromMilliseconds(528), clip.Duration);
+    }
 }

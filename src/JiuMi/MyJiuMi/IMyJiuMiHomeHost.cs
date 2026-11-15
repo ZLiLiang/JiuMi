@@ -30,4 +30,11 @@ public interface IMyJiuMiHomeHost
     /// </summary>
     /// <returns>The visible room, clipped by the page viewport and the window.</returns>
     MyJiuMiScreenRect? GetRoomScreenRect();
+
+    /// <summary>
+    /// Gets the page floor line in physical screen pixels, or <see langword="null"/> when the wall is
+    /// not laid out or its floor is scrolled out of view.
+    /// </summary>
+    /// <returns>The Y where the page cat's bottom edge sits, or <see langword="null"/>.</returns>
+    int? GetFloorScreenY();
 }

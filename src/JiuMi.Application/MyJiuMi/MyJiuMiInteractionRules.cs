@@ -47,6 +47,17 @@ public static class MyJiuMiInteractionRules
     public const double WalkSpeed = 103;
 
     /// <summary>
+    /// Gets the walking speed in DIP per second used while the desktop cat walks home and the page
+    /// cat finishes the summon; 1.6x <see cref="WalkSpeed"/> keeps the stride of the fast frames.
+    /// </summary>
+    public const double SummonWalkSpeed = 167;
+
+    /// <summary>
+    /// Gets the frame interval of the summon walk, matched to <see cref="SummonWalkSpeed"/>.
+    /// </summary>
+    public const int SummonWalkFrameMilliseconds = 16;
+
+    /// <summary>
     /// Gets the side of the square cat slot, matching the 200 DIP display size.
     /// </summary>
     public const double CatSize = 200;

@@ -126,6 +126,7 @@ public partial class MyJiuMiDesktopWindow : Window
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (_session is null ||
+            _session.IsSummoning ||
             _isPressed ||
             !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
@@ -143,7 +144,7 @@ public partial class MyJiuMiDesktopWindow : Window
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_session is null || !_isPressed)
+        if (_session is null || _session.IsSummoning || !_isPressed)
         {
             return;
         }
@@ -176,6 +177,12 @@ public partial class MyJiuMiDesktopWindow : Window
         bool wasDragging = _isDragging;
         ReleasePointer();
 
+        if (_session.IsSummoning)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (wasDragging)
         {
             // A release inside the visible room hands the cat back; otherwise the window stays on
@@ -205,6 +212,11 @@ public partial class MyJiuMiDesktopWindow : Window
 
         bool wasDragging = _isDragging;
         ReleasePointer();
+        if (_session.IsSummoning)
+        {
+            return;
+        }
+
         if (wasDragging)
         {
             _session.EndDesktopDrag();
@@ -214,7 +226,7 @@ public partial class MyJiuMiDesktopWindow : Window
 
     private void OnDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_session is null)
+        if (_session is null || _session.IsSummoning)
         {
             return;
         }
