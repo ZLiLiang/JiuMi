@@ -116,11 +116,11 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 
 | 动作 | 源时间点 | 帧 | 帧数 | 每帧 | 类型 |
 | --- | --- | --- | --- | --- | --- |
-| `annoyed` | 1.250 s | `annoyed/00.png` 283×227 耳朵后压 | 3 | 250 ms | 一次性 |
-| `annoyed` | 1.667 s | `annoyed/01.png` 283×240 保持 | | 250 ms | 一次性 |
-| `annoyed` | 2.292 s | `annoyed/02.png` 272×237 收回 | | 250 ms | 一次性 |
-| `startle` | 3.125 s | `startle/00.png` 257×230 瞪眼 | 2 | 150 ms | 一次性 |
-| `startle` | 3.542 s | `startle/01.png` 257×230 后缩 | | 150 ms | 一次性 |
+| `annoyed` | 1.250 s | `annoyed/00.png` 276×226 耳朵后压 | 3 | 250 ms | 一次性 |
+| `annoyed` | 1.667 s | `annoyed/01.png` 275×239 保持 | | 250 ms | 一次性 |
+| `annoyed` | 2.292 s | `annoyed/02.png` 264×236 收回 | | 250 ms | 一次性 |
+| `startle` | 3.125 s | `startle/00.png` 256×230 瞪眼 | 2 | 150 ms | 一次性 |
+| `startle` | 3.542 s | `startle/01.png` 256×230 后缩 | | 150 ms | 一次性 |
 
 ### ear-flick / tail-flick / greet / look-up（静态图源）
 
@@ -130,7 +130,7 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 | --- | --- | --- | --- | --- | --- |
 | `ear-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/ear-flick-01-ear-back.png` | `ear-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
 | `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00.png` 341×176 · `tail-flick/01.png` 370×186 | 2 | 150 ms | 一次性 |
-| `greet` | `_refs/stand-tail-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00-01.png` 267×240 | 2 | 300 ms | 一次性 |
+| `greet` | `_refs/stand-tail-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00-01.png` 263×238 | 2 | 300 ms | 一次性 |
 | `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 |
 
 ### 尾巴标准（2026-11-15 定）
