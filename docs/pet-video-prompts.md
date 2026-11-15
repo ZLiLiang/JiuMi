@@ -70,6 +70,8 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 - 参考图：趴姿用 `lying-idle.png`，站姿用 `walk.png`，身份检查用 `face-closeup.png`。
 - 后处理：按背景色距离抠像（不用 HSV 色带，容易漏边）→ 统一缩放 → 每帧底边 `y=399`、中心 `x=200` 导出 400×400 RGBA。
 - 尺寸基准（实测自运行时帧）：趴 176 px、坐 208 px、站 240 px、伸展 291 px、睡球 148 px。运行时把 400×400 图按 `Stretch="Uniform"` 画进 200 DIP 方格，**不做尺寸归一**，所以导出尺寸就是唯一杠杆。
+- **尾巴长度会变的帧不能按总高度归一**：总高度含尾巴，尾巴一变长缩放比就变小、整只猫跟着缩水。改用刚性部位——取剪影最低 18% 那一带的横向宽度（四爪张开宽度）作基准。`tail-flick/01` 和 `annoyed` 的尾巴修正都踩过这个坑。
+- 站姿参考只能用 `walk.png`（仅限 `settle` 的近景过渡）或 `_refs/stand-tail-neutral.png`；**`poses/stand.png` 不能用作站姿参考**，它的尾巴是细长无白尖的抽帧缺陷。
 
 ### settle（P0-1）
 
@@ -127,7 +129,7 @@ Smooth, seamless 5-second loop. No text, no watermark, no shadow on the ground, 
 | 动作 | 源（中性底统一放 `interaction/_refs/`） | 帧 | 帧数 | 每帧 | 类型 |
 | --- | --- | --- | --- | --- | --- |
 | `ear-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/ear-flick-01-ear-back.png` | `ear-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
-| `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00-01.png` 341×176 | 2 | 150 ms | 一次性 |
+| `tail-flick` | `_refs/lying-neutral.png` + `p0-3-ear-tail/tail-flick-01-tail-up.png` | `tail-flick/00.png` 341×176 · `tail-flick/01.png` 370×186 | 2 | 150 ms | 一次性 |
 | `greet` | `_refs/stand-tail-neutral.png` + `p0-5-greet/greet-01-blink-shut.png` | `greet/00-01.png` 267×240 | 2 | 300 ms | 一次性 |
 | `look-up` | `_refs/lying-neutral.png` + `p0-6-look-up/look-up-head-raised.png` | `look-up/00.png` 341×181 | 1 | 保持 | 一次性 |
 
