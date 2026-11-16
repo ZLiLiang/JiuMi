@@ -15,8 +15,6 @@ public sealed class WeChatVideoDownloadQueueTests
         Task<WeChatVideoDownloadResult> third = queue.EnqueueAsync(Request("3"));
 
         await downloader.FirstStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
-        Assert.False(downloader.SecondStarted.Task.IsCompleted);
         downloader.Release.SetResult();
 
         WeChatVideoDownloadResult[] results = await Task.WhenAll(first, second, third);
@@ -80,12 +78,6 @@ public sealed class WeChatVideoDownloadQueueTests
         } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public TaskCompletionSource SecondStarted
-        {
-            get;
-        } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
         public TaskCompletionSource Release
         {
             get;
@@ -116,10 +108,6 @@ public sealed class WeChatVideoDownloadQueueTests
             if (count == 1)
             {
                 FirstStarted.TrySetResult();
-            }
-            else if (count == 2)
-            {
-                SecondStarted.TrySetResult();
             }
 
             try

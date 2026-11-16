@@ -5,23 +5,27 @@
 /// </summary>
 public sealed record WeChatVideoThumbnailResult
 {
+    private WeChatVideoThumbnailResult()
+    {
+    }
+
     /// <summary>
     /// Gets a value indicating whether the caller should show its placeholder image.
     /// </summary>
-    public required bool IsPlaceholder
+    public bool IsPlaceholder
     {
         get;
-        init;
+        private init;
     }
 
     /// <summary>
     /// Gets the image bytes; empty when <see cref="IsPlaceholder"/> is <see langword="true"/>.
     /// </summary>
-    public required byte[] Bytes
+    public byte[] Bytes
     {
         get;
-        init;
-    }
+        private init;
+    } = [];
 
     /// <summary>
     /// Creates a fetched image.

@@ -19,25 +19,24 @@ public sealed class WeChatVideoThumbnailFetcher : IWeChatVideoThumbnailFetcher, 
     /// Initializes a new instance of the <see cref="WeChatVideoThumbnailFetcher"/> class.
     /// </summary>
     /// <param name="logger">Records failures.</param>
+    public WeChatVideoThumbnailFetcher(Serilog.ILogger logger)
+        : this(logger, handler: null)
+    {
+    }
+
     [SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
         Justification = "HttpClient is created with disposeHandler: true and owns the handler.")]
-    public WeChatVideoThumbnailFetcher(Serilog.ILogger logger)
-        : this(logger, new HttpClientHandler { UseProxy = false })
-    {
-    }
-
-    internal WeChatVideoThumbnailFetcher(Serilog.ILogger logger, HttpMessageHandler handler)
+    internal WeChatVideoThumbnailFetcher(Serilog.ILogger logger, HttpMessageHandler? handler)
     {
         ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(handler);
 
         _logger = logger;
-        _client = new HttpClient(handler, disposeHandler: true)
-        {
-            Timeout = TimeSpan.FromSeconds(30),
-        };
+        _client = handler is null
+            ? new HttpClient(new HttpClientHandler { UseProxy = false }, disposeHandler: true)
+            : new HttpClient(handler, disposeHandler: true);
+        _client.Timeout = TimeSpan.FromSeconds(30);
     }
 
     /// <inheritdoc />

@@ -4,7 +4,15 @@ namespace JiuMi.Application.Tests;
 
 public sealed class WeChatVideoSessionTests
 {
-    private readonly TestTimeProvider _timeProvider = new();
+    private static readonly TimeZoneInfo _zone = TimeZoneInfo.CreateCustomTimeZone(
+        "jiumi-test",
+        TimeSpan.FromHours(8),
+        "jiumi-test",
+        "jiumi-test");
+
+    private readonly ManualTimeProvider _timeProvider = new(
+        new DateTimeOffset(2026, 11, 16, 0, 0, 0, TimeSpan.Zero),
+        _zone);
     private readonly WeChatVideoSession _session;
 
     public WeChatVideoSessionTests()
@@ -19,14 +27,16 @@ public sealed class WeChatVideoSessionTests
         WeChatVideoCaptureItem second = Capture("https://finder.video.qq.com/b?token=2", "oid-2", "nid-2");
 
         _session.AddOrUpdate(first);
-        _timeProvider.Now = _timeProvider.Now.AddMinutes(1);
+        _timeProvider.Advance(TimeSpan.FromMinutes(1));
         _session.AddOrUpdate(second);
 
         IReadOnlyList<WeChatVideoItem> items = _session.Items;
         Assert.Equal(2, items.Count);
         Assert.Equal(second.Url, items[0].Capture.Url);
         Assert.Equal(first.Url, items[1].Capture.Url);
-        Assert.Equal(_timeProvider.Now, items[0].CapturedAt);
+        Assert.Equal(
+            new DateTimeOffset(2026, 11, 16, 8, 1, 0, TimeSpan.FromHours(8)),
+            items[0].CapturedAt);
     }
 
     [Fact]
@@ -38,7 +48,7 @@ public sealed class WeChatVideoSessionTests
         var changes = new List<WeChatVideoSessionChange>();
         _session.Changed += (_, args) => changes.Add(args.Change);
         WeChatVideoItem added = _session.AddOrUpdate(first);
-        _timeProvider.Now = _timeProvider.Now.AddMinutes(1);
+        _timeProvider.Advance(TimeSpan.FromMinutes(1));
         _session.AddOrUpdate(other);
 
         WeChatVideoItem updated = _session.AddOrUpdate(refreshed);
@@ -146,18 +156,4 @@ public sealed class WeChatVideoSessionTests
         Nid = nid,
     };
 
-    private sealed class TestTimeProvider : TimeProvider
-    {
-        private static readonly TimeZoneInfo _zone = TimeZoneInfo.CreateCustomTimeZone(
-            "jiumi-test",
-            TimeSpan.FromHours(8),
-            "jiumi-test",
-            "jiumi-test");
-
-        public DateTimeOffset Now { get; set; } = new(2026, 11, 16, 8, 0, 0, TimeSpan.FromHours(8));
-
-        public override TimeZoneInfo LocalTimeZone => _zone;
-
-        public override DateTimeOffset GetUtcNow() => Now.ToUniversalTime();
-    }
 }

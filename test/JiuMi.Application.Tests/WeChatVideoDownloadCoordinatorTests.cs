@@ -4,7 +4,15 @@ namespace JiuMi.Application.Tests;
 
 public sealed class WeChatVideoDownloadCoordinatorTests
 {
-    private readonly FixedTimeProvider _timeProvider = new();
+    private static readonly TimeZoneInfo _zone = TimeZoneInfo.CreateCustomTimeZone(
+        "jiumi-test",
+        TimeSpan.FromHours(8),
+        "jiumi-test",
+        "jiumi-test");
+
+    private readonly ManualTimeProvider _timeProvider = new(
+        new DateTimeOffset(2026, 11, 16, 0, 9, 10, TimeSpan.Zero),
+        _zone);
     private readonly WeChatVideoSession _session;
 
     public WeChatVideoDownloadCoordinatorTests()
@@ -193,17 +201,4 @@ public sealed class WeChatVideoDownloadCoordinatorTests
         public void Report(WeChatVideoDownloadProgress value) => _report(value);
     }
 
-    private sealed class FixedTimeProvider : TimeProvider
-    {
-        private static readonly TimeZoneInfo _zone = TimeZoneInfo.CreateCustomTimeZone(
-            "jiumi-test",
-            TimeSpan.FromHours(8),
-            "jiumi-test",
-            "jiumi-test");
-
-        public override TimeZoneInfo LocalTimeZone => _zone;
-
-        public override DateTimeOffset GetUtcNow() =>
-            new DateTimeOffset(2026, 11, 16, 8, 9, 10, TimeSpan.FromHours(8)).ToUniversalTime();
-    }
 }

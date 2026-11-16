@@ -62,9 +62,7 @@ public sealed class WeChatVideoSession
                 {
                     Capture = capture
                 };
-                _byKey[key] = item;
-                int index = _ordered.FindIndex(candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
-                _ordered[index] = item;
+                Replace(key, item);
                 change = WeChatVideoSessionChange.Updated;
             }
             else
@@ -141,13 +139,19 @@ public sealed class WeChatVideoSession
                 Key = key,
                 CapturedAt = existing.CapturedAt
             };
-            _byKey[key] = updated;
-            int index = _ordered.FindIndex(candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
-            _ordered[index] = updated;
+            Replace(key, updated);
         }
 
         RaiseChanged(WeChatVideoSessionChange.Updated, updated);
         return true;
+    }
+
+    private void Replace(string key, WeChatVideoItem item)
+    {
+        _byKey[key] = item;
+        int index = _ordered.FindIndex(
+            candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
+        _ordered[index] = item;
     }
 
     private void RaiseChanged(WeChatVideoSessionChange change, WeChatVideoItem item)

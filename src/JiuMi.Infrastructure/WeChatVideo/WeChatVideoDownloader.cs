@@ -15,7 +15,6 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
 {
     private const int ChunkSize = 262144;
     private const int RetryCount = 2;
-    private const int DefaultEncryptionLength = 131072;
     private const int MaxEncryptionLength = 16 * 1024 * 1024;
 
     private readonly HttpClient _client;
@@ -25,25 +24,24 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
     /// Initializes a new instance of the <see cref="WeChatVideoDownloader"/> class.
     /// </summary>
     /// <param name="logger">Records chunk and file failures.</param>
+    public WeChatVideoDownloader(Serilog.ILogger logger)
+        : this(logger, handler: null)
+    {
+    }
+
     [SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
         Justification = "HttpClient is created with disposeHandler: true and owns the handler.")]
-    public WeChatVideoDownloader(Serilog.ILogger logger)
-        : this(logger, new HttpClientHandler { UseProxy = false })
-    {
-    }
-
-    internal WeChatVideoDownloader(Serilog.ILogger logger, HttpMessageHandler handler)
+    internal WeChatVideoDownloader(Serilog.ILogger logger, HttpMessageHandler? handler)
     {
         ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(handler);
 
         _logger = logger;
-        _client = new HttpClient(handler, disposeHandler: true)
-        {
-            Timeout = TimeSpan.FromMinutes(10),
-        };
+        _client = handler is null
+            ? new HttpClient(new HttpClientHandler { UseProxy = false }, disposeHandler: true)
+            : new HttpClient(handler, disposeHandler: true);
+        _client.Timeout = TimeSpan.FromMinutes(10);
     }
 
     /// <inheritdoc />
@@ -135,32 +133,36 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
                     length,
                     cancellationToken).ConfigureAwait(false);
 
-                if (fetch.IsExpired)
+                switch (fetch.Status)
                 {
-                    return WeChatVideoDownloadResult.Expired(received, total);
-                }
-
-                if (fetch.Headers.IsInvalid)
-                {
-                    return WeChatVideoDownloadResult.Failed(
-                        WeChatVideoDownloadFailure.Protocol,
-                        received,
-                        total);
-                }
-
-                if (fetch.Chunk is null)
-                {
-                    _logger.Warning(
-                        "WeChat video chunk at {Offset} failed after {Attempts} attempts " +
-                        "({ErrorType})",
-                        from,
-                        RetryCount + 1,
-                        fetch.Error?.GetType().Name);
-                    return WeChatVideoDownloadResult.Failed(
-                        WeChatVideoDownloadFailure.Network,
-                        received,
-                        total,
-                        fetch.Error);
+                    case ChunkFetchStatus.Expired:
+                        return WeChatVideoDownloadResult.Expired(received, total);
+                    case ChunkFetchStatus.InvalidHeaders:
+                    case ChunkFetchStatus.ProtocolFailure:
+                        _logger.Warning(
+                            "WeChat video chunk at {Offset} failed the media protocol " +
+                            "({ErrorType})",
+                            from,
+                            fetch.Error?.GetType().Name);
+                        return WeChatVideoDownloadResult.Failed(
+                            WeChatVideoDownloadFailure.Protocol,
+                            received,
+                            total,
+                            fetch.Error);
+                    case ChunkFetchStatus.Failed:
+                        _logger.Warning(
+                            "WeChat video chunk at {Offset} failed after {Attempts} attempts " +
+                            "({ErrorType})",
+                            from,
+                            RetryCount + 1,
+                            fetch.Error?.GetType().Name);
+                        return WeChatVideoDownloadResult.Failed(
+                            WeChatVideoDownloadFailure.Network,
+                            received,
+                            total,
+                            fetch.Error);
+                    default:
+                        break;
                 }
 
                 byte[] chunk = fetch.Chunk;
@@ -286,7 +288,15 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
                     continue;
                 }
 
-                if (!IsExpectedRange(response.Content.Headers.ContentRange, from, to, total))
+                ContentRangeHeaderValue? range = response.Content.Headers.ContentRange;
+                if (response.StatusCode != HttpStatusCode.PartialContent || range is null)
+                {
+                    return ChunkFetchResult.ProtocolFailure(
+                        new HttpRequestException(
+                            "The media server did not return the requested range."));
+                }
+
+                if (!IsExpectedRange(range, from, to, total))
                 {
                     return ChunkFetchResult.Expired();
                 }
@@ -296,7 +306,7 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
                     headers = ReadEncryptionHeaders(response);
                     if (headers.IsInvalid)
                     {
-                        return ChunkFetchResult.Invalid(headers);
+                        return ChunkFetchResult.InvalidHeaders(headers);
                     }
                 }
 
@@ -373,13 +383,12 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
     }
 
     private static bool IsExpectedRange(
-        ContentRangeHeaderValue? range,
+        ContentRangeHeaderValue range,
         long from,
         long to,
         long total)
     {
-        return range is not null &&
-            range.From == from &&
+        return range.From == from &&
             range.To == to &&
             range.Length == total;
     }
@@ -397,10 +406,7 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
 
         if (!response.Headers.TryGetValues("X-enclen", out IEnumerable<string>? lengths))
         {
-            return new EncryptionHeaders(
-                IsEncrypted: true,
-                IsInvalid: false,
-                DefaultEncryptionLength);
+            return new EncryptionHeaders(IsEncrypted: true, IsInvalid: true, Length: 0);
         }
 
         if (!int.TryParse(
@@ -436,14 +442,19 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
         return status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.Gone;
     }
 
-    private static async Task DisposeQuietlyAsync(FileStream stream)
+    private async Task DisposeQuietlyAsync(FileStream stream)
     {
         try
         {
             await stream.DisposeAsync().ConfigureAwait(false);
         }
-        catch (IOException)
+        catch (IOException exception)
         {
+            _logger.Warning(exception, "WeChat video could not dispose the partial file stream");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            _logger.Warning(exception, "WeChat video could not dispose the partial file stream");
         }
     }
 
@@ -468,22 +479,34 @@ public sealed class WeChatVideoDownloader : IWeChatVideoDownloader, IDisposable
 
     private readonly record struct EncryptionHeaders(bool IsEncrypted, bool IsInvalid, int Length);
 
+    private enum ChunkFetchStatus
+    {
+        Success,
+        Expired,
+        InvalidHeaders,
+        ProtocolFailure,
+        Failed,
+    }
+
     private readonly record struct ChunkFetchResult(
-        byte[]? Chunk,
+        ChunkFetchStatus Status,
+        byte[] Chunk,
         EncryptionHeaders Headers,
-        bool IsExpired,
         Exception? Error)
     {
         public static ChunkFetchResult Success(byte[] chunk, EncryptionHeaders headers) =>
-            new(chunk, headers, IsExpired: false, Error: null);
+            new(ChunkFetchStatus.Success, chunk, headers, Error: null);
 
         public static ChunkFetchResult Expired() =>
-            new(Chunk: null, Headers: default, IsExpired: true, Error: null);
+            new(ChunkFetchStatus.Expired, [], default, Error: null);
 
-        public static ChunkFetchResult Invalid(EncryptionHeaders headers) =>
-            new(Chunk: null, headers, IsExpired: false, Error: null);
+        public static ChunkFetchResult InvalidHeaders(EncryptionHeaders headers) =>
+            new(ChunkFetchStatus.InvalidHeaders, [], headers, Error: null);
+
+        public static ChunkFetchResult ProtocolFailure(Exception? error = null) =>
+            new(ChunkFetchStatus.ProtocolFailure, [], default, error);
 
         public static ChunkFetchResult Failed(EncryptionHeaders headers, Exception? error) =>
-            new(Chunk: null, headers, IsExpired: false, error);
+            new(ChunkFetchStatus.Failed, [], headers, error);
     }
 }

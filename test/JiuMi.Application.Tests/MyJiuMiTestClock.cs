@@ -4,9 +4,16 @@ namespace JiuMi.Application.Tests;
 
 internal sealed class ManualTimeProvider : TimeProvider
 {
+    private readonly TimeZoneInfo _localTimeZone;
     private DateTimeOffset _now;
 
-    public ManualTimeProvider(DateTimeOffset now) => _now = now;
+    public ManualTimeProvider(DateTimeOffset now, TimeZoneInfo? localTimeZone = null)
+    {
+        _now = now;
+        _localTimeZone = localTimeZone ?? TimeZoneInfo.Local;
+    }
+
+    public override TimeZoneInfo LocalTimeZone => _localTimeZone;
 
     public override DateTimeOffset GetUtcNow() => _now;
 

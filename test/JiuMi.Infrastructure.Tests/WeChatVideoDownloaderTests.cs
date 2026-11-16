@@ -35,7 +35,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     public async Task DownloadAsync_GivenPlainVideo_WritesTheFileAndReportsProgress()
     {
         byte[] body = CreateBody(600000);
-        using var handler = new RecordingHandler(Serve(body));
+        using var handler = new WeChatMediaTestHandler(Serve(body));
         using var downloader = new WeChatVideoDownloader(Logger.None, handler);
         var progress = new RecordingProgress();
 
@@ -53,7 +53,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
         Assert.Equal(new WeChatVideoDownloadProgress(0, 600000), values[0]);
         Assert.Equal(new WeChatVideoDownloadProgress(600000, 600000), values[^1]);
 
-        RequestRecord[] requests = handler.Requests;
+        WeChatMediaTestRequest[] requests = handler.Requests;
         Assert.Equal(HttpMethod.Head, requests[0].Method);
         Assert.Null(requests[0].Range);
         Assert.Equal("bytes=0-262143", requests[1].Range);
@@ -74,7 +74,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
         const int enclen = 131072;
         byte[] plain = CreateBody(300000);
         byte[] body = Encrypt(plain, seed, enclen);
-        using var handler = new RecordingHandler(Serve(body, encrypted: true, enclen: enclen));
+        using var handler = new WeChatMediaTestHandler(Serve(body, encrypted: true, enclen: enclen));
         using var downloader = new WeChatVideoDownloader(Logger.None, handler);
 
         WeChatVideoDownloadResult result = await downloader.DownloadAsync(
@@ -90,7 +90,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     [InlineData(HttpStatusCode.Gone)]
     public async Task DownloadAsync_GivenExpiredHead_ReturnsExpiredWithoutRetry(HttpStatusCode status)
     {
-        using var handler = new RecordingHandler((_, _) => Task.FromResult(new HttpResponseMessage(status)));
+        using var handler = new WeChatMediaTestHandler((_, _) => Task.FromResult(new HttpResponseMessage(status)));
         using var downloader = new WeChatVideoDownloader(Logger.None, handler);
 
         WeChatVideoDownloadResult result = await downloader.DownloadAsync(Request());
@@ -105,7 +105,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     {
         byte[] body = CreateBody(600000);
         int attempts = 0;
-        using var handler = new RecordingHandler((request, _) =>
+        using var handler = new WeChatMediaTestHandler((request, _) =>
         {
             if (request.Method == HttpMethod.Head)
             {
@@ -134,7 +134,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     {
         byte[] body = CreateBody(600000);
         int attempts = 0;
-        using var handler = new RecordingHandler((request, _) =>
+        using var handler = new WeChatMediaTestHandler((request, _) =>
         {
             if (request.Method == HttpMethod.Head)
             {
@@ -158,7 +158,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     public async Task DownloadAsync_GivenContentRangeTotalMismatch_ReturnsExpired()
     {
         byte[] body = CreateBody(300000);
-        using var handler = new RecordingHandler((request, _) =>
+        using var handler = new WeChatMediaTestHandler((request, _) =>
         {
             if (request.Method == HttpMethod.Head)
             {
@@ -180,7 +180,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     [Fact]
     public async Task DownloadAsync_GivenMissingDirectory_ReturnsDirectoryMissingWithoutRequests()
     {
-        using var handler = new RecordingHandler((_, _) =>
+        using var handler = new WeChatMediaTestHandler((_, _) =>
             throw new InvalidOperationException("The download must not start."));
         using var downloader = new WeChatVideoDownloader(Logger.None, handler);
         string missing = Path.Combine(_directory, "missing");
@@ -197,7 +197,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     public async Task DownloadAsync_GivenExistingName_IncrementsWithoutOverwriting()
     {
         byte[] body = CreateBody(600000);
-        using var handler = new RecordingHandler(Serve(body));
+        using var handler = new WeChatMediaTestHandler(Serve(body));
         using var downloader = new WeChatVideoDownloader(Logger.None, handler);
         string existing = Path.Combine(_directory, "clip.mp4");
         await File.WriteAllTextAsync(existing, "existing");
@@ -213,7 +213,7 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     public async Task DownloadAsync_GivenCancellation_DeletesThePartialFile()
     {
         byte[] body = CreateBody(600000);
-        using var handler = new RecordingHandler(async (request, cancellationToken) =>
+        using var handler = new WeChatMediaTestHandler(async (request, cancellationToken) =>
         {
             if (request.Method == HttpMethod.Head)
             {
@@ -247,11 +247,71 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
     {
         byte[] plain = CreateBody(300000);
         byte[] body = Encrypt(plain, 42, 131072);
-        using var handler = new RecordingHandler(Serve(body, encrypted: true));
+        using var handler = new WeChatMediaTestHandler(Serve(body, encrypted: true));
         using var downloader = new WeChatVideoDownloader(Logger.None, handler);
 
         WeChatVideoDownloadResult result = await downloader.DownloadAsync(
             Request(decodeKey: "not-a-number"));
+
+        Assert.Equal(WeChatVideoDownloadStatus.Failed, result.Status);
+        Assert.Equal(WeChatVideoDownloadFailure.Protocol, result.Failure);
+        Assert.Empty(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public async Task DownloadAsync_GivenServerIgnoresRange_ReturnsProtocolFailure()
+    {
+        byte[] body = CreateBody(300000);
+        using var handler = new WeChatMediaTestHandler((request, _) =>
+        {
+            if (request.Method == HttpMethod.Head)
+            {
+                return Task.FromResult(HeadResponse(body.Length));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(body),
+            });
+        });
+        using var downloader = new WeChatVideoDownloader(Logger.None, handler);
+
+        WeChatVideoDownloadResult result = await downloader.DownloadAsync(Request());
+
+        Assert.Equal(WeChatVideoDownloadStatus.Failed, result.Status);
+        Assert.Equal(WeChatVideoDownloadFailure.Protocol, result.Failure);
+        Assert.Equal(2, handler.Requests.Length);
+        Assert.Empty(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public async Task DownloadAsync_GivenEncryptionLengthMissing_ReturnsProtocolFailure()
+    {
+        byte[] body = Encrypt(CreateBody(300000), 42, 131072);
+        using var handler = new WeChatMediaTestHandler((request, _) =>
+        {
+            if (request.Method == HttpMethod.Head)
+            {
+                return Task.FromResult(HeadResponse(body.Length, encrypted: true));
+            }
+
+            RangeItemHeaderValue range = request.Headers.Range!.Ranges.Single();
+            long from = range.From!.Value;
+            long to = range.To!.Value;
+            var content = new ByteArrayContent(
+                body.AsSpan((int)from, (int)(to - from + 1)).ToArray());
+            content.Headers.ContentRange = new ContentRangeHeaderValue(from, to, body.Length);
+            var response = new HttpResponseMessage(HttpStatusCode.PartialContent)
+            {
+                Content = content,
+            };
+            response.Headers.TryAddWithoutValidation("X-encflag", "1");
+            return Task.FromResult(response);
+        });
+        using var downloader = new WeChatVideoDownloader(Logger.None, handler);
+
+        WeChatVideoDownloadResult result = await downloader.DownloadAsync(
+            Request(decodeKey: "42"));
 
         Assert.Equal(WeChatVideoDownloadStatus.Failed, result.Status);
         Assert.Equal(WeChatVideoDownloadFailure.Protocol, result.Failure);
@@ -394,55 +454,4 @@ public sealed class WeChatVideoDownloaderTests : IDisposable
         }
     }
 
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _responder;
-        private readonly List<RequestRecord> _requests = [];
-
-        public RecordingHandler(
-            Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder)
-        {
-            _responder = responder;
-        }
-
-        public RequestRecord[] Requests
-        {
-            get
-            {
-                lock (_requests)
-                {
-                    return _requests.ToArray();
-                }
-            }
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            var record = new RequestRecord(
-                request.Method,
-                request.RequestUri!,
-                request.Headers.UserAgent.ToString(),
-                request.Headers.Referrer?.AbsoluteUri,
-                request.Headers.TryGetValues("Origin", out IEnumerable<string>? origins)
-                    ? origins.FirstOrDefault()
-                    : null,
-                request.Headers.Range?.ToString());
-            lock (_requests)
-            {
-                _requests.Add(record);
-            }
-
-            return await _responder(request, cancellationToken);
-        }
-    }
-
-    private sealed record RequestRecord(
-        HttpMethod Method,
-        Uri Uri,
-        string UserAgent,
-        string? Referer,
-        string? Origin,
-        string? Range);
 }

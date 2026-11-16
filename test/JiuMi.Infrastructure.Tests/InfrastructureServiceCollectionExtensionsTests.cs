@@ -33,7 +33,7 @@ public sealed class InfrastructureServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddInfrastructure_GivenResolvedDownloadQueue_DisposesWithTheHost()
+    public void AddInfrastructure_GivenResolvedDownloadQueue_SynchronousHostDisposalDoesNotThrow()
     {
         var services = new ServiceCollection();
         services.AddInfrastructure();
