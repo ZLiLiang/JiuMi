@@ -551,6 +551,7 @@ internal sealed class PageTransitionAnimator
         {
             ShellPage.FileRename => ("FileRenameCard", "FileRenameBadge"),
             ShellPage.ImageConvert => ("ImageConvertCard", "ImageConvertBadge"),
+            ShellPage.WeChatVideo => ("WeChatCard", "WeChatBadge"),
             ShellPage.WorldClock => ("WorldClockCard", "WorldClockBadge"),
             _ => (string.Empty, string.Empty),
         };

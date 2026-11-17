@@ -1,0 +1,329 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fac="using:FluentAvalonia.UI.Controls"
+             xmlns:loc="using:JiuMi.Localization"
+             xmlns:vm="using:JiuMi.ViewModels"
+             x:Class="JiuMi.Views.WeChatVideoView"
+             x:DataType="vm:WeChatVideoViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.directory">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.directory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.directory.missing">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+    </Style>
+    <Style Selector="Border.chip">
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="7,0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Border.chip TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.chip.done">
+      <Setter Property="Background" Value="{DynamicResource JiuMiCellWorkingBrush}" />
+    </Style>
+    <Style Selector="Border.chip.done TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    </Style>
+    <Style Selector="Border.chip.failed">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.chip.failed TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+    <Style Selector="Border.chip.expired">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.chip.expired TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+    </Style>
+    <Style Selector="TextBlock.row-title">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.row-title.expired">
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.row-meta">
+      <Setter Property="Margin" Value="0,3,0,0" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.row-failure">
+      <Setter Property="Margin" Value="0,3,0,0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.row-hint">
+      <Setter Property="Margin" Value="0,3,0,0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- Avalonia applies later styles last; keep .last after .row. -->
+    <Style Selector="Border.row">
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.row.last">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border x:Name="PageBorder" Padding="44,32,44,36">
+    <Grid x:Name="PageContent" RowDefinitions="Auto,Auto,*">
+      <Grid x:Name="HeaderGrid"
+            Grid.Row="0"
+            ColumnDefinitions="*,Auto"
+            ColumnSpacing="16">
+        <StackPanel>
+          <TextBlock FontSize="28"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                     Text="{loc:Localize Tool.WeChatVideo.Name}" />
+          <TextBlock Margin="0,6,0,0"
+                     FontSize="13"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                     Text="{loc:Localize Tool.WeChatVideo.Subtitle}" />
+        </StackPanel>
+
+        <StackPanel x:Name="HeaderActions"
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Top">
+          <Button x:Name="DirectoryButton"
+                  MaxWidth="200"
+                  Classes="directory"
+                  Classes.missing="{Binding IsDirectoryMissing}"
+                  Click="OnChooseDirectoryClick"
+                  ToolTip.Tip="{Binding DirectoryToolTip}"
+                  AutomationProperties.AutomationId="WeChatVideo.ChooseDirectory">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <fac:FASymbolIcon Symbol="Folder"
+                                FontSize="12"
+                                VerticalAlignment="Center" />
+              <TextBlock MaxWidth="150"
+                         FontSize="12.5"
+                         VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis"
+                         Text="{Binding DirectoryLabel}" />
+              <fac:FASymbolIcon Symbol="Edit"
+                                FontSize="10"
+                                VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+
+          <StackPanel Orientation="Horizontal"
+                      Spacing="8"
+                      VerticalAlignment="Center">
+            <TextBlock FontSize="11.5"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{Binding ListenStatusText}" />
+            <ToggleSwitch x:Name="ListenSwitch"
+                          OnContent=""
+                          OffContent=""
+                          IsChecked="{Binding IsListening, Mode=OneWay}"
+                          IsEnabled="{Binding CanToggleListening}"
+                          IsCheckedChanged="OnListenToggled"
+                          AutomationProperties.AutomationId="WeChatVideo.Listen"
+                          AutomationProperties.Name="{loc:Localize Tool.WeChatVideo.Listen}" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+
+      <Border Grid.Row="1"
+              Margin="0,12,0,0"
+              Padding="12,10"
+              CornerRadius="4"
+              Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+              BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+              BorderThickness="1"
+              IsVisible="{Binding ShowDirectoryMissing}">
+        <TextBlock FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                   Text="{loc:Localize Tool.WeChatVideo.Directory.Missing}" />
+      </Border>
+
+      <Border Grid.Row="2"
+              Margin="0,22,0,0"
+              Padding="20"
+              CornerRadius="8"
+              Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+              BorderThickness="1"
+              IsVisible="{Binding HasItems}">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TextBlock FontSize="12"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{Binding SummaryText}" />
+            <TextBlock Grid.Column="1"
+                       FontSize="11"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Text="{Binding OrderText}" />
+          </Grid>
+
+          <ScrollViewer Grid.Row="1"
+                        Margin="0,8,0,0"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:WeChatVideoRowViewModel">
+                  <Border Classes="row"
+                          Classes.last="{Binding IsLast}"
+                          Padding="8,0">
+                    <Grid MinHeight="76"
+                          ColumnDefinitions="56,*,Auto"
+                          ColumnSpacing="14">
+                      <Border Width="56"
+                              Height="56"
+                              VerticalAlignment="Center"
+                              CornerRadius="4"
+                              ClipToBounds="True"
+                              BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                              BorderThickness="1">
+                        <Panel>
+                          <Image Source="{Binding Thumbnail}"
+                                 Stretch="UniformToFill"
+                                 IsVisible="{Binding HasThumbnail}"
+                                 Opacity="{Binding CoverOpacity}" />
+                          <Panel IsVisible="{Binding !HasThumbnail}">
+                            <Rectangle Stroke="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                       StrokeThickness="1"
+                                       StrokeDashArray="4,4"
+                                       RadiusX="4"
+                                       RadiusY="4" />
+                            <fac:FASymbolIcon Symbol="Video"
+                                              FontSize="20"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                          </Panel>
+                        </Panel>
+                      </Border>
+
+                      <StackPanel Grid.Column="1"
+                                  VerticalAlignment="Center">
+                        <TextBlock Classes="row-title"
+                                   Classes.expired="{Binding IsExpired}"
+                                   Text="{Binding Description}" />
+                        <TextBlock Classes="row-meta"
+                                   IsVisible="{Binding HasMeta}"
+                                   Text="{Binding MetaText}" />
+                        <TextBlock Classes="row-failure"
+                                   IsVisible="{Binding ShowFailure}"
+                                   Text="{Binding FailureText}" />
+                        <TextBlock Classes="row-hint"
+                                   IsVisible="{Binding ShowExpiredHint}"
+                                   Text="{Binding ExpiredHint}" />
+                        <ProgressBar Height="4"
+                                     Margin="0,6,0,0"
+                                     MaxWidth="160"
+                                     HorizontalAlignment="Left"
+                                     Minimum="0"
+                                     Maximum="{Binding ProgressMaximum}"
+                                     Value="{Binding ProgressValue}"
+                                     IsIndeterminate="{Binding IsIndeterminate}"
+                                     IsVisible="{Binding IsDownloading}" />
+                      </StackPanel>
+
+                      <StackPanel Grid.Column="2"
+                                  Orientation="Horizontal"
+                                  Spacing="12"
+                                  VerticalAlignment="Center">
+                        <Border Classes="chip"
+                                Classes.done="{Binding IsCompleted}"
+                                Classes.failed="{Binding IsFailed}"
+                                Classes.expired="{Binding IsExpired}">
+                          <TextBlock Text="{Binding StatusText}" />
+                        </Border>
+                        <Button Height="32"
+                                MinWidth="64"
+                                Padding="12,0"
+                                Classes.accent="{Binding IsPrimaryAccent}"
+                                Command="{Binding PrimaryCommand}"
+                                IsEnabled="{Binding CanPrimaryAction}"
+                                Content="{Binding PrimaryActionText}" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="2"
+              Margin="0,22,0,0"
+              Padding="20"
+              CornerRadius="8"
+              Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+              BorderThickness="1"
+              IsVisible="{Binding ShowEmptyState}">
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="10">
+          <Border Width="56"
+                  Height="56"
+                  CornerRadius="12"
+                  Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+            <fac:FASymbolIcon Symbol="Video"
+                              FontSize="24"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+          </Border>
+          <TextBlock FontSize="14"
+                     FontWeight="SemiBold"
+                     HorizontalAlignment="Center"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                     Text="{Binding EmptyTitle}" />
+          <TextBlock MaxWidth="380"
+                     FontSize="12"
+                     LineHeight="18"
+                     TextWrapping="Wrap"
+                     TextAlignment="Center"
+                     HorizontalAlignment="Center"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                     Text="{Binding EmptyHint}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

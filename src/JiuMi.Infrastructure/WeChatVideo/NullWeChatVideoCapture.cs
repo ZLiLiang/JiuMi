@@ -26,6 +26,18 @@ internal sealed class NullWeChatVideoCapture : IWeChatVideoCapture
     }
 
     /// <inheritdoc />
+    public event EventHandler? StatusChanged
+    {
+        add
+        {
+        }
+
+        remove
+        {
+        }
+    }
+
+    /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken = default) =>
         Task.FromException(new PlatformNotSupportedException("WeChat video capture requires Windows."));
 

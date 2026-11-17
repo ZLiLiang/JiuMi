@@ -591,7 +591,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 副标题 | `Tool.WeChatVideo.Subtitle`；只说明在微信里打开视频后在这里下载，不写目录规则 |
 | 动作区 | 水平排列、间距 8：下载目录按钮 → 监听开关 |
 | 下载目录 | 高 32 按钮，最大宽 200：文件夹图标 12 + 目录名（最大宽 150、`CharacterEllipsis`）+ 铅笔图标 10；ToolTip 给完整路径；未选择时文案 `Tool.WeChatVideo.Directory.Choose` |
-| 监听开关 | 状态文字 11.5px + `ToggleSwitch`（不显示 On/Off）：未监听 / 正在启动… / 监听中 / 正在停止…；监听中用 `AccentFillColorDefaultBrush`；启动、停止中禁用开关 |
+| 监听开关 | 状态文字 11.5px + `ToggleSwitch`（不显示 On/Off，可访问名取 `Tool.WeChatVideo.Listen`）：未监听 / 正在启动… / 监听中 / 正在停止…；监听中用 `AccentFillColorDefaultBrush`；启动、停止中禁用开关 |
 
 - 内容宽小于 640 时，动作区整体移到标题下方、左对齐、上边距 12，内部仍保持一行。
 - 首次开启监听且证书未安装时先弹「证书确认框」；已安装则直接启动。证书保留到用户在设置页卸载为止，因此只有首次安装或卸载后才会再次弹出。开关状态只在会话内，不落盘，每次启动默认关。
@@ -640,12 +640,13 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 未选择目录：页头按钮文案「选择下载目录」，行内下载按钮禁用，不另加提示。
 - 已配置但目录不存在：页头按钮转 caution 色；页头下方、卡片上方显示 12px caution 横幅 `Tool.WeChatVideo.Directory.Missing`（「下载目录不存在，下载已暂停。请重新选择目录，或恢复该文件夹。」），下载按钮禁用；空列表时不显示横幅。
 - 目录通过系统文件夹对话框选择；选择成功立即写 `WeChatVideo.DownloadDirectory`。目录不存在时下载失败原因写 `Tool.WeChatVideo.Failure.DirectoryMissing`，不静默创建目录（ADR-0013）。
+- 目录存在性在切换到本页、窗口重新激活、选择目录（含重选同一路径）、新捕获或移除条目、下载结束后重查；点击下载/重试前再确认一次，避免在目录已删除时启动注定失败的下载。
 
 ### 证书确认框
 
 - 触发：首次开启监听且 `IWeChatVideoCapture.IsCertificateInstalled` 为 false；已安装不弹。
 - 独立无边框确认窗，样式同「关闭询问框」：宽 420、高度随内容、`CenterOwner`、无系统装饰、透明底；卡片外边距 24、内边距 36 32、圆角 12、`SolidBackgroundFillColorBaseBrush` + 1px `CardStrokeColorDefaultBrush` + `JiuMiIslandShadow`；不显示应用名或品牌头。
-- 标题 20px SemiBold `Tool.WeChatVideo.Certificate.Title`（「安装 JiuMi 证书」）；正文 14px 次文字色 `Tool.WeChatVideo.Certificate.Body`；下方 12px 三级色 `Tool.WeChatVideo.Certificate.Note`，写明只解密 `channels.weixin.qq.com` 与 `finder.video.qq.com`、可在「设置 → 数据与联网」中卸载、Windows 随后会弹出证书信任确认。
+- 标题 20px SemiBold `Tool.WeChatVideo.Certificate.Title`（「安装 JiuMi 证书」）；正文 14px 次文字色 `Tool.WeChatVideo.Certificate.Body`；下方 12px 三级色 `Tool.WeChatVideo.Certificate.Note`，写明可在「设置 → 数据与联网」中卸载、Windows 随后会弹出证书信任确认。
 - 按钮右对齐、间距 8、高 32：`取消`（次要、Esc、默认焦点）→ `继续并开启`（强调色）。默认焦点在取消，避免回车误装。
 - 确认后先关本框再调用启动，Windows 信任弹窗不与本框叠加。取消则开关回弹到关，不写任何状态。启动失败或信任被拒 → 全局 InfoBar（`Error.WeChatVideo.CaptureStartFailed`，重试），开关回弹。
 - 证书保留在 `CurrentUser` 直到设置页显式卸载（ADR-0013 决策 8）；卸载后下次监听重新弹本框。
@@ -663,7 +664,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ### 本页新增文案键
 
-`Tool.WeChatVideo.` 前缀：`Name`、`Description`、`Subtitle`、`Summary`、`Order`、`Untitled`、`Empty`、`Empty.Hint`、`Empty.Running`、`Empty.Running.Hint`、`Listen.Stopped`、`Listen.Starting`、`Listen.Running`、`Listen.Stopping`、`Directory.Choose`、`Directory.Missing`、`Status.Idle`、`Status.Queued`、`Status.Downloading`、`Status.DownloadingPercent`、`Status.Completed`、`Status.Failed`、`Status.Canceled`、`Status.Expired`、`Action.Download`、`Action.Cancel`、`Action.Remove`、`Action.Retry`、`Failure.DirectoryMissing`、`Failure.Network`、`Failure.Protocol`、`Failure.FileWrite`、`Expired.Hint`、`Certificate.Title`、`Certificate.Body`、`Certificate.Note`、`Certificate.Cancel`、`Certificate.Confirm`、`Residual.Restored`。现有 `Tool.WeChatDownload.Name` / `.Description` 改名到本前缀；导航、主页卡片与页面标题共用。
+`Tool.WeChatVideo.` 前缀：`Name`、`Description`、`Subtitle`、`Summary`、`Order`、`Untitled`、`Empty`、`Empty.Hint`、`Empty.Running`、`Empty.Running.Hint`、`Listen`、`Listen.Stopped`、`Listen.Starting`、`Listen.Running`、`Listen.Stopping`、`Directory.Choose`、`Directory.Missing`、`Status.Idle`、`Status.Queued`、`Status.Downloading`、`Status.DownloadingPercent`、`Status.Completed`、`Status.Failed`、`Status.Canceled`、`Status.Expired`、`Action.Download`、`Action.Cancel`、`Action.Remove`、`Action.Retry`、`Failure.DirectoryMissing`、`Failure.Network`、`Failure.Protocol`、`Failure.FileWrite`、`Expired.Hint`、`Certificate.Title`、`Certificate.Body`、`Certificate.Note`、`Certificate.Cancel`、`Certificate.Confirm`、`Residual.Restored`。现有 `Tool.WeChatDownload.Name` / `.Description` 改名到本前缀；导航、主页卡片与页面标题共用。
 设置页证书行：`Settings.Data.Certificate.Title` / `.Hint` / `.Installed` / `.NotInstalled` / `.Running` / `.Uninstall` / `.Confirm.Title` / `.Confirm.Body` / `.Confirm.Cancel`。
 `Error.*`：`Error.WeChatVideo.CaptureStartFailed`、`Error.WeChatVideo.CertificateUninstallFailed`、`Error.WeChatVideo.ProxyRestoreFailed`，按 ADR-0003 映射登记。
 

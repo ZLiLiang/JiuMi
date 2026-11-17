@@ -19,6 +19,7 @@ using JiuMi.Theming;
 using JiuMi.Threading;
 using JiuMi.ViewModels;
 using JiuMi.Views;
+using JiuMi.WeChatVideo;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -81,7 +82,7 @@ internal static class Program
             [
                 () => Task.Run(() => RunConfigProbe(services)),
                 () => Task.Run(() => ReportStartupIssues(services)),
-                () => services.GetRequiredService<IWeChatVideoCapture>().RestoreResidualAsync(),
+                () => RunResidualRestoreAsync(services),
                 () => RunLocalizationAsync(services),
                 () =>
                 {
@@ -90,6 +91,14 @@ internal static class Program
                 },
             ],
             () => services.GetRequiredService<MainWindow>());
+    }
+
+    private static async Task RunResidualRestoreAsync(ServiceProvider services)
+    {
+        WeChatVideoResidualRestoreResult result = await services
+            .GetRequiredService<IWeChatVideoCapture>()
+            .RestoreResidualAsync();
+        services.GetRequiredService<WeChatVideoStartupNotice>().Report(result);
     }
 
     private static void RunConfigProbe(ServiceProvider services)
@@ -161,6 +170,8 @@ internal static class Program
                 provider.GetRequiredService<Serilog.ILogger>());
         });
         services.AddSingleton<DiagnosticsExportController>();
+        services.AddSingleton<WeChatVideoStartupNotice>();
+        services.AddSingleton<ErrorRetryRegistry>();
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MyJiuMiSession>();
@@ -169,6 +180,8 @@ internal static class Program
         services.AddSingleton(new OutputPathPlanner(File.Exists));
         services.AddSingleton<ImageConvertViewModel>();
         services.AddSingleton<FileRenameViewModel>();
+        services.AddSingleton<WeChatVideoViewModel>();
+        services.AddSingleton<IWeChatVideoCertificatePrompt, WeChatVideoCertificatePrompt>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();

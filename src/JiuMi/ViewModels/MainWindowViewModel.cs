@@ -27,9 +27,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ShellNavigationItem _worldClockNavigationItem;
     private readonly ShellNavigationItem _imageConvertNavigationItem;
     private readonly ShellNavigationItem _fileRenameNavigationItem;
+    private readonly ShellNavigationItem _weChatVideoNavigationItem;
     private readonly WorldClockViewModel _worldClockPage;
     private readonly ImageConvertViewModel _imageConvertPage;
     private readonly FileRenameViewModel _fileRenamePage;
+    private readonly WeChatVideoViewModel _weChatVideoPage;
     private readonly MyJiuMiViewModel _myJiuMiPage;
     private ShellNavigationItem? _selectedPrimaryItem;
     private ShellNavigationItem? _selectedSettingsItem;
@@ -48,6 +50,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <param name="worldClockPage">The world working hours page.</param>
     /// <param name="imageConvertPage">The image conversion page.</param>
     /// <param name="fileRenamePage">The batch rename page.</param>
+    /// <param name="weChatVideoPage">The WeChat video download page.</param>
     /// <param name="infoBar">The application-wide error notice shown above the content.</param>
     /// <param name="settingsStore">The store that holds the navigation state and saves it on exit.</param>
     /// <param name="catalogUpdater">Checks the published world clock catalog after the shell is up.</param>
@@ -60,6 +63,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         WorldClockViewModel worldClockPage,
         ImageConvertViewModel imageConvertPage,
         FileRenameViewModel fileRenamePage,
+        WeChatVideoViewModel weChatVideoPage,
         InfoBarViewModel infoBar,
         ISettingsStore settingsStore,
         IWorldClockCatalogUpdater catalogUpdater,
@@ -72,6 +76,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(worldClockPage);
         ArgumentNullException.ThrowIfNull(imageConvertPage);
         ArgumentNullException.ThrowIfNull(fileRenamePage);
+        ArgumentNullException.ThrowIfNull(weChatVideoPage);
         ArgumentNullException.ThrowIfNull(infoBar);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(catalogUpdater);
@@ -86,6 +91,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _worldClockPage = worldClockPage;
         _imageConvertPage = imageConvertPage;
         _fileRenamePage = fileRenamePage;
+        _weChatVideoPage = weChatVideoPage;
         _myJiuMiPage = myJiuMiPage;
         _isNavigationExpanded = settingsStore.Current.NavExpanded;
 
@@ -93,6 +99,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         HomePage.OpenWorldClockCommand = new RelayCommand(OpenWorldClock);
         HomePage.OpenImageConvertCommand = new RelayCommand(OpenImageConvert);
         HomePage.OpenFileRenameCommand = new RelayCommand(OpenFileRename);
+        HomePage.OpenWeChatVideoCommand = new RelayCommand(OpenWeChatVideo);
         SettingsPage = settingsPage;
         InfoBar = infoBar;
         _currentPage = HomePage;
@@ -103,13 +110,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             "image-convert", "Tool.ImageConvert.Name", "Image", "ImageFilled", ShellPage.ImageConvert, isEnabled: true);
         _fileRenameNavigationItem = CreateItem(
             "file-rename", "Tool.FileRename.Name", "Rename", "Rename", ShellPage.FileRename, isEnabled: true);
+        _weChatVideoNavigationItem = CreateItem(
+            "wechat-video", "Tool.WeChatVideo.Name", "Video", "VideoFilled", ShellPage.WeChatVideo, isEnabled: true);
         _myJiuMiNavigationItem = CreateItem(
             "my-jiumi", "Tool.MyJiuMi.Name", "Emoji", "EmojiFilled", ShellPage.MyJiuMi, isEnabled: true);
         PrimaryNavigationItems =
         [
             CreateItem("home", "Shell.Nav.Home", "Home", "HomeFilled", ShellPage.Home, isEnabled: true),
             _myJiuMiNavigationItem,
-            CreateItem("wechat-download", "Tool.WeChatDownload.Name", "Video", "VideoFilled", page: null, isEnabled: false),
+            _weChatVideoNavigationItem,
             _fileRenameNavigationItem,
             _imageConvertNavigationItem,
             _worldClockNavigationItem,
@@ -282,6 +291,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public FileRenameViewModel FileRenamePage => _fileRenamePage;
 
     /// <summary>
+    /// Gets the page that hosts the WeChat video download content.
+    /// </summary>
+    public WeChatVideoViewModel WeChatVideoPage => _weChatVideoPage;
+
+    /// <summary>
     /// Gets the page that hosts the My JiuMi content.
     /// </summary>
     public MyJiuMiViewModel MyJiuMiPage => _myJiuMiPage;
@@ -319,11 +333,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Recomputes the current page when the window is activated again.
+    /// Refreshes the current page when the window is activated again, including the
+    /// cached WeChat download folder state.
     /// </summary>
     public void OnWindowActivated()
     {
         StartCatalogCheckOnce();
+        _weChatVideoPage.ShowStartupNoticeOnce();
+        if (ReferenceEquals(CurrentPage, _weChatVideoPage))
+        {
+            _weChatVideoPage.Activate();
+        }
+
         if (ReferenceEquals(CurrentPage, _worldClockPage))
         {
             _worldClockPage.Refresh();
@@ -395,6 +416,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             _imageConvertPage.Activate();
         }
 
+        if (ReferenceEquals(target, _weChatVideoPage))
+        {
+            _weChatVideoPage.Activate();
+        }
+
         CurrentPage = target;
         _logger.Debug("Navigated to {Page}", page);
     }
@@ -432,6 +458,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _worldClockPage.Dispose();
         _imageConvertPage.Dispose();
         _fileRenamePage.Dispose();
+        _weChatVideoPage.Dispose();
         _myJiuMiPage.Dispose();
         SettingsPage.Dispose();
         InfoBar.Dispose();
@@ -513,6 +540,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ShellPage.WorldClock => _worldClockPage,
         ShellPage.ImageConvert => _imageConvertPage,
         ShellPage.FileRename => _fileRenamePage,
+        ShellPage.WeChatVideo => _weChatVideoPage,
         _ => HomePage,
     };
 
@@ -529,6 +557,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private void OpenFileRename()
     {
         ActivateCard(ShellPage.FileRename, _fileRenameNavigationItem);
+    }
+
+    private void OpenWeChatVideo()
+    {
+        ActivateCard(ShellPage.WeChatVideo, _weChatVideoNavigationItem);
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

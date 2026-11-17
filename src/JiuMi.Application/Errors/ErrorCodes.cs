@@ -52,4 +52,13 @@ public static class ErrorCodes
 
     /// <summary>A rename item or the rename batch failed; recorded for diagnostics only.</summary>
     public const string FileRenameFailed = "FileRename.Failed";
+
+    /// <summary>The WeChat video listener could not be started.</summary>
+    public const string WeChatVideoCaptureStartFailed = "WeChatVideo.CaptureStartFailed";
+
+    /// <summary>The WeChat video root certificate could not be uninstalled.</summary>
+    public const string WeChatVideoCertificateUninstallFailed = "WeChatVideo.CertificateUninstallFailed";
+
+    /// <summary>The system proxy left by the WeChat video listener could not be restored.</summary>
+    public const string WeChatVideoProxyRestoreFailed = "WeChatVideo.ProxyRestoreFailed";
 }
