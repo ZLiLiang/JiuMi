@@ -339,6 +339,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         StartCatalogCheckOnce();
         _weChatVideoPage.ShowStartupNoticeOnce();
+        if (ReferenceEquals(CurrentPage, _weChatVideoPage))
+        {
+            _weChatVideoPage.Activate();
+        }
+
         if (ReferenceEquals(CurrentPage, _worldClockPage))
         {
             _worldClockPage.Refresh();

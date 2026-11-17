@@ -203,12 +203,12 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets a value indicating whether the missing-folder banner is shown.
     /// </summary>
-    public bool ShowDirectoryMissing => _isDirectoryMissing && HasItems;
+    public bool ShowDirectoryMissing => IsDirectoryMissing && HasItems;
 
     /// <summary>
     /// Gets a value indicating whether starting or retrying a download is allowed.
     /// </summary>
-    public bool CanDownload => HasDownloadDirectory && !_isDirectoryMissing;
+    public bool CanDownload => HasDownloadDirectory && !IsDirectoryMissing;
 
     /// <summary>
     /// Gets the text of the download folder button.
@@ -344,6 +344,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         string? normalized = string.IsNullOrWhiteSpace(path) ? null : path.Trim();
         if (string.Equals(_downloadDirectory, normalized, StringComparison.OrdinalIgnoreCase))
         {
+            // Picking the same path again is how the user clears a folder that was
+            // missing and has since been restored.
+            RefreshDirectoryState();
             return;
         }
 
@@ -513,6 +516,11 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
                 break;
         }
 
+        if (e.Change != WeChatVideoSessionChange.Updated)
+        {
+            RefreshDirectoryState();
+        }
+
         UpdateListState();
     }
 
@@ -671,12 +679,20 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
 
     private void HandlePrimaryAction(WeChatVideoRowViewModel row)
     {
+        // The row's enabled state is cached with the folder check; confirm it again
+        // before starting a download so a folder deleted since the last refresh is
+        // reflected immediately.
+        RefreshDirectoryState();
         switch (row.Item.State)
         {
             case WeChatVideoDownloadState.Idle:
             case WeChatVideoDownloadState.Canceled:
             case WeChatVideoDownloadState.Failed:
-                _ = StartDownloadAsync(row);
+                if (CanDownload)
+                {
+                    _ = StartDownloadAsync(row);
+                }
+
                 break;
             case WeChatVideoDownloadState.Queued:
             case WeChatVideoDownloadState.Downloading:

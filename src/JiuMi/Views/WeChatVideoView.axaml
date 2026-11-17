@@ -89,6 +89,7 @@
       <Setter Property="TextWrapping" Value="NoWrap" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
+    <!-- Avalonia applies later styles last; keep .last after .row. -->
     <Style Selector="Border.row">
       <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
       <Setter Property="BorderThickness" Value="0,0,0,1" />

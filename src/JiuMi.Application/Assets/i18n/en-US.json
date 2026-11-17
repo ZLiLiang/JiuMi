@@ -70,7 +70,7 @@
   "Tool.WeChatVideo.Empty.Hint": "Turn on Listening at the top right, then open a Channels video in WeChat.",
   "Tool.WeChatVideo.Empty.Running": "Listening",
   "Tool.WeChatVideo.Empty.Running.Hint": "Open a Channels video in WeChat; it will appear here once captured.",
-  "Tool.WeChatVideo.Listen": "Listening",
+  "Tool.WeChatVideo.Listen": "Listen for Channels videos",
   "Tool.WeChatVideo.Listen.Stopped": "Not listening",
   "Tool.WeChatVideo.Listen.Starting": "Starting…",
   "Tool.WeChatVideo.Listen.Running": "Listening",
