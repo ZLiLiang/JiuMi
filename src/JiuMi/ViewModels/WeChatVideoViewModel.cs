@@ -569,11 +569,6 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowDirectoryMissing));
         OnPropertyChanged(nameof(EmptyTitle));
         OnPropertyChanged(nameof(EmptyHint));
-
-        foreach (WeChatVideoRowViewModel row in Rows)
-        {
-            row.SetDownloadAvailable(CanDownload);
-        }
     }
 
     private void UpdateRowSeparators()
@@ -679,15 +674,14 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
 
     private void HandlePrimaryAction(WeChatVideoRowViewModel row)
     {
-        // The row's enabled state is cached with the folder check; confirm it again
-        // before starting a download so a folder deleted since the last refresh is
-        // reflected immediately.
-        RefreshDirectoryState();
         switch (row.Item.State)
         {
             case WeChatVideoDownloadState.Idle:
             case WeChatVideoDownloadState.Canceled:
             case WeChatVideoDownloadState.Failed:
+                // The row's enabled state is cached with the folder check; confirm it
+                // again before starting so a deleted folder is reflected immediately.
+                RefreshDirectoryState();
                 if (CanDownload)
                 {
                     _ = StartDownloadAsync(row);

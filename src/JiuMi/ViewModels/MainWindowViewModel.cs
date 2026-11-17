@@ -333,7 +333,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Recomputes the current page when the window is activated again.
+    /// Refreshes the current page when the window is activated again, including the
+    /// cached WeChat download folder state.
     /// </summary>
     public void OnWindowActivated()
     {
