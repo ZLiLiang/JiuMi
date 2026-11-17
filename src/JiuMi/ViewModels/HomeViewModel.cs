@@ -10,6 +10,7 @@ public sealed class HomeViewModel : ViewModelBase
     private IRelayCommand? _openWorldClockCommand;
     private IRelayCommand? _openImageConvertCommand;
     private IRelayCommand? _openFileRenameCommand;
+    private IRelayCommand? _openWeChatVideoCommand;
 
     /// <summary>
     /// Gets or sets the command that opens the world clock page from its tool card.
@@ -36,5 +37,14 @@ public sealed class HomeViewModel : ViewModelBase
     {
         get => _openFileRenameCommand;
         set => SetProperty(ref _openFileRenameCommand, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the command that opens the WeChat video download page from its tool card.
+    /// </summary>
+    public IRelayCommand? OpenWeChatVideoCommand
+    {
+        get => _openWeChatVideoCommand;
+        set => SetProperty(ref _openWeChatVideoCommand, value);
     }
 }

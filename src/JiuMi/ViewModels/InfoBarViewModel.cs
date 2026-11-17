@@ -21,6 +21,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly DiagnosticsExportController _exportController;
+    private readonly ErrorRetryRegistry _retryRegistry;
     private readonly ILocalizationService _localization;
     private readonly ISettingsStore _settingsStore;
     private readonly ISystemLauncher _systemLauncher;
@@ -48,13 +49,15 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
     /// <param name="settingsStore">Supplies the current settings for the retry action.</param>
     /// <param name="systemLauncher">Opens the settings folder for the open-folder action.</param>
     /// <param name="exportController">Retries a failed diagnostics export for the retry action.</param>
+    /// <param name="retryRegistry">Supplies the in-place retry actions of other pages.</param>
     public InfoBarViewModel(
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
         ILocalizationService localization,
         ISettingsStore settingsStore,
         ISystemLauncher systemLauncher,
-        DiagnosticsExportController exportController)
+        DiagnosticsExportController exportController,
+        ErrorRetryRegistry retryRegistry)
     {
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
@@ -62,6 +65,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(systemLauncher);
         ArgumentNullException.ThrowIfNull(exportController);
+        ArgumentNullException.ThrowIfNull(retryRegistry);
 
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
@@ -69,6 +73,7 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         _settingsStore = settingsStore;
         _systemLauncher = systemLauncher;
         _exportController = exportController;
+        _retryRegistry = retryRegistry;
 
         _dismissTimer = new DispatcherTimer
         {
@@ -407,6 +412,17 @@ public sealed class InfoBarViewModel : ViewModelBase, IDisposable
         ErrorNotice? notice = _notices.Current;
         if (notice is null)
         {
+            return;
+        }
+
+        if (notice.Action == ErrorNoticeAction.Retry &&
+            _retryRegistry.Find(notice.Code) is { } retry)
+        {
+            if (await retry())
+            {
+                Dismiss();
+            }
+
             return;
         }
 

@@ -1,0 +1,87 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:JiuMi.ViewModels"
+        x:Class="JiuMi.Views.WeChatConfirmWindow"
+        x:DataType="vm:WeChatConfirmWindowViewModel"
+        Title="{Binding AppTitle}"
+        Width="420"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+  <Window.Styles>
+    <Style Selector="TextBlock.headline">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LineHeight" Value="28" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.body">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.note">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+    <Style Selector="Button.dialog">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="12,0" />
+    </Style>
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <Border Margin="24"
+          Padding="36,32,36,32"
+          CornerRadius="12"
+          Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+          BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+          BorderThickness="1"
+          BoxShadow="{DynamicResource JiuMiIslandShadow}">
+    <StackPanel>
+      <TextBlock Classes="headline"
+                 Text="{Binding Heading}" />
+      <TextBlock Margin="0,10,0,0"
+                 Classes="body"
+                 Text="{Binding Body}" />
+      <TextBlock Margin="0,8,0,0"
+                 Classes="note"
+                 IsVisible="{Binding HasNote}"
+                 Text="{Binding Note}" />
+
+      <StackPanel Margin="0,18,0,0"
+                  HorizontalAlignment="Right"
+                  Orientation="Horizontal"
+                  Spacing="8">
+        <Button Name="CancelButton"
+                Classes="dialog"
+                IsCancel="True"
+                IsDefault="True"
+                Content="{Binding CancelText}"
+                Click="OnCancelClick" />
+        <Button Classes="dialog"
+                Classes.accent="{Binding !IsDanger}"
+                Classes.danger="{Binding IsDanger}"
+                Content="{Binding ConfirmText}"
+                Click="OnConfirmClick" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>

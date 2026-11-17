@@ -28,6 +28,11 @@ public interface IWeChatVideoCapture
     event EventHandler<WeChatVideoCaptureItem>? ItemCaptured;
 
     /// <summary>
+    /// Occurs after <see cref="Status"/> changes. The event is raised on the thread that changed the state.
+    /// </summary>
+    event EventHandler? StatusChanged;
+
+    /// <summary>
     /// Installs the root certificate if needed, starts the local proxy and listener, and sets a local
     /// PAC that sends only the WeChat page host to the local proxy. The first call may show the
     /// Windows certificate trust prompt.
@@ -37,8 +42,9 @@ public interface IWeChatVideoCapture
     Task StartAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Restores the system proxy, stops the local proxy and listener, removes the state file and
-    /// uninstalls the root certificate. Safe to call when capture is not running.
+    /// Restores the system proxy, stops the local proxy and listener, and removes the state file.
+    /// The root certificate stays installed until <see cref="UninstallCertificateAsync"/> removes it.
+    /// Safe to call when capture is not running.
     /// </summary>
     /// <param name="cancellationToken">Cancels the tear-down work.</param>
     /// <returns>A task that completes when capture has stopped.</returns>

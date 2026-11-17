@@ -75,6 +75,9 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
     public event EventHandler<WeChatVideoCaptureItem>? ItemCaptured;
 
     /// <inheritdoc />
+    public event EventHandler? StatusChanged;
+
+    /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -86,18 +89,18 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
                 throw new InvalidOperationException("The WeChat video capture is already active.");
             }
 
-            _status = WeChatVideoCaptureStatus.Starting;
+            SetStatus(WeChatVideoCaptureStatus.Starting);
             try
             {
                 // Starting the certificate trust (a blocking system dialog) and Titanium must not run
                 // on the interface thread, or the shell would stop responding while it waits.
                 await Task.Run(StartCore, cancellationToken).ConfigureAwait(false);
-                _status = WeChatVideoCaptureStatus.Running;
+                SetStatus(WeChatVideoCaptureStatus.Running);
             }
             catch
             {
                 CleanupAfterFailedStart();
-                _status = WeChatVideoCaptureStatus.Stopped;
+                SetStatus(WeChatVideoCaptureStatus.Stopped);
                 throw;
             }
         }
@@ -118,7 +121,7 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
                 return;
             }
 
-            _status = WeChatVideoCaptureStatus.Stopping;
+            SetStatus(WeChatVideoCaptureStatus.Stopping);
             Exception? restoreFailure = null;
             if (_snapshot is not null)
             {
@@ -141,7 +144,7 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
             }
 
             await StopResourcesAsync().ConfigureAwait(false);
-            _status = WeChatVideoCaptureStatus.Stopped;
+            SetStatus(WeChatVideoCaptureStatus.Stopped);
 
             if (restoreFailure is not null)
             {
@@ -358,6 +361,12 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
         TitaniumWeChatProxy? proxy = _proxy;
         _proxy = null;
         proxy?.Dispose();
+    }
+
+    private void SetStatus(WeChatVideoCaptureStatus status)
+    {
+        _status = status;
+        StatusChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnItemCaptured(WeChatVideoCaptureItem item)

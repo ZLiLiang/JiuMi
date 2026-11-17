@@ -20,6 +20,9 @@ public enum ShellPage
     /// <summary>The batch rename page.</summary>
     FileRename,
 
+    /// <summary>The WeChat video download page.</summary>
+    WeChatVideo,
+
     /// <summary>The settings page.</summary>
     Settings,
 }

@@ -21,6 +21,7 @@ public partial class MainWindow : FAAppWindow
         ShellPage.MyJiuMi,
         ShellPage.FileRename,
         ShellPage.ImageConvert,
+        ShellPage.WeChatVideo,
         ShellPage.WorldClock,
         ShellPage.Settings,
     ];

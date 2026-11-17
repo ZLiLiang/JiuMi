@@ -32,6 +32,17 @@ public static class ErrorPresentationCatalog
             ErrorLevel.Error,
             ErrorCarrier.InfoBar,
             ErrorNoticeAction.Retry),
+        [ErrorCodes.WeChatVideoCaptureStartFailed] = new(
+            ErrorLevel.Error,
+            ErrorCarrier.InfoBar,
+            ErrorNoticeAction.Retry),
+        [ErrorCodes.WeChatVideoCertificateUninstallFailed] = new(
+            ErrorLevel.Error,
+            ErrorCarrier.InfoBar,
+            ErrorNoticeAction.Retry),
+        [ErrorCodes.WeChatVideoProxyRestoreFailed] = new(
+            ErrorLevel.Error,
+            ErrorCarrier.ErrorWindow),
     };
 
     /// <summary>
