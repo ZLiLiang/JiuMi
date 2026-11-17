@@ -58,7 +58,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 分隔线 | 1px `DividerStrokeColorDefaultBrush`，外边距 6 12 |
 
 - 自上而下：展开/收起按钮 → 主页 → 我的JiuMi → 四个工具 → 弹性空白 → 分隔线 → 设置（贴底）。
-- 我的JiuMi、世界工作时间、图片格式转换与批量重命名**已启用**：可聚焦、可选中，选中态与主页、设置同款；微信视频下载仍**禁用**：文字与图标取 `TextFillColorDisabledBrush`，不接收焦点、不响应悬停，右侧挂「即将推出」徽标（`Common.ComingSoon`）。
+- 我的JiuMi、微信视频下载、批量重命名、图片格式转换与世界工作时间**已启用**：可聚焦、可选中，选中态与主页、设置同款；导航栏当前没有禁用项，「即将推出」徽标不再出现在导航项上。
 - **选中态**：整行填充；左侧 3 × 16、圆角 2 的 `AccentFillColorDefaultBrush` 指示条；图标改为强调色并使用填充变体，文字颜色不变。
 - **收起态**：导航岛宽 56，只剩图标、水平居中；项文案转为 `ToolTip`，可访问名仍取同一键。
 - **展开/收起过渡**：导航岛宽度 200ms `CubicEaseOut`，项文案同步 200ms 淡入淡出；内容岛随列宽连续重排。
@@ -213,13 +213,13 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 卡片 | 圆角 8，内边距 18，`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush` |
 | 卡片内部 | 徽标固定宽 + 文字 `*`，列间距 14，顶对齐 |
 | 徽标 | 40 × 40，圆角 8，图标 20 × 20 纯白 |
-| 卡片标题 | 14px / SemiBold；与「即将推出」徽标间距 8 |
+| 卡片标题 | 14px / SemiBold；与可选状态徽标间距 8 |
 | 卡片描述 | 12px / Regular / `TextFillColorSecondaryBrush`，行高 1.5，与标题间距 5 |
 
 - 四张卡片按「微信视频下载、批量重命名、图片格式转换、世界工作时间」排列，标题取 `Tool.<工具>.Name`，描述取 `Tool.<工具>.Description`。我的JiuMi 只走左侧导航，不占主页卡片。
-- 微信视频下载以外的三张卡片**已启用**：整张卡片可点击，进入对应页面；卡片本身不带「即将推出」徽标，悬停不改变卡片外观（可点击由光标与可访问名提示）。微信视频下载卡片仍带「即将推出」徽标。
+- 四张卡片**已启用**：整张卡片可点击，进入对应页面；卡片本身不带「即将推出」徽标，悬停不改变卡片外观（可点击由光标与可访问名提示）。
 - 点已启用的卡片进入工具页时播放 550ms 卡片进入动效（见「内容切换动效」）。
-- 微信视频下载卡片**不可交互**：无悬停高亮、无手型光标、不接收焦点；同排卡片等高。已启用的三张卡片可获取焦点，Enter / 空格与指针点击等价。
+- 四张卡片都可获取焦点，Enter / 空格与指针点击等价；同排卡片等高。
 - 内容岛宽度小于 760 时，网格降为单列、hero 改为纵向堆叠（媒体在上、文案在下，媒体仍按素材等比适配并水平居中，不撑满整行）。
 
 ## 内容切换动效
@@ -271,10 +271,11 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 1. **语言和区域**（`Settings.Language.Section`）：一行「显示语言」（`Settings.Language.Label` / `Settings.Language.Hint`），控件是 `ComboBox`：最小宽 220、高 32、圆角 4、13px；选项为 `languages.json` 的 `displayName`，顺序同清单。
 2. **外观**（`Settings.Appearance.Section`）：一行「主题」（`Settings.Appearance.Label` / `Settings.Appearance.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，顺序为跟随系统 / 浅色 / 深色（`Settings.Appearance.FollowSystem` / `.Light` / `.Dark`），默认「跟随系统」。
 3. **窗口**（`Settings.Window.Section`）：一行「关闭窗口时」（`Settings.Window.Label` / `Settings.Window.Hint`），控件是三个 `RadioButton` 水平排列、间距 14、13px，选项依次为每次询问 / 隐藏到托盘 / 退出应用（`Settings.Window.Ask` / `.HideToTray` / `.Exit`），默认「每次询问」；切换即时生效并保存。
-4. **数据与联网**（`Settings.Data.Section`）：两行，行间 1px `DividerStrokeColorDefaultBrush`。
+4. **数据与联网**（`Settings.Data.Section`）：三行，行间 1px `DividerStrokeColorDefaultBrush`。
    - 第一行「允许在线获取数据」（`Settings.Data.Label` / `Settings.Data.Hint`），控件是 `ToggleSwitch`，默认开；关闭后不发起任何网络请求，已缓存的数据仍会读取。开关不显示 On / Off 文字，状态由开关本身与说明承担。
    - 第二行「世界时钟目录」（`Settings.Data.Catalog.Title` / `Settings.Data.Catalog.Hint`），说明下方依次是「上次检查」与目录版本两行（11.5px / `TextFillColorSecondaryBrush`，行距 2）；右侧是 `Button`「立即检查」（`Settings.Data.Catalog.Check`，高 32、圆角 4、13px，最小宽 96）。检查进行中按钮禁用，检查行显示「正在检查…」（`Settings.Data.Catalog.Checking`）；从未检查显示「上次检查：无」（`Settings.Data.Catalog.NeverChecked`），否则「上次检查：yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.LastChecked`，本地时间）；版本行在已下载时显示「目录更新于 yyyy-MM-dd HH:mm」（`Settings.Data.Catalog.Updated`），内置时显示「目录为内置版本」（`Settings.Data.Catalog.Bundled`）。
    - 「立即检查」忽略每日一次的限制，但仍受「允许在线获取数据」开关约束：开关关闭时按钮禁用。检查失败不弹提示、不显示错误，只记 Warning 日志；结果由上述两行状态文字体现。
+   - 第三行「微信视频证书」（`Settings.Data.Certificate.Title` / `.Hint`）：说明下方是状态行「已安装」/「未安装」（`.Installed` / `.NotInstalled`）；监听进行中追加一行 `.Running`（「停止监听后可卸载」）。右侧是 `Button`「卸载」（`.Uninstall`，高 32、圆角 4、13px，最小宽 96），未安装或监听中禁用。点击弹确认窗：标题 `.Confirm.Title`、正文 `.Confirm.Body`，按钮「取消」（`.Confirm.Cancel`，默认焦点、Esc）/「卸载」（`.Uninstall`，危险次要）；卡片沿用证书确认框的无边框样式（宽 420、内边距 36 32、无品牌头）。确认后卸载并刷新状态行；失败走全局 InfoBar（`Error.WeChatVideo.CertificateUninstallFailed`，重试 + 复制详情）。
 5. **关于**（`Settings.About.Section`）：左侧应用名、版本行（`Settings.About.Version`，`{0}` 为版本号，取程序集的 informational version）与生效配置路径（原样文本，等宽 11.5px / `TextFillColorSecondaryBrush`，单行、`CharacterEllipsis` 截断，完整路径作为提示）；右侧动作组水平排列、间距 8，依次为 `Button`「打开文件夹」（`Common.OpenFolder`）、`Button`「导出诊断包」（`Settings.About.ExportDiagnostics`）、`HyperlinkButton`「GitHub 仓库」（`Settings.About.Repository`，12.5px、强调色，打开仓库页）。
 
 - 修改**即时生效并自动保存**：没有「保存」按钮、没有确认对话框、没有「已保存」提示。
@@ -432,7 +433,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 三个入口共用一个对话框起点：本进程内最近一次由用户指定位置的目录，选择器成功返回或拖放成功都会更新；目录不存在或不可访问时静默回退系统默认，不提示、不写回。起点不落盘，重启后回到系统默认（见 #70）。
 - 执行按钮是否可用由预检结果决定：有冲突、可改名数为 0、或本批次已执行时禁用；底栏只放与「最近批次」相关的统计与操作，不再重复放执行入口。
 - 首次进入是未选来源的空态；来源列表**不记忆**（见 #67、#74 与 [ADR-0011](./adr/0011-multi-source-rename-batch.md)），参数从 `FileRename` 设置段恢复。
-- 导航项与主页卡片已启用：导航项去掉「即将推出」徽标、可聚焦可选中，主页卡片整张可点击；「导航栏」与「工具卡网格」两节的禁用清单只剩微信视频下载。
+- 导航项与主页卡片已启用：导航项去掉「即将推出」徽标、可聚焦可选中，主页卡片整张可点击；「导航栏」与「工具卡网格」两节的禁用清单已清空。
 
 **卡片**
 
@@ -578,6 +579,110 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 ![空态：文件模式未添加来源，入口只在页头，底部保留模式切换](./images/file-rename-empty.png)
 
+## 微信视频下载
+
+入口是左侧导航与主页工具卡；进入方式与其他工具页相同（切页 200ms，见「内容切换动效」）。页面是会话级的：捕获项只在本次运行内保留，关闭应用即清空；停止监听不清空列表，已捕获项仍可下载。代理、证书与下载核心的行为见 [ADR-0013](./adr/0013-wechat-video-download.md)；本节的布局参考 [wechat-video.html](./prototypes/wechat-video.html)（`?capture=1` 出图）。
+
+### 页头
+
+| 项 | 值 |
+| --- | --- |
+| 结构 | 标题块 `*` + 动作区 `Auto`，列距 16，顶对齐；标题 28px / SemiBold，副标题 13px / 次文字色、与标题间距 6 |
+| 副标题 | `Tool.WeChatVideo.Subtitle`；只说明在微信里打开视频后在这里下载，不写目录规则 |
+| 动作区 | 水平排列、间距 8：下载目录按钮 → 监听开关 |
+| 下载目录 | 高 32 按钮，最大宽 200：文件夹图标 12 + 目录名（最大宽 150、`CharacterEllipsis`）+ 铅笔图标 10；ToolTip 给完整路径；未选择时文案 `Tool.WeChatVideo.Directory.Choose` |
+| 监听开关 | 状态文字 11.5px + `ToggleSwitch`（不显示 On/Off）：未监听 / 正在启动… / 监听中 / 正在停止…；监听中用 `AccentFillColorDefaultBrush`；启动、停止中禁用开关 |
+
+- 内容宽小于 640 时，动作区整体移到标题下方、左对齐、上边距 12，内部仍保持一行。
+- 首次开启监听且证书未安装时先弹「证书确认框」；已安装则直接启动。证书保留到用户在设置页卸载为止，因此只有首次安装或卸载后才会再次弹出。开关状态只在会话内，不落盘，每次启动默认关。
+- 停止监听保留列表，已捕获项仍可下载；下载不依赖监听是否开启。
+
+### 列表
+
+- 卡片：外边距上 22、内边距 20、圆角 8、`CardBackgroundFillColorDefaultBrush` + 1px `CardStrokeColorDefaultBrush`；高度铺满内容区剩余空间，列表在卡片内纵向滚动。
+- 摘要行：`N 个视频 · 仅本次会话，关闭应用后清空`（`Tool.WeChatVideo.Summary`，`{0}` 为数量），12px 次文字色；右侧「按捕获时间倒序」（`Tool.WeChatVideo.Order`）11px 三级色。
+- 按捕获时间倒序；同一条视频按 `oid+nid` 去重，缺失时回退到去掉 `token` 查询参数的 URL（ADR-0013 决策 4）。
+- 行：最小高 76、内边距 8 0、列距 14；行间 1px `DividerStrokeColorDefaultBrush`，末行不带。
+- 封面 56 × 56、圆角 4、`UniformToFill`、1px `ControlStrokeColorDefaultBrush`；未出图时用虚线占位 + 20px 视频图标。
+- 文案：描述 13px 主文字色、单行 `CharacterEllipsis`；描述为空显示 `Tool.WeChatVideo.Untitled`（「未命名视频」）。次行 11.5px 三级色，格式 `作者 · 时长 · 大小`，缺失段直接跳过。
+- 大小只显示服务端实际值（`Content-Length` / `Content-Range`），未知时不占位；不使用微信上报的 `file_size`。
+- 右侧：状态 chip（11px、高 18、内边距 0 7）+ 主按钮（高 32、最小宽 64），间距 12；状态与按钮不压缩、不换行。
+- 下载中在次行下方追加 4px 进度条（最大宽 160）；总大小未知时用不确定进度条，chip 只写「下载中」；拿到总大小后改用 `下载中 {0}%` 并切成确定进度条。失败原因 11px `SystemFillColorCriticalBrush`；过期说明 11px 三级色。
+- 移除只把条目从会话列表去掉，不删除已下载文件。
+
+| 状态 | chip | 主按钮 |
+| --- | --- | --- |
+| 待下载 | `待下载`（`SubtleFillColorSecondaryBrush` 底、次文字色） | `下载` |
+| 排队中 | `排队中`（同上） | `取消` |
+| 下载中 | `下载中` 或 `下载中 {0}%`（同上） | `取消` |
+| 已下载 | `已下载`（`JiuMiCellWorkingBrush` 底、强调色文字） | `移除` |
+| 失败 | `失败`（透明底 + 1px critical 描边 + 同色文字） | `重试` |
+| 已取消 | `已取消`（中性） | `下载` |
+| 已过期 | `已过期`（透明底 + 1px caution 描边 + 同色文字） | `移除` |
+
+- 未选择下载目录或目录不存在时，「下载」与「重试」禁用；「取消」与「移除」始终可用。
+
+### 过期态
+
+- 不降低整行不透明度：封面加灰度并压暗；描述降为次文字色、次行降为三级色。
+- chip 显示「已过期」，次行下方 11px 三级色 `Tool.WeChatVideo.Expired.Hint`（「链接已过期，请在微信中重新打开该视频」）；不提供重试。
+- 过期同时由 chip、说明文字与灰度封面表达，不只靠颜色。
+
+### 空态
+
+- 无条目时用空态卡片替代列表卡片：与列表同高，内容垂直居中；56 × 56、圆角 12 的 `SubtleFillColorSecondaryBrush` 槽位 + 24px 视频图标。
+- 未监听：标题 `Tool.WeChatVideo.Empty`（「还没有捕获到视频」），说明 `Tool.WeChatVideo.Empty.Hint`（「用右上角的『监听』开关开始监听，然后在微信视频号中打开视频。」）。
+- 监听中：标题 `Tool.WeChatVideo.Empty.Running`（「正在监听」），说明 `Tool.WeChatVideo.Empty.Running.Hint`（「在微信里打开视频号视频，捕获后会自动出现在这里。」）。
+- 空态不放按钮；开启监听只走页头开关，与图片转换、批量重命名一致。
+
+### 目录状态
+
+- 未选择目录：页头按钮文案「选择下载目录」，行内下载按钮禁用，不另加提示。
+- 已配置但目录不存在：页头按钮转 caution 色；页头下方、卡片上方显示 12px caution 横幅 `Tool.WeChatVideo.Directory.Missing`（「下载目录不存在，下载已暂停。请重新选择目录，或恢复该文件夹。」），下载按钮禁用；空列表时不显示横幅。
+- 目录通过系统文件夹对话框选择；选择成功立即写 `WeChatVideo.DownloadDirectory`。目录不存在时下载失败原因写 `Tool.WeChatVideo.Failure.DirectoryMissing`，不静默创建目录（ADR-0013）。
+
+### 证书确认框
+
+- 触发：首次开启监听且 `IWeChatVideoCapture.IsCertificateInstalled` 为 false；已安装不弹。
+- 独立无边框确认窗，样式同「关闭询问框」：宽 420、高度随内容、`CenterOwner`、无系统装饰、透明底；卡片外边距 24、内边距 36 32、圆角 12、`SolidBackgroundFillColorBaseBrush` + 1px `CardStrokeColorDefaultBrush` + `JiuMiIslandShadow`；不显示应用名或品牌头。
+- 标题 20px SemiBold `Tool.WeChatVideo.Certificate.Title`（「安装 JiuMi 证书」）；正文 14px 次文字色 `Tool.WeChatVideo.Certificate.Body`；下方 12px 三级色 `Tool.WeChatVideo.Certificate.Note`，写明只解密 `channels.weixin.qq.com` 与 `finder.video.qq.com`、可在「设置 → 数据与联网」中卸载、Windows 随后会弹出证书信任确认。
+- 按钮右对齐、间距 8、高 32：`取消`（次要、Esc、默认焦点）→ `继续并开启`（强调色）。默认焦点在取消，避免回车误装。
+- 确认后先关本框再调用启动，Windows 信任弹窗不与本框叠加。取消则开关回弹到关，不写任何状态。启动失败或信任被拒 → 全局 InfoBar（`Error.WeChatVideo.CaptureStartFailed`，重试），开关回弹。
+- 证书保留在 `CurrentUser` 直到设置页显式卸载（ADR-0013 决策 8）；卸载后下次监听重新弹本框。
+
+### 残留还原
+
+- 启动时 `RestoreResidualAsync` 返回 `Restored`：主窗口激活后显示一次 Warning InfoBar `Tool.WeChatVideo.Residual.Restored`（「上次异常退出，系统代理已自动还原。」），8 秒自动收起，可关闭。
+- 返回 `Failed`：显示错误窗口（主窗口可用时提供「继续运行」），标题「系统代理未能还原」，正文给出手动恢复步骤：打开「设置 → 网络和 Internet → 代理」，关闭手动代理或恢复原来的地址，然后重新打开 JiuMi。复制详情首行取 `Error.WeChatVideo.ProxyRestoreFailed`。
+- 停止监听时系统代理还原失败同样走本窗口。该失败不是阻断级，但需要用户离开界面手动处理，因此使用错误窗口的「继续运行」变体（见「错误呈现」）。
+
+### 窄窗与缩放
+
+- 内容宽小于 640：页头动作区移到标题下方；列表中描述与次行先省略，状态 chip 与按钮不换行、不缩字。
+- 文本缩放到 200% 时页面纵向滚动，行高随内容增长；封面固定 56 DIP，状态与按钮保持一行；不裁切、不横向滚动。
+
+### 本页新增文案键
+
+`Tool.WeChatVideo.` 前缀：`Name`、`Description`、`Subtitle`、`Summary`、`Order`、`Untitled`、`Empty`、`Empty.Hint`、`Empty.Running`、`Empty.Running.Hint`、`Listen.Stopped`、`Listen.Starting`、`Listen.Running`、`Listen.Stopping`、`Directory.Choose`、`Directory.Missing`、`Status.Idle`、`Status.Queued`、`Status.Downloading`、`Status.DownloadingPercent`、`Status.Completed`、`Status.Failed`、`Status.Canceled`、`Status.Expired`、`Action.Download`、`Action.Cancel`、`Action.Remove`、`Action.Retry`、`Failure.DirectoryMissing`、`Failure.Network`、`Failure.Protocol`、`Failure.FileWrite`、`Expired.Hint`、`Certificate.Title`、`Certificate.Body`、`Certificate.Note`、`Certificate.Cancel`、`Certificate.Confirm`、`Residual.Restored`。现有 `Tool.WeChatDownload.Name` / `.Description` 改名到本前缀；导航、主页卡片与页面标题共用。
+设置页证书行：`Settings.Data.Certificate.Title` / `.Hint` / `.Installed` / `.NotInstalled` / `.Running` / `.Uninstall` / `.Confirm.Title` / `.Confirm.Body` / `.Confirm.Cancel`。
+`Error.*`：`Error.WeChatVideo.CaptureStartFailed`、`Error.WeChatVideo.CertificateUninstallFailed`、`Error.WeChatVideo.ProxyRestoreFailed`，按 ADR-0003 映射登记。
+
+### 参考图
+
+以下截图取自 [wechat-video.html](./prototypes/wechat-video.html) 的 `?capture=1`，是本节布局的视觉基准；原型只作复现与对照，不参与构建。实机截图在页面落地后替换。
+
+![列表（浅色）：页头目录与监听开关、会话摘要、下载中进度、失败原因与过期项](./images/wechat-video-list.png)
+
+![列表（深色）：同一结构只换颜色](./images/wechat-video-list-dark.png)
+
+![空态：未监听，开启入口只在页头](./images/wechat-video-empty.png)
+
+![证书确认框：无品牌头实色卡片，默认焦点在取消](./images/wechat-video-cert.png)
+
+![目录缺失：页头按钮转 caution，卡片上方提示，下载禁用](./images/wechat-video-dir-missing.png)
+
+![窄窗 900 × 760：动作区移到标题下方，行内状态与按钮不换行](./images/wechat-video-narrow.png)
+
 ## 主题
 
 - 三态：跟随系统（默认）、浅色、深色；落盘规则见 [`docs/adr/0001-settings-persistence.md`](./adr/0001-settings-persistence.md) 与架构的配置章节。
@@ -630,7 +735,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 | 页面内边距 | 上 32 / 左右 44 / 下 36 |
 | 导航图标与文字 | 14 |
 | 卡片徽标与文字 | 14 |
-| 「即将推出」徽标与卡片标题 | 8 |
+| 可选状态徽标与卡片标题 | 8 |
 | 网格间距 | 16 |
 | 分区间距 | 26 |
 | 分区标题与分组卡 | 8 |

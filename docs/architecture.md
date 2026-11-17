@@ -312,7 +312,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- | --- |
 | 全局 InfoBar | 默认载体：启动期入队的告警、会话中途的失败 | 内容岛内部顶部，推挤内容不覆盖；跨页常驻 |
 | 容器内占位 | 局部资源加载失败（GIF / hero / 图标） | 只降级该容器，不弹提示 |
-| 独立错误窗口 | 阻断级失败；以及主窗口可用时的 UI 线程未捕获异常 | 不依赖主窗口、本地化资源与主题资源 |
+| 独立错误窗口 | 阻断级失败；主窗口可用时的 UI 线程未捕获异常；以及需要用户离开界面手动恢复的非阻断失败（如微信代理残留） | 不依赖主窗口、本地化资源与主题资源 |
 | 系统通知（端口） | 无可见窗口时投递非阻断 Error | 其余平台为 no-op |
 
 - **不做 `ContentDialog`**：本期唯一的阻断场景发生在启动期，主窗口不存在、没有 owner；其余场景已定不弹模态（见启动序列章节与 ADR-0002），留着就是死代码。
@@ -333,6 +333,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 批量重命名单项失败或日志导出失败 | Warning | `FileRename.Failed` | 仅日志 | —（批次结束另发一条 InfoBar 汇总） |
+| 微信监听启动失败（证书安装或代理启动被取消 / 出错） | Error | `WeChatVideo.CaptureStartFailed` | InfoBar | 重试 + 复制详情 |
+| 微信视频证书卸载失败 | Error | `WeChatVideo.CertificateUninstallFailed` | InfoBar | 重试 + 复制详情 |
+| 微信监听停止或启动残留的系统代理还原失败 | Error | `WeChatVideo.ProxyRestoreFailed` | 错误窗口（主窗口可用时含继续运行） | 继续运行 / 退出 / 复制详情；正文给出手动恢复步骤 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
 | 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
@@ -635,7 +638,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
-| `Tool.*.Name` / `Tool.*.Description` | 四张卡片与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock`；我的JiuMi 只走导航，复用 `Tool.MyJiuMi.Name` |
+| `Tool.*.Name` / `Tool.*.Description` | 四张卡片与导航项共用的名称与描述；`*` 取 `WeChatVideo` / `FileRename` / `ImageConvert` / `WorldClock`；旧的 `Tool.WeChatDownload.*` 两键改名到 `Tool.WeChatVideo.*`；我的JiuMi 只走导航，复用 `Tool.MyJiuMi.Name` |
 | `MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName` | 我的JiuMi 页面标题、副标题与猫的可访问名 |
 | `MyJiuMi.DesktopHint` | 猫在桌面时页面空房间的提示；桌面模式实现时成对进中英文 JSON |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
@@ -653,8 +656,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
 | `Tool.FileRename.*` | 批量重命名页：页头与空态、入口与来源列表、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
+| `Tool.WeChatVideo.*` | 微信视频下载页：页头、目录、监听状态、列表摘要与状态、失败原因、过期提示、证书确认、残留提示、空态 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
+| `Settings.Data.Certificate.*` | 「微信视频证书」行：标题与说明、已安装 / 未安装、监听中提示、卸载按钮与卸载确认框 |
 | `Settings.Subtitle` | 设置页副标题 |
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
