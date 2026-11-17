@@ -96,7 +96,7 @@
   "Tool.WeChatVideo.Expired.Hint": "The link expired. Open the video in WeChat again.",
   "Tool.WeChatVideo.Certificate.Title": "Install the JiuMi certificate",
   "Tool.WeChatVideo.Certificate.Body": "Listening needs a local certificate to read the video link. It is used only for WeChat video download.",
-  "Tool.WeChatVideo.Certificate.Note": "Only channels.weixin.qq.com and finder.video.qq.com are decrypted. You can uninstall it in Settings → Data and connection. Windows will ask you to trust it next.",
+  "Tool.WeChatVideo.Certificate.Note": "You can uninstall it in Settings → Data and connection. Windows will ask you to trust it next.",
   "Tool.WeChatVideo.Certificate.Cancel": "Cancel",
   "Tool.WeChatVideo.Certificate.Confirm": "Continue and listen",
   "Tool.WeChatVideo.Residual.Restored": "The previous run ended unexpectedly; the system proxy has been restored.",

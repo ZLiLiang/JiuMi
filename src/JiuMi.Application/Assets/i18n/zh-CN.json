@@ -222,7 +222,7 @@
   "Tool.WeChatVideo.Expired.Hint": "链接已过期，请在微信中重新打开该视频",
   "Tool.WeChatVideo.Certificate.Title": "安装 JiuMi 证书",
   "Tool.WeChatVideo.Certificate.Body": "监听时需要本地证书读取视频链接，仅用于微信视频下载。",
-  "Tool.WeChatVideo.Certificate.Note": "只解密 channels.weixin.qq.com 与 finder.video.qq.com；可在「设置 → 数据与联网」中卸载。确认后 Windows 会弹出证书信任提示。",
+  "Tool.WeChatVideo.Certificate.Note": "可在「设置 → 数据与联网」中卸载。确认后 Windows 会弹出证书信任提示。",
   "Tool.WeChatVideo.Certificate.Cancel": "取消",
   "Tool.WeChatVideo.Certificate.Confirm": "继续并开启",
   "Tool.WeChatVideo.Residual.Restored": "上次异常退出，系统代理已自动还原。",

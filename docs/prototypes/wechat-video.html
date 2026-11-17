@@ -837,7 +837,7 @@ function renderEmpty() {
 function certHtml() {
   const title = '安装 JiuMi 证书';
   const body = '监听需要在本机代理微信视频号页面，以取得当前视频的下载地址。首次开启会安装一张仅当前用户信任的根证书（CN=JiuMi，有效期 5 年）。';
-  const note = '只解密 channels.weixin.qq.com 与 finder.video.qq.com；可随时在「设置 → 数据与联网」中卸载。Windows 随后会弹出证书信任确认，请选择「是」。';
+  const note = '可在「设置 → 数据与联网」中卸载。确认后 Windows 会弹出证书信任提示。';
   if (model.cert === 'dialog') {
     return '<div class="dialog facontent">' +
       '<h2>' + title + '</h2>' +

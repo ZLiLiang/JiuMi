@@ -646,7 +646,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 - 触发：首次开启监听且 `IWeChatVideoCapture.IsCertificateInstalled` 为 false；已安装不弹。
 - 独立无边框确认窗，样式同「关闭询问框」：宽 420、高度随内容、`CenterOwner`、无系统装饰、透明底；卡片外边距 24、内边距 36 32、圆角 12、`SolidBackgroundFillColorBaseBrush` + 1px `CardStrokeColorDefaultBrush` + `JiuMiIslandShadow`；不显示应用名或品牌头。
-- 标题 20px SemiBold `Tool.WeChatVideo.Certificate.Title`（「安装 JiuMi 证书」）；正文 14px 次文字色 `Tool.WeChatVideo.Certificate.Body`；下方 12px 三级色 `Tool.WeChatVideo.Certificate.Note`，写明只解密 `channels.weixin.qq.com` 与 `finder.video.qq.com`、可在「设置 → 数据与联网」中卸载、Windows 随后会弹出证书信任确认。
+- 标题 20px SemiBold `Tool.WeChatVideo.Certificate.Title`（「安装 JiuMi 证书」）；正文 14px 次文字色 `Tool.WeChatVideo.Certificate.Body`；下方 12px 三级色 `Tool.WeChatVideo.Certificate.Note`，写明可在「设置 → 数据与联网」中卸载、Windows 随后会弹出证书信任确认。
 - 按钮右对齐、间距 8、高 32：`取消`（次要、Esc、默认焦点）→ `继续并开启`（强调色）。默认焦点在取消，避免回车误装。
 - 确认后先关本框再调用启动，Windows 信任弹窗不与本框叠加。取消则开关回弹到关，不写任何状态。启动失败或信任被拒 → 全局 InfoBar（`Error.WeChatVideo.CaptureStartFailed`，重试），开关回弹。
 - 证书保留在 `CurrentUser` 直到设置页显式卸载（ADR-0013 决策 8）；卸载后下次监听重新弹本框。
