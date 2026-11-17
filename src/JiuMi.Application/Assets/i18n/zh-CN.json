@@ -196,6 +196,7 @@
   "Tool.WeChatVideo.Empty.Hint": "用右上角的『监听』开关开始监听，然后在微信视频号中打开视频。",
   "Tool.WeChatVideo.Empty.Running": "正在监听",
   "Tool.WeChatVideo.Empty.Running.Hint": "在微信里打开视频号视频，捕获后会自动出现在这里。",
+  "Tool.WeChatVideo.Listen": "监听",
   "Tool.WeChatVideo.Listen.Stopped": "未监听",
   "Tool.WeChatVideo.Listen.Starting": "正在启动…",
   "Tool.WeChatVideo.Listen.Running": "监听中",

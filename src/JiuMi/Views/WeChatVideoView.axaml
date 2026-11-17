@@ -89,6 +89,10 @@
       <Setter Property="TextWrapping" Value="NoWrap" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
+    <Style Selector="Border.row">
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
     <Style Selector="Border.row.last">
       <Setter Property="BorderThickness" Value="0" />
     </Style>
@@ -153,7 +157,7 @@
                           IsEnabled="{Binding CanToggleListening}"
                           IsCheckedChanged="OnListenToggled"
                           AutomationProperties.AutomationId="WeChatVideo.Listen"
-                          AutomationProperties.Name="{loc:Localize Tool.WeChatVideo.Name}" />
+                          AutomationProperties.Name="{loc:Localize Tool.WeChatVideo.Listen}" />
           </StackPanel>
         </StackPanel>
       </Grid>
@@ -200,9 +204,7 @@
                 <DataTemplate x:DataType="vm:WeChatVideoRowViewModel">
                   <Border Classes="row"
                           Classes.last="{Binding IsLast}"
-                          Padding="8,0"
-                          BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                          BorderThickness="0,0,0,1">
+                          Padding="8,0">
                     <Grid MinHeight="76"
                           ColumnDefinitions="56,*,Auto"
                           ColumnSpacing="14">

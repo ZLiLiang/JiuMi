@@ -41,6 +41,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly Dictionary<string, CancellationTokenSource> _downloadSources = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ThumbnailRequest> _thumbnailRequests = new(StringComparer.Ordinal);
     private string? _downloadDirectory;
+    private bool _isDirectoryMissing;
     private bool _startupNoticeShown;
     private bool _disposed;
 
@@ -197,19 +198,17 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets a value indicating whether the configured folder no longer exists.
     /// </summary>
-    public bool IsDirectoryMissing => _downloadDirectory is { } directory &&
-        !string.IsNullOrWhiteSpace(directory) &&
-        !Directory.Exists(directory);
+    public bool IsDirectoryMissing => _isDirectoryMissing;
 
     /// <summary>
     /// Gets a value indicating whether the missing-folder banner is shown.
     /// </summary>
-    public bool ShowDirectoryMissing => IsDirectoryMissing && HasItems;
+    public bool ShowDirectoryMissing => _isDirectoryMissing && HasItems;
 
     /// <summary>
     /// Gets a value indicating whether starting or retrying a download is allowed.
     /// </summary>
-    public bool CanDownload => HasDownloadDirectory && !IsDirectoryMissing;
+    public bool CanDownload => HasDownloadDirectory && !_isDirectoryMissing;
 
     /// <summary>
     /// Gets the text of the download folder button.
@@ -736,6 +735,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
 
     private void RefreshDirectoryState()
     {
+        _isDirectoryMissing = _downloadDirectory is { } directory &&
+            !string.IsNullOrWhiteSpace(directory) &&
+            !Directory.Exists(directory);
         OnPropertyChanged(nameof(HasDownloadDirectory));
         OnPropertyChanged(nameof(IsDirectoryMissing));
         OnPropertyChanged(nameof(ShowDirectoryMissing));
