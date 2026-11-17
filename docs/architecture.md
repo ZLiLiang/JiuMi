@@ -922,9 +922,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 注入与回传
 
 - 只对页面域名的 200 HTML 响应注入（正文上限 4 MB），脚本插在 `</body>` 前，靠 `__JIUMI_WECHAT_CAPTURE__` 标记保证只注入一次；响应改写为 `no-store`，避免缓存页面缺少脚本。
-- 脚本包装 `WeixinJSBridge.invoke` 的第三个回调参数；`err_msg` 含 `H5ExtTransfer:ok` 时解析 `jsapi_resp.resp_json`，取 `object.object_desc.media[0]` 的地址、`decode_key`、封面、描述、作者、时长与 `file_size`。
-- 只有 `/web/pages/feed` 才回传；信息流首页等页面的桥事件被脚本丢弃，不建列表。
-- 回传走独立的回环 listener：随机端口 + 随机路径，不复用代理端口；只接受该路径的 POST，请求体上限 64 KB。负载必须是 `kind=video`、页面为 `https://channels.weixin.qq.com/web/pages/feed`、媒体与封面属于 `finder.video.qq.com`，否则整条忽略。
+- 脚本包装 `WeixinJSBridge.invoke` 的第三个回调参数；`err_msg` 含 `H5ExtTransfer:ok` 时解析 `jsapi_resp.resp_json`，取 `object.object_desc.media[0]` 的地址、`decode_key`、封面、描述、作者、时长与 `file_size`。`/web/pages/feed` 只走这条路径。
+- 发现首页 `/web/pages/home` 不触发 `H5ExtTransfer:ok`：脚本绑定页面自己的 `window.xweb.worker` 消息，在内存里缓存 feed 项（含 `media[0]`，上限 500 条）；侧窗口、独立小窗口或全屏里的当前视频连续播放满 5 秒时，取当前播放的 `<video>`，用时长 ±1.5 秒（必要时用描述）唯一匹配一条 feed，只回传这一条。快速滑过的预览不加入；同一视频只回传一次。
+- 回传走独立的回环 listener：随机端口 + 随机路径，不复用代理端口；只接受该路径的 POST，请求体上限 64 KB。负载必须是 `kind=video`，页面为 `https://channels.weixin.qq.com/web/pages/feed`，或为 `/web/pages/home` 且带 `source=discover` 与非空 `videoId`；媒体与封面必须属于 `finder.video.qq.com`，否则整条忽略。发现入口用 `videoId` 作 `oid`、固定标记 `discover` 作 `nid`，仍走 `oid+nid` 去重。
+- 独立小窗口与侧窗口使用同一页面/脚本和同一 5 秒规则（4.2 实测可滚动）；若未来版本改为纯原生渲染，窗口内无法按页面规则捕获，需要复验。
 - 媒体地址是 `media.url + media.url_token`；下载与封面都带 `User-Agent`、`Referer: https://channels.weixin.qq.com/`、`Origin: https://channels.weixin.qq.com`，不需要微信 cookie。
 
 ### 会话列表与去重
@@ -953,7 +954,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 测试缝
 
-1. `JiuMi.Application` 纯函数：负载校验（kind、页面、主机）、HTML 注入与脚本占位符、去重键与去 token、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消、启动残留结果一次性。
+1. `JiuMi.Application` 纯函数：负载校验（kind、页面、主机、发现入口 `source`/`videoId`）、HTML 注入与脚本占位符、去重键与去 token、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消、启动残留结果一次性。
 2. Infrastructure：PAC 生成、证书名称与有效期、监听状态文件读写、listener 路径与请求上限、Titanium 注入与解密范围、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取；注册表与证书通过注入点隔离，不碰真实系统。
 3. UI 的证书确认、开关、列表与进度不设自动化测试。
 

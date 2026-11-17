@@ -15,7 +15,7 @@ public sealed record WeChatVideoCaptureItem
     }
 
     /// <summary>
-    /// Gets the feed page the video was opened from.
+    /// Gets the page the video was opened from.
     /// </summary>
     public required string PageUrl
     {
@@ -79,6 +79,7 @@ public sealed record WeChatVideoCaptureItem
 
     /// <summary>
     /// Gets the feed object identifier, used to recognise the same video opened repeatedly.
+    /// Discovery captures use the feed item identifier here.
     /// </summary>
     public string? Oid
     {
@@ -88,6 +89,7 @@ public sealed record WeChatVideoCaptureItem
 
     /// <summary>
     /// Gets the feed item identifier, used together with <see cref="Oid"/> for de-duplication.
+    /// Discovery captures use a fixed marker here because the home page has no feed identifiers.
     /// </summary>
     public string? Nid
     {
