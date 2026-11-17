@@ -9,6 +9,9 @@ namespace JiuMi.Application.WeChatVideo;
 public static class WeChatCapturePayload
 {
     private const string FeedPath = "/web/pages/feed";
+    private const string HomePath = "/web/pages/home";
+    private const string DiscoverSource = "discover";
+    private const string DiscoverNid = "discover";
 
     private static readonly JsonDocumentOptions _documentOptions = new()
     {
@@ -18,11 +21,12 @@ public static class WeChatCapturePayload
     };
 
     /// <summary>
-    /// Parses one captured item, rejecting anything that is not a feed page video.
+    /// Parses one captured item, rejecting anything that is not a feed page video or a discovery
+    /// full-screen video.
     /// </summary>
     /// <param name="json">The request body.</param>
     /// <param name="item">The parsed item when the payload is valid.</param>
-    /// <returns><see langword="true"/> when the payload is a video from the feed page.</returns>
+    /// <returns><see langword="true"/> when the payload is a supported video.</returns>
     public static bool TryCreate(string json, out WeChatVideoCaptureItem? item)
     {
         item = null;
@@ -50,10 +54,30 @@ public static class WeChatCapturePayload
                 return false;
             }
 
-            if (!TryReadFeedPage(ReadString(root, "page"), out Uri page, out string? oid, out string? nid) ||
+            if (!TryReadPage(
+                    ReadString(root, "page"),
+                    out Uri page,
+                    out string path,
+                    out string? oid,
+                    out string? nid) ||
                 !TryReadMediaUrl(ReadString(root, "url"), out string url))
             {
                 return false;
+            }
+
+            if (string.Equals(path, HomePath, StringComparison.Ordinal))
+            {
+                string? videoId = ReadIdentifier(root, "videoId");
+                if (!string.Equals(ReadString(root, "source"), DiscoverSource, StringComparison.Ordinal) ||
+                    string.IsNullOrWhiteSpace(videoId))
+                {
+                    return false;
+                }
+
+                // The home page URL carries no oid/nid; the feed item id is the stable identity and
+                // the fixed marker keeps the session's oid+nid de-duplication key usable.
+                oid = videoId;
+                nid = DiscoverNid;
             }
 
             item = new WeChatVideoCaptureItem
@@ -73,24 +97,38 @@ public static class WeChatCapturePayload
         }
     }
 
-    private static bool TryReadFeedPage(
+    private static bool TryReadPage(
         string? value,
         out Uri page,
+        out string path,
         out string? oid,
         out string? nid)
     {
         oid = null;
         nid = null;
+        path = string.Empty;
         if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? parsed) ||
             parsed.Scheme != Uri.UriSchemeHttps ||
-            !string.Equals(parsed.Host, WeChatCaptureHosts.PageHost, StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(parsed.AbsolutePath, FeedPath, StringComparison.Ordinal))
+            !string.Equals(parsed.Host, WeChatCaptureHosts.PageHost, StringComparison.OrdinalIgnoreCase))
+        {
+            page = null!;
+            return false;
+        }
+
+        path = parsed.AbsolutePath;
+        if (!string.Equals(path, FeedPath, StringComparison.Ordinal) &&
+            !string.Equals(path, HomePath, StringComparison.Ordinal))
         {
             page = null!;
             return false;
         }
 
         page = parsed;
+        if (!string.Equals(path, FeedPath, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
         foreach (string pair in parsed.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
             int separator = pair.IndexOf('=', StringComparison.Ordinal);
@@ -146,6 +184,22 @@ public static class WeChatCapturePayload
             value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+    }
+
+    private static string? ReadIdentifier(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out JsonElement value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number when value.TryGetUInt64(out ulong number) =>
+                number.ToString(CultureInfo.InvariantCulture),
+            _ => null,
+        };
     }
 
     private static string? ReadText(JsonElement root, string name)

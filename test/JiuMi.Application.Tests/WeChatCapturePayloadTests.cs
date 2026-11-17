@@ -7,6 +7,9 @@ public sealed class WeChatCapturePayloadTests
     private const string FeedPage =
         "https://channels.weixin.qq.com/web/pages/feed?oid=0O7-RjlWGoQ&nid=HwUEeFRlIP0&entrance_id=1002";
 
+    private const string HomePage =
+        "https://channels.weixin.qq.com/web/pages/home?context_id=59-20-140&entrance_id=1020";
+
     [Fact]
     public void TryCreate_GivenFeedVideo_ReturnsItem()
     {
@@ -40,12 +43,86 @@ public sealed class WeChatCapturePayloadTests
     }
 
     [Fact]
-    public void TryCreate_GivenHomePage_ReturnsFalse()
+    public void TryCreate_GivenDiscoveryFullscreenVideo_ReturnsItem()
     {
-        string json = """
+        string json = $$"""
             {
               "kind": "video",
-              "page": "https://channels.weixin.qq.com/web/pages/home?oid=1&nid=2",
+              "source": "discover",
+              "trigger": "fullscreen",
+              "videoId": "15054381593837701158",
+              "page": "{{HomePage}}",
+              "url": "https://finder.video.qq.com/251/20302/stodownload?token=abc&sign=def",
+              "decodeKey": "250614220",
+              "videoLength": 345,
+              "thumbUrl": "https://finder.video.qq.com/251/20350/thumb",
+              "fileSize": 312786968,
+              "description": "  曝光5款智商税产品  ",
+              "uploader": "uploader-name"
+            }
+            """;
+
+        bool created = WeChatCapturePayload.TryCreate(json, out WeChatVideoCaptureItem? item);
+
+        Assert.True(created);
+        Assert.NotNull(item);
+        Assert.Equal("https://finder.video.qq.com/251/20302/stodownload?token=abc&sign=def", item.Url);
+        Assert.Equal("250614220", item.DecodeKey);
+        Assert.Equal(345, item.VideoLengthSeconds);
+        Assert.Equal("曝光5款智商税产品", item.Description);
+        Assert.Equal("uploader-name", item.Uploader);
+        Assert.Equal("15054381593837701158", item.Oid);
+        Assert.Equal("discover", item.Nid);
+    }
+
+    [Theory]
+    [InlineData(null, "15054381593837701158")]
+    [InlineData("preview", "15054381593837701158")]
+    [InlineData("discover", null)]
+    public void TryCreate_GivenInvalidDiscoveryPayload_ReturnsFalse(string? source, string? videoId)
+    {
+        string sourceField = source is null ? string.Empty : $"\"source\": \"{source}\",";
+        string videoIdField = videoId is null ? string.Empty : $"\"videoId\": \"{videoId}\",";
+        string json = $$"""
+            {
+              "kind": "video",
+              {{sourceField}}
+              {{videoIdField}}
+              "page": "{{HomePage}}",
+              "url": "https://finder.video.qq.com/251/20302/stodownload?token=abc"
+            }
+            """;
+
+        Assert.False(WeChatCapturePayload.TryCreate(json, out _));
+    }
+
+    [Fact]
+    public void TryCreate_GivenNumericDiscoveryVideoId_UsesItAsTheDeDuplicationKey()
+    {
+        string json = $$"""
+            {
+              "kind": "video",
+              "source": "discover",
+              "videoId": 15054381593837701158,
+              "page": "{{HomePage}}",
+              "url": "https://finder.video.qq.com/251/20302/stodownload?token=abc"
+            }
+            """;
+
+        Assert.True(WeChatCapturePayload.TryCreate(json, out WeChatVideoCaptureItem? item));
+        Assert.Equal("15054381593837701158", item!.Oid);
+        Assert.Equal("discover", item.Nid);
+    }
+
+    [Theory]
+    [InlineData("https://channels.weixin.qq.com/web/pages/home?oid=1&nid=2")]
+    [InlineData("https://channels.weixin.qq.com/web/pages/profile?oid=1&nid=2")]
+    public void TryCreate_GivenPageWithoutCaptureSource_ReturnsFalse(string page)
+    {
+        string json = $$"""
+            {
+              "kind": "video",
+              "page": "{{page}}",
               "url": "https://finder.video.qq.com/media"
             }
             """;

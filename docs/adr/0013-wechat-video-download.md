@@ -1,8 +1,8 @@
 # ADR-0013 微信视频下载：MITM 抓取链路与按需代理
 
-- 状态：已接受（2026-11-15 修订：PAC 按域名分流、证书会话间保留、发现入口 no-go）
+- 状态：已接受（2026-11-17 修订：发现入口全屏可抓；2026-11-15 修订：PAC 按域名分流、证书会话间保留）
 - 日期：2026-11-15
-- 来源：地图 [#68](https://github.com/ZLiLiang/JiuMi/issues/68)；可行性 spike [#94](https://github.com/ZLiLiang/JiuMi/issues/94)，2026-11-15 在 Weixin 4.2 实机验证
+- 来源：地图 [#68](https://github.com/ZLiLiang/JiuMi/issues/68)；可行性 spike [#94](https://github.com/ZLiLiang/JiuMi/issues/94)，2026-11-15 在 Weixin 4.2 实机验证；发现入口复验 [#171](https://github.com/ZLiLiang/JiuMi/issues/171)，2026-11-17 在 Weixin 4.2 实机验证
 
 ## 背景
 
@@ -22,8 +22,8 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 
 1. **抓取形态**：短时按需的本地 PAC + Titanium.Web.Proxy。PAC 只把 `channels.weixin.qq.com` 指向本地代理，其余主机回退用户原代理（无原代理则 `DIRECT`）；`finder.video.qq.com` 抓包期直连，不经过 MITM。代理本身仍只允许解密这两个域名，实际流量只会命中页面域名。
 2. **注入与回传**：在 `channels.weixin.qq.com` 的 200 HTML 的 `</body>` 前注入脚本，包装 `WeixinJSBridge.invoke`。`H5ExtTransfer:ok` 时把 `media[0]` 回传到独立的 `127.0.0.1` 随机端口 + 随机路径 listener，不复用代理端口。
-3. **只认打开的视频页**：只处理 `/web/pages/feed` 的捕获。信息流首页 `/web/pages/home` 的预览视频也会逐条触发同一桥事件，但不建列表、不展示。
-4. **去重**：同一次打开会连发多条事件，`oid+nid` 相同而 `token` / `decode_key` 每次新发。feed 页按 `oid+nid` 去重；不能依赖 URL 的 `m` 参数（4.2 有一部分媒体 URL 没有它）。
+3. **只认打开的视频**：`/web/pages/feed` 只处理 `H5ExtTransfer:ok`。发现首页 `/web/pages/home` 不触发该桥事件：页面通过 `window.xweb.worker` 拿到 feed 数据（含 `media[0]`），脚本在内存里维护目录；侧窗口、独立小窗口或全屏里的当前视频连续播放满 5 秒时，用当前播放视频的时长（±1.5 秒，必要时用描述）唯一匹配一条 feed，只回传这一条。快速滑过的预览不加入；同一视频只回传一次。
+4. **去重**：同一次打开会连发多条事件，`oid+nid` 相同而 `token` / `decode_key` 每次新发。feed 页按 `oid+nid` 去重；不能依赖 URL 的 `m` 参数（4.2 有一部分媒体 URL 没有它）。发现入口的 URL 没有 `oid/nid`，用 feed 项 id 作为 `oid`、固定标记 `discover` 作为 `nid`，仍走同一条去重路径。
 5. **媒体地址与请求头**：实际下载地址是 `media.url + media.url_token`。在微信外可直接 GET，不需要微信 cookie；带 `User-Agent`、`Referer: https://channels.weixin.qq.com/`、`Origin: https://channels.weixin.qq.com` 即可。封面 `thumb_url` 使用同一组请求头。
 6. **大小与进度**：`media[0].file_size` 不是实际文件大小（实测字段 60.4MB / 68.7MB / 26.6MB，服务端分别为 7.93MB / 8.99MB / 2.61MB）。下载进度与 Range 一律以响应的 `Content-Length` / `Content-Range` 为准。
 7. **下载与解密**：按 262144 字节 Range 分段下载。响应头 `X-encflag: 1`、`X-enclen: 131072`；**只有前 131072 字节**用 ISAAC64（seed = `decode_key`）+ `GetDecryptionArray(131072)` 生成的数组逐字节 XOR，第 131072 字节之后原样写入。`decode_key` 与 URL 绑定，换 URL 必须换 key。
@@ -36,6 +36,8 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 **为什么 MITM，而不是直接调接口。** 媒体地址带 `encfilekey`、`token`、`basedata`、`sign` 等一串随会话生成的参数，还有一个与 URL 绑定的 `decode_key`，没有稳定的公开接口可以复现。从微信自己的页面里拿它实际请求的媒体信息，是唯一不需要逆向签名算法的路径，也和旧实现一致。
 
 **为什么只解密两个域名。** `channels.weixin.qq.com` 承载页面与桥，`finder.video.qq.com` 承载媒体与封面。其余域名（登录、消息、支付等）与功能无关，解密它们只会扩大证书与隐私风险。
+
+**为什么发现入口用 worker 数据 + 播放时长。** 4.2 的发现首页把 feed（含每条的 `media[0]`、`decode_key`）通过 `window.xweb.worker` 送给页面，但全屏播放不再调用 `WeixinJSBridge`，`H5ExtTransfer:ok` 不出现。页面侧能读到当前播放的 `<video>`；实际使用中下载需求主要发生在侧窗口和可滚动的独立小窗口，全屏很少。脚本因此只做两件事：缓存 worker 送来的 feed、在当前视频连续播放满 5 秒时用时长匹配一条回传。快速滑过的预览不计入，维护“只抓真正在看的视频”的产品边界。
 
 **为什么按需启停。** 实机观察：抓包期间视频号信息流曾刷不出来，停抓并还原代理后恢复；原因未定位，可能是代理链路拖慢或微信对代理有反应。常驻代理的风险与收益不成比例，短时抓包已经足够拿到当前视频。PAC 只把页面域名交给本地代理，其他应用与微信其他流量继续走原代理，进一步缩小影响面。
 
@@ -51,7 +53,9 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 | --- | --- |
 | 常驻本地代理，不用时也开着 | 信息流可能被拖住；长期 MITM 与隐私边界不匹配 |
 | 全局固定 HTTPS 代理 | 其他应用也会被强制经过本地代理；PAC 可按域名把影响限制在页面 |
-| 只支持聊天里打开的分享视频 | 不满足“视频号里打开的视频也要能下载” |
+| 只支持聊天里打开的分享视频 | 不满足“视频号里打开的视频也要能下载”；发现入口已用 worker + 全屏事件补齐 |
+| 发现入口继续等 `H5ExtTransfer` | 4.2 发现首页全屏不再调用桥事件，等不到；只能读页面自己的 feed 与当前播放视频 |
+| 发现入口把所有预览建列表 | 侧窗口的预览会随滚动连续出现；全量加入会把只是浏览过的视频也塞进列表。改为连续播放满 5 秒才加入 |
 | 直接复现媒体接口与签名 | 参数随会话生成、`decode_key` 与 URL 绑定，签名算法脆弱且易失效 |
 | 原生 Hook / 内存注入 | 复杂度、杀软误报与版本不锁定下的维护成本都高 |
 | 用 `media[0].file_size` 算进度 | 与实际文件大小不符 |
@@ -64,15 +68,18 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 **正面**
 
 - 无管理员权限也能抓：只动 `CurrentUser` 证书与 WinINet 的 PAC 项，其他应用继续走原代理。
-- 聊天分享与视频号打开的视频走同一页面与同一桥事件，一套逻辑覆盖两条入口。
+- 聊天分享与视频号打开的视频走同一份页面与同一套去重/下载逻辑；发现入口额外走 worker + 播放时长，按实际使用把侧窗口/独立小窗口作为主路径，全屏作为低频补充。
 - 媒体地址在微信外可下载，下载器不依赖微信进程或登录态。
 - 体积可控：只解密两个域名，日志不落仓库。
+- 发现入口不新增解密域名：feed 数据本来就在页面内存里，脚本只把匹配到的一条 POST 到回环 listener。
 
 **负面（明确接受的代价）**
 
 - 需要用户信任一次临时根证书；证书保留在 `CurrentUser` 直到用户显式卸载，属于明确接受的长期信任面。
 - 抓包窗口内视频号信息流可能不可用，必须按需启停；PAC 按域名分流降低但不消除这个风险。
-- 发现首页 `/home` 的全屏视频窗口在 4.2 不请求 `feed` 页面、也未触发 `H5ExtTransfer:ok`，发现入口暂不支持（[#171](https://github.com/ZLiLiang/JiuMi/issues/171)）；聊天分享入口可用。
+- 发现入口依赖 4.2 的 `xweb` worker 消息形状与页面 DOM：worker 不再送 feed、或同一时长出现多条无法用描述区分时，脚本选择不回传，宁缺毋滥；升级后需按 [#171](https://github.com/ZLiLiang/JiuMi/issues/171) 的清单复验。
+- 侧窗口按“连续播放满 5 秒”自动加入：用户只是快速浏览时不会加入；若希望纯粹浏览而不加入，滑过即可。进入全屏后仍按同一规则，不额外抢建列表。
+- 独立小窗口在 4.2 实测仍可滚动，并沿用同一页面/脚本，因此和侧窗口使用同一 5 秒规则；如果未来版本改为纯原生渲染，窗口内无法按页面规则捕获，需要复验。
 - `decode_key`、token 均随会话失效；未来版本若更换加密或桥事件，需重新 spike。
 - `file_size` 不可信，进度必须等响应头；首段请求失败时无法提前展示总大小。
 - 原型的清理阶段可能卡住（进程、监听端口、证书残留），生产实现必须有兜底与残留提示。
@@ -88,13 +95,12 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 - 输出文件名清洗、命名规则与去重后的展示。
 - 下载调度、断点续传、并发与失败重试。
 - `PublishTrimmed` 兼容性（归 [#66](https://github.com/ZLiLiang/JiuMi/issues/66)）。
-- 发现首页入口（归 [#171](https://github.com/ZLiLiang/JiuMi/issues/171)）。
 - token 有效期、200% 缩放、多屏/混合 DPI 的补验。
 
 ## 参考
 
 - 地图：[#68](https://github.com/ZLiLiang/JiuMi/issues/68)
 - 可行性 spike：[#94](https://github.com/ZLiLiang/JiuMi/issues/94)（[2026-11-15 结论评论](https://github.com/ZLiLiang/JiuMi/issues/94#issuecomment-6895427287)）
-- 发现入口复验：[#171](https://github.com/ZLiLiang/JiuMi/issues/171)
+- 发现入口复验：[#171](https://github.com/ZLiLiang/JiuMi/issues/171)（2026-11-17：可抓；详见 [研究记录](../research/171-wechat-discover.md)）
 - 原型归档：`research/94-wechat-mitm-spike` 分支（不合并、不 PR）
 - 旧实现：`ZLiLiang/JiumiTool` 的 `JiumiTool2` 分支

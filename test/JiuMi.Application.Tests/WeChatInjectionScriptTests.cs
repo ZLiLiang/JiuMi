@@ -15,6 +15,11 @@ public sealed class WeChatInjectionScriptTests
         Assert.DoesNotContain(WeChatInjectionScript.ReceiverPlaceholder, script, StringComparison.Ordinal);
         Assert.Contains("H5ExtTransfer:ok", script, StringComparison.Ordinal);
         Assert.Contains("/web/pages/feed", script, StringComparison.Ordinal);
+        Assert.Contains("/web/pages/home", script, StringComparison.Ordinal);
+        Assert.Contains("currentSrc", script, StringComparison.Ordinal);
+        Assert.Contains("dwellTick", script, StringComparison.Ordinal);
+        Assert.Contains("xweb", script, StringComparison.Ordinal);
+        Assert.Contains("discover", script, StringComparison.Ordinal);
     }
 
     [Theory]

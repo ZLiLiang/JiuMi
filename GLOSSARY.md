@@ -79,7 +79,8 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 
 | 术语 | 代码名 | 定义 |
 | --- | --- | --- |
-| 注入回调 | `InjectionScript.js` | 注入视频号页面、包装 `WeixinJSBridge.invoke` 的回调；只在 `H5ExtTransfer:ok` 时从 `object.object_desc.media[0]` 取媒体信息，并 POST 到本机 listener。 |
+| 注入回调 | `InjectionScript.js` | 注入视频号页面、包装 `WeixinJSBridge.invoke` 的回调；`/web/pages/feed` 只在 `H5ExtTransfer:ok` 时从 `object.object_desc.media[0]` 取媒体信息，并 POST 到本机 listener。 |
+| 发现入口捕获 | `InjectionScript.js` | `/web/pages/home` 下读取 `xweb` worker 的 feed 数据；侧窗口、独立小窗口或全屏里的当前视频连续播放满 5 秒时，按时长唯一匹配当前视频，只把这一条 POST 到本机 listener。 |
 | 密钥流 | `Isaac64KeyStream` | 以媒体信息里的 `decode_key` 为种子生成的 ISAAC64 字节流；只覆盖文件开头 `X-enclen` 指定的字节数，与本次媒体 URL 绑定。 |
 | 过期链接 | `WeChatVideoDownloadState.Expired` | 媒体链接随会话失效后的下载结果：服务端返回 403/404/410 或 Range 不符；该行不复用旧链接重试，只能回微信重新打开视频。 |
 | 监听状态文件 | `WeChatCaptureStateStore`（`cache\wechat\state.json`） | 抓包启动时写下的代理快照与端口；干净停止即删除，异常退出后由下次启动的残留恢复读取并还原系统代理。 |
