@@ -1,0 +1,418 @@
+﻿namespace JiuMi.Application.MyJiuMi;
+
+/// <summary>
+/// The pure desktop rules that do not depend on a host: when the cat walks out, where the desktop
+/// window lands, and how its position is clamped into the nearest screen work area.
+/// </summary>
+/// <remarks>
+/// Screen values are physical pixels; the window size stays 160 DIP and is converted with the scale
+/// of the screen that receives it. The page/desktop anchoring uses the cat's bottom-centre.
+/// </remarks>
+public static class MyJiuMiTransitionRules
+{
+    /// <summary>
+    /// The page cat slot size in device-independent pixels.
+    /// </summary>
+    public const double HomeSizeDip = 200;
+
+    /// <summary>
+    /// The desktop window size in device-independent pixels.
+    /// </summary>
+    public const double DesktopSizeDip = 160;
+
+    /// <summary>
+    /// The distance, in DIP, the cat walks into the desktop after the handoff.
+    /// </summary>
+    public const double DesktopWalkDistanceDip = 40;
+
+    /// <summary>
+    /// The distance, in DIP, a drag must pass beyond the room's visible edge before the release
+    /// hands the cat to the desktop instead of bouncing back.
+    /// </summary>
+    public const double DragOutCommitDistanceDip = 48;
+
+    /// <summary>
+    /// Gets how long the 200 to 160 DIP handoff takes, anchored at the cat's bottom-centre.
+    /// </summary>
+    public static TimeSpan DragHandoffDuration { get; } = TimeSpan.FromMilliseconds(120);
+
+    /// <summary>
+    /// Gets the scale of the 160 DIP desktop cat relative to the 200 DIP page cat.
+    /// </summary>
+    public static double DesktopScale => DesktopSizeDip / HomeSizeDip;
+
+    /// <summary>
+    /// Gets the longest time hiding to the tray waits for the cat to reach the room edge.
+    /// </summary>
+    public static TimeSpan TrayHideTimeout { get; } = TimeSpan.FromMilliseconds(900);
+
+    /// <summary>
+    /// Gets the part of <see cref="TrayHideTimeout"/> reserved for creating and showing the desktop
+    /// host, so the shell itself is hidden within the 900 ms budget.
+    /// </summary>
+    public static TimeSpan TrayHandoffReserve { get; } = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// Gets how long the minimized path fades and scales the desktop window in.
+    /// </summary>
+    public static TimeSpan MinimizeEntrance { get; } = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>
+    /// Reports whether the cat may leave the page for the desktop for the given trigger.
+    /// </summary>
+    /// <param name="trigger">The action that is about to hide or minimize the shell, or the drag release.</param>
+    /// <param name="pageCurrent">Whether the My JiuMi page is the page currently shown.</param>
+    /// <param name="catAwake">Whether the cat is awake and available.</param>
+    /// <param name="desktopAvailable">Whether a desktop host may be attempted.</param>
+    /// <returns><see langword="true"/> when the cat should leave instead of pausing at home.</returns>
+    /// <remarks>
+    /// A sleeping cat stays home when the shell hides or minimizes, but a drag picks it up directly.
+    /// </remarks>
+    public static bool ShouldLeavePage(
+        MyJiuMiLeaveTrigger trigger,
+        bool pageCurrent,
+        bool catAwake,
+        bool desktopAvailable)
+    {
+        if (!pageCurrent || !desktopAvailable)
+        {
+            return false;
+        }
+
+        return trigger switch
+        {
+            MyJiuMiLeaveTrigger.HiddenToTray or MyJiuMiLeaveTrigger.Minimized => catAwake,
+            MyJiuMiLeaveTrigger.DraggedOut => true,
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// Reports whether releasing a dragged cat should create the desktop host. The pointer must be
+    /// at least <see cref="DragOutCommitDistanceDip"/> beyond the visible room.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="point">The release point in physical screen pixels.</param>
+    /// <param name="scaling">The screen scale factor where 1.0 is 100%.</param>
+    /// <returns><see langword="true"/> when the release commits to the desktop.</returns>
+    public static bool ShouldCommitDragOut(
+        MyJiuMiScreenRect room,
+        MyJiuMiScreenPoint point,
+        double scaling)
+    {
+        if (room.IsEmpty)
+        {
+            return false;
+        }
+
+        double deltaX = point.X < room.X
+            ? room.X - (double)point.X
+            : point.X > room.Right
+                ? point.X - (double)room.Right
+                : 0;
+        double deltaY = point.Y < room.Y
+            ? room.Y - (double)point.Y
+            : point.Y > room.Bottom
+                ? point.Y - (double)room.Bottom
+                : 0;
+        double distance = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
+        double threshold = DragOutCommitDistanceDip * Math.Max(scaling, 0.01d);
+        return distance >= threshold;
+    }
+
+    /// <summary>
+    /// Normalizes a screen X inside the room to <c>0</c>–<c>1</c> and clamps values outside it.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="x">The screen X to normalize.</param>
+    /// <returns>The normalized horizontal position.</returns>
+    public static double ProjectRoomX(MyJiuMiScreenRect room, int x) =>
+        room.IsEmpty
+            ? MyJiuMiPositionRules.Default
+            : MyJiuMiPositionRules.Clamp((x - (double)room.X) / room.Width);
+
+    /// <summary>
+    /// Projects the cat's bottom-centre onto the room floor when the release point lies inside the
+    /// visible room. The vertical position is ignored; only the horizontal position matters.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="releasePoint">The pointer's release point in physical screen pixels.</param>
+    /// <param name="anchorX">The cat's bottom-centre X in physical screen pixels.</param>
+    /// <param name="positionX">The normalized horizontal position when the release is inside.</param>
+    /// <returns><see langword="true"/> when the release point lies inside the visible room.</returns>
+    public static bool TryProjectRoomX(
+        MyJiuMiScreenRect room,
+        MyJiuMiScreenPoint releasePoint,
+        int anchorX,
+        out double positionX)
+    {
+        if (!room.Contains(releasePoint))
+        {
+            positionX = MyJiuMiPositionRules.Default;
+            return false;
+        }
+
+        positionX = ProjectRoomX(room, anchorX);
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the room edge nearest to a normalized position: <c>0</c> for the left edge and <c>1</c>
+    /// for the right edge.
+    /// </summary>
+    /// <param name="positionX">The normalized cat centre.</param>
+    /// <returns>The normalized edge the cat walks to.</returns>
+    public static double NearestEdge(double positionX) =>
+        MyJiuMiPositionRules.Clamp(positionX) < 0.5 ? 0 : 1;
+
+    /// <summary>
+    /// Gets the room edge a summoned cat walks in from: the edge nearer the desktop cat's last
+    /// screen X.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="desktopCatX">The desktop cat's bottom-centre X in physical pixels.</param>
+    /// <returns><c>0</c> for the left edge and <c>1</c> for the right edge.</returns>
+    public static double SummonEntryEdge(MyJiuMiScreenRect room, int desktopCatX) =>
+        desktopCatX < room.X + (room.Width / 2.0) ? 0 : 1;
+
+    /// <summary>
+    /// Gets the normalized handoff X for a summoned cat: one page-cat radius inside the entry edge,
+    /// so the whole desktop cat body is already inside the room when the page cat takes over.
+    /// </summary>
+    /// <param name="entryEdge"><c>0</c> for the left edge and <c>1</c> for the right edge.</param>
+    /// <param name="stageWidth">The room width in DIP.</param>
+    /// <returns>The normalized handoff position, clamped into the room.</returns>
+    public static double SummonHandoffPositionX(double entryEdge, double stageWidth)
+    {
+        if (!(stageWidth > 0))
+        {
+            return MyJiuMiPositionRules.Default;
+        }
+
+        double inset = (HomeSizeDip / 2) / stageWidth;
+        return MyJiuMiPositionRules.Clamp(entryEdge < 0.5 ? inset : 1 - inset);
+    }
+
+    /// <summary>
+    /// Gets the screen point where the desktop and page cats hand over: the normalized X inside the
+    /// visible room and the page floor line.
+    /// </summary>
+    /// <param name="room">The visible room in physical screen pixels.</param>
+    /// <param name="positionX">The normalized handoff position.</param>
+    /// <param name="floorY">The page floor line in physical screen pixels.</param>
+    /// <returns>The handoff anchor in physical screen pixels.</returns>
+    public static MyJiuMiScreenPoint SummonHandoffAnchor(
+        MyJiuMiScreenRect room,
+        double positionX,
+        int floorY) =>
+        new(
+            room.X +
+                (int)Math.Round(
+                    room.Width * MyJiuMiPositionRules.Clamp(positionX),
+                    MidpointRounding.AwayFromZero),
+            floorY);
+
+    /// <summary>
+    /// Gets how long the desktop cat takes to walk home at <see cref="MyJiuMiInteractionRules.SummonWalkSpeed"/>.
+    /// </summary>
+    /// <param name="from">The start anchor in physical screen pixels.</param>
+    /// <param name="to">The handoff anchor in physical screen pixels.</param>
+    /// <param name="scaling">The screen scale of the desk the cat walks on.</param>
+    /// <returns>The walk duration; zero when the two points coincide.</returns>
+    public static TimeSpan SummonWalkDuration(
+        MyJiuMiScreenPoint from,
+        MyJiuMiScreenPoint to,
+        double scaling)
+    {
+        double deltaX = to.X - (double)from.X;
+        double deltaY = to.Y - (double)from.Y;
+        double distanceDip =
+            Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY)) / Math.Max(scaling, 0.01d);
+        return TimeSpan.FromSeconds(distanceDip / MyJiuMiInteractionRules.SummonWalkSpeed);
+    }
+
+    /// <summary>
+    /// Reports whether a double click on the page floor can call the desktop cat home: the page must
+    /// be visible and laid out, and the desktop cat must have a room, a floor and a position to walk
+    /// from.
+    /// </summary>
+    /// <param name="homeVisible">Whether the page is visible and can receive the cat.</param>
+    /// <param name="stageWidth">The page stage width in DIP; zero before the first layout pass.</param>
+    /// <param name="room">The visible room in physical screen pixels, when it can be measured.</param>
+    /// <param name="desktopCatX">The desktop cat's bottom-centre X, when a desktop window exists.</param>
+    /// <param name="floorY">The page floor line in physical screen pixels, when it can be measured.</param>
+    /// <returns><see langword="true"/> when the summon may start; otherwise the cat stays on the desktop.</returns>
+    public static bool CanSummonFromDesktop(
+        bool homeVisible,
+        double stageWidth,
+        MyJiuMiScreenRect? room,
+        int? desktopCatX,
+        int? floorY) =>
+        homeVisible &&
+        stageWidth > 0 &&
+        room is { } rect &&
+        !rect.IsEmpty &&
+        desktopCatX.HasValue &&
+        floorY.HasValue;
+
+    /// <summary>
+    /// Converts a window size in DIP to physical pixels on a screen.
+    /// </summary>
+    /// <param name="sizeDip">The window size in device-independent pixels.</param>
+    /// <param name="scaling">The screen scale factor where 1.0 is 100%.</param>
+    /// <returns>The window size in physical pixels.</returns>
+    public static int PixelSize(double sizeDip, double scaling) =>
+        (int)Math.Round(
+            sizeDip * Math.Max(scaling, 0.01d),
+            MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// Converts the fixed 160 DIP desktop window size to physical pixels on a screen.
+    /// </summary>
+    /// <param name="scaling">The screen scale factor where 1.0 is 100%.</param>
+    /// <returns>The window size in physical pixels.</returns>
+    public static int PixelSize(double scaling) => PixelSize(DesktopSizeDip, scaling);
+
+    /// <summary>
+    /// Places the desktop window so the cat's bottom-centre sits on <paramref name="anchor"/>.
+    /// </summary>
+    /// <param name="anchor">The bottom-centre anchor in physical screen pixels.</param>
+    /// <param name="workAreas">Every screen work area, at least one.</param>
+    /// <returns>The clamped window origin and the screen that received it.</returns>
+    public static MyJiuMiDesktopPlacement PlaceFromAnchor(
+        MyJiuMiScreenPoint anchor,
+        IReadOnlyList<MyJiuMiScreenArea> workAreas) =>
+        PlaceFromAnchor(anchor, DesktopSizeDip, workAreas);
+
+    /// <summary>
+    /// Places a desktop window of any size so the cat's bottom-centre sits on
+    /// <paramref name="anchor"/>; used for the 200 to 160 DIP entrance.
+    /// </summary>
+    /// <param name="anchor">The bottom-centre anchor in physical screen pixels.</param>
+    /// <param name="sizeDip">The window size in device-independent pixels.</param>
+    /// <param name="workAreas">Every screen work area, at least one.</param>
+    /// <returns>The clamped window origin and the screen that received it.</returns>
+    public static MyJiuMiDesktopPlacement PlaceFromAnchor(
+        MyJiuMiScreenPoint anchor,
+        double sizeDip,
+        IReadOnlyList<MyJiuMiScreenArea> workAreas)
+    {
+        MyJiuMiScreenArea area = SelectArea(anchor, workAreas);
+        int pixelSize = PixelSize(sizeDip, area.Scaling);
+        var desired = new MyJiuMiScreenPoint(
+            anchor.X - (pixelSize / 2),
+            anchor.Y - pixelSize);
+        return new MyJiuMiDesktopPlacement(Clamp(desired, area, pixelSize), area, pixelSize);
+    }
+
+    /// <summary>
+    /// Places a window at a desired origin, falling back into the nearest visible work area.
+    /// </summary>
+    /// <param name="desired">The desired top-left position in physical pixels.</param>
+    /// <param name="workAreas">Every screen work area, at least one.</param>
+    /// <returns>The clamped window origin and the screen that received it.</returns>
+    public static MyJiuMiDesktopPlacement ResolveOrigin(
+        MyJiuMiScreenPoint desired,
+        IReadOnlyList<MyJiuMiScreenArea> workAreas)
+    {
+        Validate(workAreas);
+
+        MyJiuMiScreenArea bestArea = workAreas[0];
+        int bestPixelSize = PixelSize(bestArea.Scaling);
+        MyJiuMiScreenPoint bestOrigin = Clamp(desired, bestArea, bestPixelSize);
+        long bestDistance = DistanceSquared(bestOrigin, desired);
+
+        foreach (MyJiuMiScreenArea area in workAreas.Skip(1))
+        {
+            int pixelSize = PixelSize(area.Scaling);
+            MyJiuMiScreenPoint origin = Clamp(desired, area, pixelSize);
+            long distance = DistanceSquared(origin, desired);
+            if (distance < bestDistance ||
+                (distance == bestDistance && area.IsPrimary && !bestArea.IsPrimary))
+            {
+                bestArea = area;
+                bestPixelSize = pixelSize;
+                bestOrigin = origin;
+                bestDistance = distance;
+            }
+        }
+
+        return new MyJiuMiDesktopPlacement(bestOrigin, bestArea, bestPixelSize);
+    }
+
+    private static MyJiuMiScreenArea SelectArea(
+        MyJiuMiScreenPoint anchor,
+        IReadOnlyList<MyJiuMiScreenArea> workAreas)
+    {
+        Validate(workAreas);
+
+        foreach (MyJiuMiScreenArea area in workAreas)
+        {
+            if (anchor.X >= area.X &&
+                anchor.X <= area.Right &&
+                anchor.Y >= area.Y &&
+                anchor.Y <= area.Bottom)
+            {
+                return area;
+            }
+        }
+
+        MyJiuMiScreenArea bestArea = workAreas[0];
+        long bestDistance = DistanceSquared(anchor, bestArea);
+        foreach (MyJiuMiScreenArea area in workAreas.Skip(1))
+        {
+            long distance = DistanceSquared(anchor, area);
+            if (distance < bestDistance ||
+                (distance == bestDistance && area.IsPrimary && !bestArea.IsPrimary))
+            {
+                bestArea = area;
+                bestDistance = distance;
+            }
+        }
+
+        return bestArea;
+    }
+
+    private static MyJiuMiScreenPoint Clamp(
+        MyJiuMiScreenPoint desired,
+        MyJiuMiScreenArea area,
+        int pixelSize)
+    {
+        int maxX = area.Right - pixelSize;
+        int maxY = area.Bottom - pixelSize;
+        int x = maxX < area.X ? area.X : Math.Clamp(desired.X, area.X, maxX);
+        int y = maxY < area.Y ? area.Y : Math.Clamp(desired.Y, area.Y, maxY);
+        return new MyJiuMiScreenPoint(x, y);
+    }
+
+    private static long DistanceSquared(MyJiuMiScreenPoint point, MyJiuMiScreenArea area)
+    {
+        long deltaX = point.X < area.X
+            ? area.X - (long)point.X
+            : point.X > area.Right
+                ? point.X - (long)area.Right
+                : 0;
+        long deltaY = point.Y < area.Y
+            ? area.Y - (long)point.Y
+            : point.Y > area.Bottom
+                ? point.Y - (long)area.Bottom
+                : 0;
+        return (deltaX * deltaX) + (deltaY * deltaY);
+    }
+
+    private static long DistanceSquared(MyJiuMiScreenPoint left, MyJiuMiScreenPoint right)
+    {
+        long deltaX = left.X - (long)right.X;
+        long deltaY = left.Y - (long)right.Y;
+        return (deltaX * deltaX) + (deltaY * deltaY);
+    }
+
+    private static void Validate(IReadOnlyList<MyJiuMiScreenArea> workAreas)
+    {
+        ArgumentNullException.ThrowIfNull(workAreas);
+        if (workAreas.Count == 0)
+        {
+            throw new ArgumentException("At least one work area is required.", nameof(workAreas));
+        }
+    }
+}

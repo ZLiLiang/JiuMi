@@ -10,7 +10,14 @@
 public static class MyJiuMiAnimationCatalog
 {
     private static readonly MyJiuMiAnimationClip _lyingIdle = Create("lying-idle", 2, 1500, loops: true);
-    private static readonly MyJiuMiAnimationClip _blink = Create("blink", 3, 80, loops: false);
+    private static readonly MyJiuMiAnimationClip _blink = Create(
+        "blink",
+        [
+            TimeSpan.FromMilliseconds(60),
+            TimeSpan.FromMilliseconds(90),
+            TimeSpan.FromMilliseconds(60),
+        ],
+        loops: false);
     private static readonly MyJiuMiAnimationClip _react = Create("react", 2, 120, loops: false);
     private static readonly MyJiuMiAnimationClip _drag = Create("drag", 2, 400, loops: true);
     private static readonly MyJiuMiAnimationClip _sleepIn = Create("sleep-in", 3, 150, loops: false);
@@ -18,6 +25,16 @@ public static class MyJiuMiAnimationCatalog
     private static readonly MyJiuMiAnimationClip _wake = Create("wake", 3, 150, loops: false);
     private static readonly MyJiuMiAnimationClip _stretch = Create("stretch", 4, 120, loops: false);
     private static readonly MyJiuMiAnimationClip _walk = Create("walk", 33, 26, loops: true);
+    private static readonly MyJiuMiAnimationClip _summonWalk = Create(
+        "walk",
+        33,
+        MyJiuMiInteractionRules.SummonWalkFrameMilliseconds,
+        loops: true);
+
+    /// <summary>
+    /// Gets the fast walk used by the summon: the same frames at the 1.6x pace.
+    /// </summary>
+    public static MyJiuMiAnimationClip SummonWalk => _summonWalk;
 
     /// <summary>
     /// Gets the frames, timing and looping rule of a state.
@@ -45,4 +62,9 @@ public static class MyJiuMiAnimationCatalog
         Array.Fill(durations, TimeSpan.FromMilliseconds(milliseconds));
         return new MyJiuMiAnimationClip(folder, durations, loops);
     }
+
+    private static MyJiuMiAnimationClip Create(
+        string folder,
+        IReadOnlyList<TimeSpan> durations,
+        bool loops) => new(folder, durations, loops);
 }

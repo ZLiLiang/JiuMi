@@ -13,12 +13,12 @@ public static class MyJiuMiInteractionRules
     /// <summary>
     /// Gets the shortest random delay between idle blinks.
     /// </summary>
-    public static TimeSpan BlinkDelayMin { get; } = TimeSpan.FromSeconds(4);
+    public static TimeSpan BlinkDelayMin { get; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Gets the longest random delay between idle blinks.
     /// </summary>
-    public static TimeSpan BlinkDelayMax { get; } = TimeSpan.FromSeconds(8);
+    public static TimeSpan BlinkDelayMax { get; } = TimeSpan.FromSeconds(7);
 
     /// <summary>
     /// Gets the shortest random pause between autonomous wander decisions.
@@ -45,6 +45,17 @@ public static class MyJiuMiInteractionRules
     /// not slide.
     /// </summary>
     public const double WalkSpeed = 103;
+
+    /// <summary>
+    /// Gets the walking speed in DIP per second used while the desktop cat walks home and the page
+    /// cat finishes the summon; 1.6x <see cref="WalkSpeed"/> keeps the stride of the fast frames.
+    /// </summary>
+    public const double SummonWalkSpeed = 167;
+
+    /// <summary>
+    /// Gets the frame interval of the summon walk, matched to <see cref="SummonWalkSpeed"/>.
+    /// </summary>
+    public const int SummonWalkFrameMilliseconds = 16;
 
     /// <summary>
     /// Gets the side of the square cat slot, matching the 200 DIP display size.

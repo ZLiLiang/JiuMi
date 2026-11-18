@@ -30,6 +30,9 @@ public sealed class MyJiuMiStateMachine
     private double _walkTargetX;
     private bool _isFacingRight;
     private bool _isActive;
+    private bool _isWanderingEnabled = true;
+    private bool _isSummonWalkHeld;
+    private WalkPace _walkPace;
     private PendingAction _pendingAction;
 
     /// <summary>
@@ -61,6 +64,11 @@ public sealed class MyJiuMiStateMachine
     /// Gets the zero-based frame of <see cref="State"/> to draw.
     /// </summary>
     public int FrameIndex => _frameIndex;
+
+    /// <summary>
+    /// Gets a value indicating whether the cat is awake and may leave the page.
+    /// </summary>
+    public bool IsAwake => _isActive && _state is not MyJiuMiState.SleepIn and not MyJiuMiState.Sleep;
 
     /// <summary>
     /// Gets the cat's horizontal position as a fraction of the room width.
@@ -97,6 +105,8 @@ public sealed class MyJiuMiStateMachine
     {
         _isActive = false;
         _pendingAction = PendingAction.None;
+        _isSummonWalkHeld = false;
+        _walkPace = WalkPace.Normal;
         _nextBlinkAt = null;
         _nextWanderAt = null;
         _state = MyJiuMiState.LyingIdle;
@@ -110,6 +120,59 @@ public sealed class MyJiuMiStateMachine
     public void SetStageWidth(double stageWidth) => _stageWidth = NormalizeWidth(stageWidth);
 
     /// <summary>
+    /// Enables or disables autonomous wandering without touching the other timers.
+    /// </summary>
+    /// <param name="enabled">Whether the cat may start a wander from <see cref="MyJiuMiState.LyingIdle"/>.</param>
+    public void SetWanderingEnabled(bool enabled)
+    {
+        if (_isWanderingEnabled == enabled)
+        {
+            return;
+        }
+
+        _isWanderingEnabled = enabled;
+        if (!enabled)
+        {
+            _nextWanderAt = null;
+            return;
+        }
+
+        if (_isActive && _state == MyJiuMiState.LyingIdle)
+        {
+            ScheduleWander(_timeProvider.GetUtcNow());
+        }
+    }
+
+    /// <summary>
+    /// Walks the awake cat to a normalized position without the summon stretch, used by the desktop
+    /// handoff that must start moving at once.
+    /// </summary>
+    /// <param name="targetX">The normalized target position.</param>
+    /// <returns><see langword="true"/> when the cat started walking.</returns>
+    public bool WalkTo(double targetX)
+    {
+        if (!IsAwake || _state == MyJiuMiState.Drag)
+        {
+            return false;
+        }
+
+        double target = MyJiuMiPositionRules.Clamp(targetX);
+        if (Math.Abs(target - _positionX) < double.Epsilon)
+        {
+            return false;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _pendingAction = PendingAction.None;
+        _isSummonWalkHeld = false;
+        _walkPace = WalkPace.Normal;
+        _walkTargetX = target;
+        _isFacingRight = target > _positionX;
+        EnterState(MyJiuMiState.Walk, now);
+        return true;
+    }
+
+    /// <summary>
     /// Moves the cat while the pointer drags it.
     /// </summary>
     /// <param name="positionX">The normalized pointer position.</param>
@@ -119,6 +182,91 @@ public sealed class MyJiuMiStateMachine
         {
             _positionX = MyJiuMiPositionRules.Clamp(positionX);
         }
+    }
+
+    /// <summary>
+    /// Starts the summon walk home: a sleeping cat plays <see cref="MyJiuMiState.Wake"/> first, then
+    /// the cat walks in place at the summon pace while the desktop window carries it to the room.
+    /// </summary>
+    /// <param name="facingRight">Whether the cat walks to the right on screen.</param>
+    /// <returns><see langword="true"/> when the summon walk started.</returns>
+    public bool BeginSummonDesktopWalk(bool facingRight)
+    {
+        if (!_isActive || _state == MyJiuMiState.Drag)
+        {
+            return false;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        ResetSleep(now);
+        _isFacingRight = facingRight;
+
+        if (_state is MyJiuMiState.SleepIn or MyJiuMiState.Sleep)
+        {
+            _pendingAction = PendingAction.SummonWalk;
+            EnterState(MyJiuMiState.Wake, now);
+            return true;
+        }
+
+        EnterSummonHoldWalk(now);
+        return true;
+    }
+
+    /// <summary>
+    /// Stops the summon walk on the desktop and settles the cat in place; used when the handoff
+    /// cannot complete.
+    /// </summary>
+    public void CancelSummonDesktopWalk()
+    {
+        if (!_isActive)
+        {
+            return;
+        }
+
+        _isSummonWalkHeld = false;
+        if (_pendingAction == PendingAction.SummonWalk)
+        {
+            _pendingAction = PendingAction.None;
+        }
+
+        if (_state == MyJiuMiState.Walk && _walkPace == WalkPace.Summon)
+        {
+            EnterLyingIdle(_timeProvider.GetUtcNow(), restartWander: true);
+        }
+    }
+
+    /// <summary>
+    /// Walks the page cat from the handoff point to the summon target at the summon pace.
+    /// </summary>
+    /// <param name="targetX">The normalized target position.</param>
+    /// <returns><see langword="true"/> when the cat started walking.</returns>
+    public bool SummonWalkTo(double targetX)
+    {
+        if (!IsAwake || _state == MyJiuMiState.Drag)
+        {
+            return false;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        double target = MyJiuMiPositionRules.Clamp(targetX);
+        _isSummonWalkHeld = false;
+        _pendingAction = PendingAction.None;
+        if (Math.Abs(target - _positionX) < double.Epsilon)
+        {
+            EnterLyingIdle(now, restartWander: true);
+            return false;
+        }
+
+        _walkTargetX = target;
+        _isFacingRight = target > _positionX;
+        _walkPace = WalkPace.Summon;
+        if (_state == MyJiuMiState.Walk)
+        {
+            return true;
+        }
+
+        EnterState(MyJiuMiState.Walk, now);
+        return true;
     }
 
     /// <summary>
@@ -151,7 +299,7 @@ public sealed class MyJiuMiStateMachine
                     continue;
                 }
 
-                if (_nextWanderAt is { } wanderAt && now >= wanderAt)
+                if (_isWanderingEnabled && _nextWanderAt is { } wanderAt && now >= wanderAt)
                 {
                     _nextWanderAt = null;
                     if (!TryStartWander(now))
@@ -319,7 +467,7 @@ public sealed class MyJiuMiStateMachine
 
     private void AdvanceWalk(DateTimeOffset now)
     {
-        if (_state != MyJiuMiState.Walk)
+        if (_state != MyJiuMiState.Walk || _isSummonWalkHeld)
         {
             return;
         }
@@ -338,8 +486,11 @@ public sealed class MyJiuMiStateMachine
             return;
         }
 
+        double speed = _walkPace == WalkPace.Summon
+            ? MyJiuMiInteractionRules.SummonWalkSpeed
+            : MyJiuMiInteractionRules.WalkSpeed;
         double elapsed = Math.Max(0, (now - _lastUpdateAt).TotalSeconds);
-        double step = MyJiuMiInteractionRules.WalkSpeed * elapsed / _stageWidth;
+        double step = speed * elapsed / _stageWidth;
         if (step >= Math.Abs(remaining))
         {
             _positionX = _walkTargetX;
@@ -352,7 +503,7 @@ public sealed class MyJiuMiStateMachine
 
     private bool TryCompleteTransition(DateTimeOffset now)
     {
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(_state);
+        MyJiuMiAnimationClip clip = CurrentClip;
         if (clip.Loops || now - _stateStartedAt < clip.Duration)
         {
             return false;
@@ -378,6 +529,10 @@ public sealed class MyJiuMiStateMachine
                 {
                     StartWalk(now);
                 }
+                else if (_pendingAction == PendingAction.SummonWalk)
+                {
+                    EnterSummonHoldWalk(now);
+                }
                 else
                 {
                     EnterLyingIdle(now, restartWander: true);
@@ -394,13 +549,23 @@ public sealed class MyJiuMiStateMachine
     {
         _isFacingRight = _walkTargetX > _positionX;
         _pendingAction = PendingAction.None;
+        _isSummonWalkHeld = false;
+        _walkPace = WalkPace.Normal;
+        EnterState(MyJiuMiState.Walk, at);
+    }
+
+    private void EnterSummonHoldWalk(DateTimeOffset at)
+    {
+        _pendingAction = PendingAction.None;
+        _isSummonWalkHeld = true;
+        _walkPace = WalkPace.Summon;
         EnterState(MyJiuMiState.Walk, at);
     }
 
     private void EnterLyingIdle(DateTimeOffset at, bool restartWander)
     {
         EnterState(MyJiuMiState.LyingIdle, at);
-        if (restartWander)
+        if (restartWander && _isWanderingEnabled)
         {
             ScheduleWander(at);
         }
@@ -411,6 +576,12 @@ public sealed class MyJiuMiStateMachine
         _state = state;
         _stateStartedAt = at;
         _frameIndex = 0;
+
+        if (state != MyJiuMiState.Walk)
+        {
+            _isSummonWalkHeld = false;
+            _walkPace = WalkPace.Normal;
+        }
 
         if (state == MyJiuMiState.LyingIdle)
         {
@@ -453,7 +624,7 @@ public sealed class MyJiuMiStateMachine
 
     private void UpdateFrame(DateTimeOffset now)
     {
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(_state);
+        MyJiuMiAnimationClip clip = CurrentClip;
         TimeSpan elapsed = now - _stateStartedAt;
         if (elapsed < TimeSpan.Zero)
         {
@@ -482,6 +653,11 @@ public sealed class MyJiuMiStateMachine
     private static bool IsResting(MyJiuMiState state) =>
         state is MyJiuMiState.LyingIdle or MyJiuMiState.Blink;
 
+    private MyJiuMiAnimationClip CurrentClip =>
+        _state == MyJiuMiState.Walk && _walkPace == WalkPace.Summon
+            ? MyJiuMiAnimationCatalog.SummonWalk
+            : MyJiuMiAnimationCatalog.GetClip(_state);
+
     private static double NormalizeWidth(double width) =>
         double.IsFinite(width) && width > 0 ? width : 0;
 
@@ -489,5 +665,12 @@ public sealed class MyJiuMiStateMachine
     {
         None,
         Walk,
+        SummonWalk,
+    }
+
+    private enum WalkPace
+    {
+        Normal,
+        Summon,
     }
 }

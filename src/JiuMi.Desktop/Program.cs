@@ -7,16 +7,19 @@ using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.WeChatVideo;
 using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
 using JiuMi.Infrastructure.Logging;
+using JiuMi.MyJiuMi;
 using JiuMi.Shell;
 using JiuMi.Startup;
 using JiuMi.Theming;
 using JiuMi.Threading;
 using JiuMi.ViewModels;
 using JiuMi.Views;
+using JiuMi.WeChatVideo;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -79,6 +82,7 @@ internal static class Program
             [
                 () => Task.Run(() => RunConfigProbe(services)),
                 () => Task.Run(() => ReportStartupIssues(services)),
+                () => RunResidualRestoreAsync(services),
                 () => RunLocalizationAsync(services),
                 () =>
                 {
@@ -87,6 +91,14 @@ internal static class Program
                 },
             ],
             () => services.GetRequiredService<MainWindow>());
+    }
+
+    private static async Task RunResidualRestoreAsync(ServiceProvider services)
+    {
+        WeChatVideoResidualRestoreResult result = await services
+            .GetRequiredService<IWeChatVideoCapture>()
+            .RestoreResidualAsync();
+        services.GetRequiredService<WeChatVideoStartupNotice>().Report(result);
     }
 
     private static void RunConfigProbe(ServiceProvider services)
@@ -158,13 +170,18 @@ internal static class Program
                 provider.GetRequiredService<Serilog.ILogger>());
         });
         services.AddSingleton<DiagnosticsExportController>();
+        services.AddSingleton<WeChatVideoStartupNotice>();
+        services.AddSingleton<ErrorRetryRegistry>();
         services.AddSingleton<InfoBarViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<MyJiuMiSession>();
         services.AddSingleton<MyJiuMiViewModel>();
         services.AddSingleton<WorldClockViewModel>();
         services.AddSingleton(new OutputPathPlanner(File.Exists));
         services.AddSingleton<ImageConvertViewModel>();
         services.AddSingleton<FileRenameViewModel>();
+        services.AddSingleton<WeChatVideoViewModel>();
+        services.AddSingleton<IWeChatVideoCertificatePrompt, WeChatVideoCertificatePrompt>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();

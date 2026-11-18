@@ -30,4 +30,21 @@ public sealed class ErrorPresentationCatalogTests
         Assert.Equal(ErrorCarrier.InfoBar, presentation.Carrier);
         Assert.Equal(ErrorNoticeAction.Retry, presentation.Action);
     }
+
+    [Theory]
+    [InlineData("WeChatVideo.CaptureStartFailed", ErrorCarrier.InfoBar, ErrorNoticeAction.Retry)]
+    [InlineData("WeChatVideo.CertificateUninstallFailed", ErrorCarrier.InfoBar, ErrorNoticeAction.Retry)]
+    [InlineData("WeChatVideo.ProxyRestoreFailed", ErrorCarrier.ErrorWindow, ErrorNoticeAction.None)]
+    public void Find_GivenWeChatVideoCode_ReturnsTheRegisteredPresentation(
+        string code,
+        ErrorCarrier carrier,
+        ErrorNoticeAction action)
+    {
+        ErrorPresentation? presentation = ErrorPresentationCatalog.Find(code);
+
+        Assert.NotNull(presentation);
+        Assert.Equal(ErrorLevel.Error, presentation.Level);
+        Assert.Equal(carrier, presentation.Carrier);
+        Assert.Equal(action, presentation.Action);
+    }
 }

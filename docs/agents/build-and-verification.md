@@ -47,6 +47,8 @@ The only assets unused on win-x64 are the macOS and Linux Avalonia backends (`Av
 
 A forced trial (`-p:SuppressTrimAnalysisWarnings=true -p:JsonSerializerIsReflectionEnabledByDefault=true`) did run, and the shell, world-clock page and image-conversion page rendered; it shrank the symbol-free publish directory to 77.7 MB and the ZIP to 33.6 MB. It is still not enabled, because it hides the trim warnings that predict exactly these failures. Re-evaluate only after the JSON paths move to a `JsonSerializerContext`, `LocalizeExtension` and the shell styles stop creating reflection `Binding`s, the view types that `ViewLocator` resolves are preserved explicitly, and the third-party trim warnings are addressed or rooted.
 
+`Titanium.Web.Proxy` 7.0.27 is the WeChat capture proxy. The package ships a `net10.0` target and depends on `BouncyCastle.Cryptography` 2.6.2 and `Microsoft.Extensions.Logging.Abstractions` 10.0.0; the Release build and the #94 spike both use it on net10. Its trimming behavior is **not verified** and is out of scope for the capture chain: it uses certificate generation, reflection-backed certificate caches and BouncyCastle, so enabling `PublishTrimmed` without a dedicated trial would risk breaking the proxy at runtime. Trim validation for the whole app stays with [#66](https://github.com/ZLiLiang/JiuMi/issues/66); do not suppress trim warnings for this package.
+
 ## Rules
 
 - A code change is complete only after `pwsh ./verify.ps1` passes.

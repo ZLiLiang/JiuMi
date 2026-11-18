@@ -20,6 +20,8 @@
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <!-- 7.0.27 targets net10.0. Trimming is not verified and stays off; see docs/agents/build-and-verification.md. -->
+    <PackageReference Include="Titanium.Web.Proxy" Version="7.0.27" />
   </ItemGroup>
 
   <!-- Magick.NET ships the Apache-2.0 and ImageMagick licence texts; both must travel with the app. -->

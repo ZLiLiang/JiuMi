@@ -9,7 +9,6 @@ public sealed class MyJiuMiAnimationCatalogTests
 {
     [Theory]
     [InlineData(MyJiuMiState.LyingIdle, "lying-idle", 2, 1500, true)]
-    [InlineData(MyJiuMiState.Blink, "blink", 3, 80, false)]
     [InlineData(MyJiuMiState.React, "react", 2, 120, false)]
     [InlineData(MyJiuMiState.Drag, "drag", 2, 400, true)]
     [InlineData(MyJiuMiState.SleepIn, "sleep-in", 3, 150, false)]
@@ -35,6 +34,20 @@ public sealed class MyJiuMiAnimationCatalogTests
     }
 
     [Fact]
+    public void Blink_GivenTheAcceptedTiming_UsesSixtyNinetySixty()
+    {
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(MyJiuMiState.Blink);
+
+        Assert.Equal("blink", clip.AssetFolder);
+        Assert.False(clip.Loops);
+        Assert.Collection(
+            clip.FrameDurations,
+            duration => Assert.Equal(TimeSpan.FromMilliseconds(60), duration),
+            duration => Assert.Equal(TimeSpan.FromMilliseconds(90), duration),
+            duration => Assert.Equal(TimeSpan.FromMilliseconds(60), duration));
+    }
+
+    [Fact]
     public void Duration_GivenEveryState_IsTheSumOfItsFrames()
     {
         foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
@@ -53,5 +66,19 @@ public sealed class MyJiuMiAnimationCatalogTests
         Assert.Equal(
             TimeSpan.FromMilliseconds(858),
             MyJiuMiAnimationCatalog.GetClip(MyJiuMiState.Walk).Duration);
+    }
+
+    [Fact]
+    public void SummonWalk_GivenTheWalkBackPace_ReusesTheWalkFramesAtSixteenMilliseconds()
+    {
+        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.SummonWalk;
+
+        Assert.Equal("walk", clip.AssetFolder);
+        Assert.Equal(33, clip.FrameDurations.Count);
+        Assert.All(
+            clip.FrameDurations,
+            duration => Assert.Equal(TimeSpan.FromMilliseconds(16), duration));
+        Assert.True(clip.Loops);
+        Assert.Equal(TimeSpan.FromMilliseconds(528), clip.Duration);
     }
 }

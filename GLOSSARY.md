@@ -75,3 +75,12 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 | 撤销 | Undo | 逆序把最近一次批次的项改回原名；逐项复验文件仍在、未被外部改动、原名未被占用，失败的项保留改名状态。 |
 | 备份目录 | `JiuMi-backup-<时间戳>` | 可选的物理副本，落在第一个来源目录之外的同级，内部按来源序号分子目录；默认关闭，逐项复制且跳过内部链接。 |
 
+## 微信视频下载
+
+| 术语 | 代码名 | 定义 |
+| --- | --- | --- |
+| 注入回调 | `InjectionScript.js` | 注入视频号页面、包装 `WeixinJSBridge.invoke` 的回调；只在 `H5ExtTransfer:ok` 时从 `object.object_desc.media[0]` 取媒体信息，并 POST 到本机 listener。 |
+| 密钥流 | `Isaac64KeyStream` | 以媒体信息里的 `decode_key` 为种子生成的 ISAAC64 字节流；只覆盖文件开头 `X-enclen` 指定的字节数，与本次媒体 URL 绑定。 |
+| 过期链接 | `WeChatVideoDownloadState.Expired` | 媒体链接随会话失效后的下载结果：服务端返回 403/404/410 或 Range 不符；该行不复用旧链接重试，只能回微信重新打开视频。 |
+| 监听状态文件 | `WeChatCaptureStateStore`（`cache\wechat\state.json`） | 抓包启动时写下的代理快照与端口；干净停止即删除，异常退出后由下次启动的残留恢复读取并还原系统代理。 |
+

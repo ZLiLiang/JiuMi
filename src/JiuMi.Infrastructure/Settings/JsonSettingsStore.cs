@@ -7,6 +7,7 @@ using JiuMi.Application.FileRename;
 using JiuMi.Application.ImageConversion;
 using JiuMi.Application.MyJiuMi;
 using JiuMi.Application.Settings;
+using JiuMi.Application.WeChatVideo;
 using JiuMi.Application.WorldClock;
 
 namespace JiuMi.Infrastructure.Settings;
@@ -168,6 +169,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             ImageConvert = ReadImageConvert(root),
             FileRename = ReadFileRename(root),
             MyJiuMi = myJiuMi,
+            WeChatVideo = ReadWeChatVideo(root),
         };
     }
 
@@ -302,6 +304,21 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             OutputDirectory = outputDirectory,
             JpegBackgroundColor = background,
+        };
+    }
+
+    private static WeChatVideoSettings ReadWeChatVideo(JsonElement root)
+    {
+        if (!root.TryGetProperty("weChatVideo", out JsonElement element) ||
+            element.ValueKind != JsonValueKind.Object)
+        {
+            return WeChatVideoSettings.CreateDefault();
+        }
+
+        string? downloadDirectory = ReadString(element, "downloadDirectory")?.Trim();
+        return new WeChatVideoSettings
+        {
+            DownloadDirectory = string.IsNullOrEmpty(downloadDirectory) ? null : downloadDirectory,
         };
     }
 
@@ -520,6 +537,10 @@ public sealed class JsonSettingsStore : ISettingsStore
             {
                 X = settings.MyJiuMi.X,
             },
+            WeChatVideo = new WeChatVideoDocument
+            {
+                DownloadDirectory = settings.WeChatVideo.DownloadDirectory,
+            },
         };
     }
 
@@ -644,6 +665,21 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         public MyJiuMiDocument? MyJiuMi
+        {
+            get;
+            init;
+        }
+
+        public WeChatVideoDocument? WeChatVideo
+        {
+            get;
+            init;
+        }
+    }
+
+    private sealed class WeChatVideoDocument
+    {
+        public string? DownloadDirectory
         {
             get;
             init;

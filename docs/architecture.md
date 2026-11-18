@@ -222,14 +222,14 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟；到点 `LyingIdle → SleepIn → Sleep`。倒计时在走路中到点则走完当前这段再 `SleepIn`；拖拽中到点则等松手；`React` / `Stretch` 中到点则等过渡结束。
 - 交互可打断 `Blink` / `React` / `Stretch` / `Walk` / `SleepIn`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
 - 爱心（点击后 300ms 出现、显示 800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
-- 桌面模式（设计）：桌面窗共享同一个状态机与帧缓存，只启用 `LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`；不跑自主闲逛与双击召唤，睡眠计时不随主窗口隐藏而暂停。走路只用于走出/走回过渡。
+- 桌面模式（设计）：桌面窗共享同一个状态机与帧缓存，只启用 `LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`；不跑自主闲逛与双击召唤，睡眠计时不随主窗口隐藏而暂停。走路只用于走出/走回过渡；走回使用召唤专用的 1.6x pace（167 DIP/s、16 ms 帧），自主与走出走路保持 103 DIP/s、26 ms 帧。
 
 ### 交互
 
 - 单击猫：清醒时 `React` + 爱心；睡着时先 `Wake`，不冒爱心；重置睡眠计时。单击地面空白处无反应。
 - 拖拽：手动跟踪指针，4px 阈值区分点击；只改水平位置，垂直贴地板；松手写归一化 X 并夹回 `0`–`1`；重置睡眠计时。睡着时直接进 `Drag`，松手回 `LyingIdle`。
 - 双击地面空白处：召唤；清醒时 `Stretch → Walk`，睡着时 `Wake → Walk`；重置睡眠计时。双击落在猫身上按单击处理，不召唤。双击间隔按平台默认判定；因为召唤只作用于地面空白处，不与猫的单击竞争，单击不需要延迟等待双击。
-- 猫在桌面时，双击地面改为召回：桌面窗关闭，猫从靠近桌面猫的一侧边缘走进目标 X；双击桌面猫恢复并打开页面但不召回。设计见 ADR-0016。
+- 猫在桌面时，双击地面改为召回：桌面猫从当前屏幕位置沿直线走到房间内侧交接点，桌面交接 X 从进场侧内缩 100 DIP、Y 取房间地板线；桌面段与页面段都以 1.6x 步速（167 DIP/s、16 ms 帧）行走。到达交接点时同一帧关闭桌面窗并交给页面猫，页面猫从 160 DIP 在 120 ms 内放大到 200 DIP，再走到双击点；`myJiuMi.x` 在交接完成时写入。双击桌面猫恢复并打开页面但不召回。设计见 ADR-0016。
 - 自主闲逛不重置睡眠计时，也不产生爱心；页面离开时取消未完成的走动与过渡。
 - 无右键菜单、无悬停提示、无键盘交互；猫图像元素只设 `AutomationProperties.Name`（`MyJiuMi.Cat.AutomationName`）。
 
@@ -238,7 +238,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 只保存猫中心在房间地板上的归一化水平位置 `myJiuMi.x`，范围 `0`–`1`，默认 `0.5`；不保存垂直、屏幕坐标或窗口几何。
 - 拖动松手写一次；进入页面读取并夹回 `[0,1]`；房间宽度变化只重算像素位置，不改写已存值。
 - 写入失败记 Warning、不弹提示，下次拖动重试；读取时非数字按 `0.5`、越界夹回 `[0,1]`，并记 Warning。
-- 桌面模式（设计）不持久化模式或屏幕坐标：拖出、桌面拖动都不写设置；拖回与双击召唤写 `myJiuMi.x`；重启总是回页面。
+- 桌面模式（设计）不持久化模式或屏幕坐标：拖出、桌面拖动都不写设置；拖回与双击召唤在交接完成时写 `myJiuMi.x`；重启总是回页面。
 
 ### 帧资源与本地化
 
@@ -254,9 +254,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 分层与测试
 
 - UI：`MyJiuMiView`、`MyJiuMiViewModel`、帧渲染、爱心/`Zzz` 叠加与指针事件；房间绘制与位置换算在 UI。桌面模式（设计）新增 `MyJiuMiSession`（共享状态机、帧缓存、16 ms 计时器与宿主协调）、`MyJiuMiDesktopWindow`、窗口级拖拽覆盖层，以及外壳隐藏/最小化钩子。
-- Application：`MyJiuMiStateMachine`、`MyJiuMiAnimationCatalog`、`MyJiuMiState`、睡眠/眨眼/闲逛调度与归一化 X 夹取；纯逻辑，注入时间/随机源。桌面模式（设计）新增 `MyJiuMiPresenceMachine`（`Home` / `Leaving` / `Desktop` / `Returning` 迁移与守卫）与 `MyJiuMiTransitionRules`（48 DIP 提交阈值、房间投影、走回入口侧、工作区夹取）。
+- Application：`MyJiuMiStateMachine`、`MyJiuMiAnimationCatalog`、`MyJiuMiState`、睡眠/眨眼/闲逛调度与归一化 X 夹取；纯逻辑，注入时间/随机源。桌面模式（设计）新增 `MyJiuMiPresenceMachine`（`Home` / `Leaving` / `Desktop` / `Returning` 迁移与守卫）与 `MyJiuMiTransitionRules`（48 DIP 提交阈值、房间投影、走回入口侧/交接点/走回时长、工作区夹取）；状态机另支持召唤专用的原地 Walk、1.6x pace 与快速 Walk 帧。
 - Infrastructure：不新增服务；`ISettingsStore` 既有读写承载 `myJiuMi.x`。
-- 测试：`JiuMi.Application.Tests` 覆盖状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取；桌面模式（设计）再加 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
+- 测试：`JiuMi.Application.Tests` 覆盖状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取；桌面模式（设计）再加 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧/交接点/1.6x pace 与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
 - 性能：页面离开即停表；目标 <1% 系统 CPU（仅页面可见时），帧切换不触发整页重排。桌面窗懒创建、回家即关闭，不保留隐藏窗口或后台计时器；桌面模式的计时成本只在猫离家时存在。
 - Win10/Win11：页面模式不涉及透明窗口、置顶与焦点；桌面模式（设计）在两版共用同一套窗口与交接逻辑，差异按手动清单确认。
 
@@ -272,22 +272,22 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 拖出 | 越过房间边缘 48 DIP 后在房间外松手 → 在松手屏幕点创建桌面窗；在房间内松手 → 回弹 |
 | 走出 | 主窗口隐藏/最小化且我的JiuMi 是当前页、猫清醒 → 走向最近边缘交接；隐藏最多等 900 ms，最小化用 150 ms 淡入 |
 | 拖回 | 桌面猫拖到房间可见范围松手 → 页面猫在投影 X 落定，写 `myJiuMi.x` |
-| 走回 | 页面双击地面 → 桌面窗关闭，猫从靠近桌面猫的一侧边缘走进目标 X，写 `myJiuMi.x` |
+| 走回 | 页面双击地面 → 桌面猫从当前屏幕位置走回房间内侧交接点（进场侧内缩 100 DIP、地板线），同帧交给页面猫；页面猫放大到 200 DIP 后以 1.6x 走到目标 X，交接完成写 `myJiuMi.x` |
 | 桌面交互 | 单击 `React` + 爱心、拖拽移动、双击打开页面（猫留在桌面）、眨眼/睡眠/`Zzz`；无闲逛/右键/声音 |
 | 尺寸 | 页面 200 DIP ↔ 桌面 160 DIP，底边中心锚点，120 ms 缩放 |
 | 持久化 | 不新增设置键；模式与屏幕坐标只在会话内；重启回页面 |
 | 降级 | 桌面宿主创建失败/帧缺失 → 取消过渡、猫留在家、Warning；显示器/DPI 变化夹回工作区 |
-| 焦点 | 点击会激活桌面窗（[#112](https://github.com/ZLiLiang/JiuMi/issues/112) 已确认无解）；v1 接受 |
+| 焦点 | 点击/拖拽不改变前台窗口（[#156](https://github.com/ZLiLiang/JiuMi/issues/156)：无焦点样式 + `WM_ACTIVATE` 恢复）；双击打开页面时按预期激活主窗口 |
 
 - 桌面窗懒创建、回家即 `Close()`；页面在桌面模式显示空房间，底部提示 `MyJiuMi.DesktopHint`。
 - 走出/拖出的过渡态只允许一次在途迁移；退出、关机、页面切走与失败路径都直接回到 `Home` 或 `Desktop`，不留半状态。
-- 跨窗口连续拖出不在本设计内；spike [#141](https://github.com/ZLiLiang/JiuMi/issues/141) 评估可行性与代价。
+- 跨窗口连续拖出不在本设计内；spike [#141](https://github.com/ZLiLiang/JiuMi/issues/141) 实测可行（Win32 `SetCapture` 交接 23.4 ms、46 次移动跟随），但页面预览已覆盖连续视觉，无额外 UX 收益，继续采用松手提交。无焦点宿主由 [#156](https://github.com/ZLiLiang/JiuMi/issues/156) 交付。
 
 ### 与旧桌面实现的关系
 
 - [#108](https://github.com/ZLiLiang/JiuMi/issues/108) 分支保留作桌面模式参考，不合并；[#109](https://github.com/ZLiLiang/JiuMi/issues/109)、#110 作废；#112 parked。
 - 旧 `PetWindow` / `PetWindowController` / `petEnabled` / `petX` / `petY` 与 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 不进入页面模式；[#119](https://github.com/ZLiLiang/JiuMi/issues/119) 移除旧入口与键。ADR-0016 的桌面模式不复用旧实现与旧键：双宿主、会话内坐标、无设置键。
-- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 的无焦点结论被桌面模式接受：点击/拖拽会把桌面窗带到前台；不再为它做版本分叉。
+- [#112](https://github.com/ZLiLiang/JiuMi/issues/112) 的无焦点结论最初被桌面模式接受；[#156](https://github.com/ZLiLiang/JiuMi/issues/156) 已消除点击/拖拽抢前台，不再保留这个限制。
 - 桌面模式与页面模式共用角色、美术、状态机与帧缓存；v1 仍不建 `IPetLayer` 等预抽象，双宿主由 `MyJiuMiSession` 协调。
 
 ## 错误呈现与诊断
@@ -312,7 +312,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- | --- |
 | 全局 InfoBar | 默认载体：启动期入队的告警、会话中途的失败 | 内容岛内部顶部，推挤内容不覆盖；跨页常驻 |
 | 容器内占位 | 局部资源加载失败（GIF / hero / 图标） | 只降级该容器，不弹提示 |
-| 独立错误窗口 | 阻断级失败；以及主窗口可用时的 UI 线程未捕获异常 | 不依赖主窗口、本地化资源与主题资源 |
+| 独立错误窗口 | 阻断级失败；主窗口可用时的 UI 线程未捕获异常；以及需要用户离开界面手动恢复的非阻断失败（如微信代理残留） | 不依赖主窗口、本地化资源与主题资源 |
 | 系统通知（端口） | 无可见窗口时投递非阻断 Error | 其余平台为 no-op |
 
 - **不做 `ContentDialog`**：本期唯一的阻断场景发生在启动期，主窗口不存在、没有 owner；其余场景已定不弹模态（见启动序列章节与 ADR-0002），留着就是死代码。
@@ -333,6 +333,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 批量重命名单项失败或日志导出失败 | Warning | `FileRename.Failed` | 仅日志 | —（批次结束另发一条 InfoBar 汇总） |
+| 微信监听启动失败（证书安装或代理启动被取消 / 出错） | Error | `WeChatVideo.CaptureStartFailed` | InfoBar | 重试 + 复制详情 |
+| 微信视频证书卸载失败 | Error | `WeChatVideo.CertificateUninstallFailed` | InfoBar | 重试 + 复制详情 |
+| 微信监听停止或启动残留的系统代理还原失败 | Error | `WeChatVideo.ProxyRestoreFailed` | 错误窗口（主窗口可用时含继续运行） | 继续运行 / 退出 / 复制详情；正文给出手动恢复步骤 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
 | 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
@@ -635,7 +638,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Home.Title` / `Settings.Title` | 页面标题 |
 | `Shell.Nav.Expand` / `Shell.Nav.Collapse` | 导航栏展开/收起按钮的可访问名，按当前状态取键 |
 | `Home.Subtitle` / `Home.Hero.Title` / `Home.Hero.Body` / `Home.Tools.Title` | 主页副标题、hero 文案与工具分区标题 |
-| `Tool.*.Name` / `Tool.*.Description` | 四张卡片与导航项共用的名称与描述；`*` 取 `WeChatDownload` / `FileRename` / `ImageConvert` / `WorldClock`；我的JiuMi 只走导航，复用 `Tool.MyJiuMi.Name` |
+| `Tool.*.Name` / `Tool.*.Description` | 四张卡片与导航项共用的名称与描述；`*` 取 `WeChatVideo` / `FileRename` / `ImageConvert` / `WorldClock`；旧的 `Tool.WeChatDownload.*` 两键改名到 `Tool.WeChatVideo.*`；我的JiuMi 只走导航，复用 `Tool.MyJiuMi.Name` |
 | `MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName` | 我的JiuMi 页面标题、副标题与猫的可访问名 |
 | `MyJiuMi.DesktopHint` | 猫在桌面时页面空房间的提示；桌面模式实现时成对进中英文 JSON |
 | `Tool.WorldClock.Subtitle` | 世界工作时间页副标题 |
@@ -653,8 +656,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
 | `Tool.FileRename.*` | 批量重命名页：页头与空态、入口与来源列表、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
+| `Tool.WeChatVideo.*` | 微信视频下载页：页头、目录、监听状态、列表摘要与状态、失败原因、过期提示、证书确认、残留提示、空态 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
+| `Settings.Data.Certificate.*` | 「微信视频证书」行：标题与说明、已安装 / 未安装、监听中提示、卸载按钮与卸载确认框 |
 | `Settings.Subtitle` | 设置页副标题 |
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
@@ -891,6 +896,69 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 相关：[ADR-0010](./adr/0010-batch-rename.md)、[ADR-0011](./adr/0011-multi-source-rename-batch.md)、[#67](https://github.com/ZLiLiang/JiuMi/issues/67)、[#74](https://github.com/ZLiLiang/JiuMi/issues/74)。
 
+## 微信视频下载
+
+工具页的外壳、页头与导航复用「工具模块」章节；本节只记该工具的抓取链路、领域规则、接缝与降级。抓取形态的取舍见 [ADR-0013](./adr/0013-wechat-video-download.md)。
+
+### 分层
+
+| 层 | 内容 | 约束 |
+| --- | --- | --- |
+| `JiuMi.Application` | `WeChatVideo/`：`IWeChatVideoCapture` 契约、`WeChatVideoSession` 会话列表、注入脚本与回传负载校验、去重键、文件名清洗、文本格式、下载协调与串行队列、设置、启动残留结果 | 纯逻辑，不碰注册表、证书库与 Avalonia |
+| `JiuMi.Infrastructure` | `WeChatVideo/`：Titanium 抓包代理、PAC、回环 listener、WinINet 快照与还原、根证书、Range 下载器、封面抓取、监听状态文件 | 唯一持有系统副作用；注册表、证书与网络实现都可替换 |
+| `JiuMi.Desktop` | 组合根：服务注册与启动时的残留恢复 | 不承载领域规则 |
+| `JiuMi`（UI） | `WeChatVideoViewModel`、`WeChatVideoRowViewModel`、`WeChatVideoView`、证书确认窗、设置页证书段 | 绑定与编组，文案走 i18n |
+
+### 代理与生命周期
+
+- 抓包按需启停、不常驻；`WeChatVideoCaptureStatus` 只有 `Stopped` / `Starting` / `Running` / `Stopping`，抓包状态只在会话内，不随设置保存。
+- 启动顺序：拒绝遗留状态文件 → 确保根证书已信任 → 快照 WinINet 代理五项 → 起回环 listener（随机端口 + 32 位十六进制路径，并在同一监听器上托管 PAC）→ 写监听状态文件 → 起 Titanium 代理 → 把 `AutoConfigURL` 指向 PAC。
+- PAC 只把 `channels.weixin.qq.com` 指向本机代理，其余主机回退用户原代理（没有则 `DIRECT`）；`finder.video.qq.com` 不经 MITM。代理只解密页面与媒体两个域名，其余 HTTPS 保持隧道。
+- 证书只装 `CurrentUser`（私钥 `CurrentUser\My`、信任 `CurrentUser\Root`），5 年有效，跨会话复用；设置页显式卸载，抓包启停不重装或删除，避免反复系统确认。
+- 停止时先还原系统代理并删除状态文件，再停代理与 listener；证书保留。还原失败则保留状态文件、停止其余资源并报错，下次启动仍可恢复。
+- 证书系统弹窗与 Titanium 启动在后台线程执行，不阻塞界面；启动失败回滚已改动的代理与资源。
+- 启动序列调用 `RestoreResidualAsync` 读 `cache\wechat\state.json`：`Restored` 在主窗口首次激活时给一条一次性警告 InfoBar，`Failed` 走错误窗口；非 Windows 注册空实现。
+
+### 注入与回传
+
+- 只对页面域名的 200 HTML 响应注入（正文上限 4 MB），脚本插在 `</body>` 前，靠 `__JIUMI_WECHAT_CAPTURE__` 标记保证只注入一次；响应改写为 `no-store`，避免缓存页面缺少脚本。
+- 脚本包装 `WeixinJSBridge.invoke` 的第三个回调参数；`err_msg` 含 `H5ExtTransfer:ok` 时解析 `jsapi_resp.resp_json`，取 `object.object_desc.media[0]` 的地址、`decode_key`、封面、描述、作者、时长与 `file_size`。
+- 只有 `/web/pages/feed` 才回传；信息流首页等页面的桥事件被脚本丢弃，不建列表。
+- 回传走独立的回环 listener：随机端口 + 随机路径，不复用代理端口；只接受该路径的 POST，请求体上限 64 KB。负载必须是 `kind=video`、页面为 `https://channels.weixin.qq.com/web/pages/feed`、媒体与封面属于 `finder.video.qq.com`，否则整条忽略。
+- 媒体地址是 `media.url + media.url_token`；下载与封面都带 `User-Agent`、`Referer: https://channels.weixin.qq.com/`、`Origin: https://channels.weixin.qq.com`，不需要微信 cookie。
+
+### 会话列表与去重
+
+- `WeChatVideoSession` 只存在本次会话，关闭应用即清空；按捕获时间倒序。
+- 去重键优先 `oid` + `nid`，两者缺一时退回去掉 `token` 参数的 URL；重复捕获只刷新媒体信息，保留首次捕获时间与下载状态。
+- 列表插入与封面异步加载在 UI 层完成；封面抓取失败只留占位色，不产生错误记录。
+
+### 下载与解密
+
+- 下载串行排队（FIFO），每行独立取消；总大小取 HEAD 的 `Content-Length`，不用 `file_size`。进度按已写字节 / 总长展示。
+- 按 262144 字节分段请求 Range；每个分块最多重试 2 次（共 3 次）。`Content-Range` 的起止与总长必须与请求一致。
+- 服务端返回 403 / 404 / 410 或 Range 不符即判为链接过期（`Expired`），不重试，提示回微信重新打开该视频。
+- 首块响应带 `X-encflag: 1` 时读 `X-enclen`（上限 16 MB），用 `decode_key` 生成 ISAAC64 密钥流，只 XOR 文件开头 `min(X-enclen, 文件长)` 字节，其余原样写入；`decode_key` 与 URL 绑定。
+- 先写 `<名>.mp4.part`，完整接收后才改名为 `.mp4`；失败或取消删除 part 文件，不留下半成品。
+- 文件名取视频描述：非法与控制字符换成 `_`，去掉尾部空格与点，保留名加 `_`，上限 120 字符；空描述回退 `视频_yyyyMMdd_HHmmss`。重名追加 `-1`、`-2`，同时避开已有 `.mp4` 与 `.mp4.part`。
+- 目录不存在时该行失败为 `DirectoryMissing`、下载按钮禁用，不静默创建目录。
+
+### 状态与呈现
+
+- 唯一持久化字段是 `weChatVideo.downloadDirectory`；列表、进度、监听状态与下载结果都只在会话内。证书状态在 Windows 证书库，`state.json` 只作崩溃恢复。
+- 行状态 `WeChatVideoDownloadState`：`Idle` / `Queued` / `Downloading` / `Completed` / `Failed` / `Expired` / `Canceled`。按钮随状态变化：空闲、失败、取消可下载或重试；排队、下载中可取消；完成、过期只能移除。
+- 失败原因取 `DirectoryMissing` / `Network` / `Protocol` / `FileWrite` 之一；行内给出原因，不弹全局错误窗。
+- 三个登记错误码：`WeChatVideo.CaptureStartFailed` 与 `WeChatVideo.CertificateUninstallFailed` 走 InfoBar + 重试，`WeChatVideo.ProxyRestoreFailed` 走错误窗。
+- 首次开启监听且证书未信任时弹自定义确认窗；确认后先关窗再启动，避免与 Windows 信任弹窗叠加。设置页「数据与联网」显示证书状态并允许卸载，监听中禁用卸载。
+
+### 测试缝
+
+1. `JiuMi.Application` 纯函数：负载校验（kind、页面、主机）、HTML 注入与脚本占位符、去重键与去 token、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消、启动残留结果一次性。
+2. Infrastructure：PAC 生成、证书名称与有效期、监听状态文件读写、listener 路径与请求上限、Titanium 注入与解密范围、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取；注册表与证书通过注入点隔离，不碰真实系统。
+3. UI 的证书确认、开关、列表与进度不设自动化测试。
+
+相关：[ADR-0013](./adr/0013-wechat-video-download.md)、[#68](https://github.com/ZLiLiang/JiuMi/issues/68)、[#94](https://github.com/ZLiLiang/JiuMi/issues/94)、[#171](https://github.com/ZLiLiang/JiuMi/issues/171)。
+
 ## 参考
 
 - [ADR-0001 设置持久化：JSON、位置判定与原子写](./adr/0001-settings-persistence.md)
@@ -905,6 +973,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0010 批量重命名：一份规则模型、预检不修补、撤销而非备份](./adr/0010-batch-rename.md)
 - [ADR-0011 批量重命名：文件模式的多来源批次](./adr/0011-multi-source-rename-batch.md)
 - [ADR-0012 最小化与关闭：最小化留在任务栏，关闭时询问](./adr/0012-minimize-and-close.md)
+- [ADR-0013 微信视频下载：MITM 抓取链路与按需代理](./adr/0013-wechat-video-download.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
