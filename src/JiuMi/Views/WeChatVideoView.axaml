@@ -144,6 +144,22 @@
             </StackPanel>
           </Button>
 
+          <Button x:Name="ScanCacheButton"
+                  Classes="directory"
+                  Click="OnScanPreloadCacheClick"
+                  IsEnabled="{Binding CanScanPreload}"
+                  ToolTip.Tip="{Binding ScanPreloadText}"
+                  AutomationProperties.AutomationId="WeChatVideo.ScanCache">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <fac:FASymbolIcon Symbol="Video"
+                                FontSize="12"
+                                VerticalAlignment="Center" />
+              <TextBlock FontSize="12.5"
+                         VerticalAlignment="Center"
+                         Text="{Binding ScanPreloadText}" />
+            </StackPanel>
+          </Button>
+
           <StackPanel Orientation="Horizontal"
                       Spacing="8"
                       VerticalAlignment="Center">

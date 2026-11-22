@@ -77,6 +77,7 @@ public static class InfrastructureServiceCollectionExtensions
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<Serilog.ILogger>()));
         services.AddSingleton<IHolidayProvider, NagerDateHolidayProvider>();
+        services.AddSingleton<IWeChatPreloadCacheImporter, WeChatPreloadCacheImporter>();
         services.AddSingleton<IWeChatVideoDownloader, WeChatVideoDownloader>();
         services.AddSingleton<IWeChatVideoThumbnailFetcher, WeChatVideoThumbnailFetcher>();
         services.AddSingleton<WeChatVideoDownloadQueue>();

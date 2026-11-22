@@ -147,6 +147,23 @@ public partial class WeChatVideoView : UserControl
         }
     }
 
+    private async void OnScanPreloadCacheClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not WeChatVideoViewModel viewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            await viewModel.ScanPreloadCacheAsync();
+        }
+        catch (Exception exception)
+        {
+            viewModel.ReportPageFailure(exception);
+        }
+    }
+
     private async void OnChooseDirectoryClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not WeChatVideoViewModel viewModel)

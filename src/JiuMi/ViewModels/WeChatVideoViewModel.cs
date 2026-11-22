@@ -25,6 +25,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly IWeChatVideoCapture _capture;
     private readonly WeChatVideoSession _session;
     private readonly WeChatVideoDownloadCoordinator _downloads;
+    private readonly IWeChatPreloadCacheImporter _preloadImporter;
     private readonly IWeChatVideoThumbnailFetcher _thumbnailFetcher;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localization;
@@ -42,6 +43,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly Dictionary<string, ThumbnailRequest> _thumbnailRequests = new(StringComparer.Ordinal);
     private string? _downloadDirectory;
     private bool _isDirectoryMissing;
+    private bool _isScanningPreload;
     private bool _startupNoticeShown;
     private bool _disposed;
 
@@ -51,6 +53,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// <param name="capture">Starts and stops the WeChat capture.</param>
     /// <param name="session">Holds the captured videos for this session.</param>
     /// <param name="downloads">Runs the serial downloads.</param>
+    /// <param name="preloadImporter">Imports complete LiteApp preload caches.</param>
     /// <param name="thumbnailFetcher">Fetches the covers into memory.</param>
     /// <param name="settingsStore">Supplies and stores the download directory.</param>
     /// <param name="localization">Supplies the interface text.</param>
@@ -67,6 +70,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         IWeChatVideoCapture capture,
         WeChatVideoSession session,
         WeChatVideoDownloadCoordinator downloads,
+        IWeChatPreloadCacheImporter preloadImporter,
         IWeChatVideoThumbnailFetcher thumbnailFetcher,
         ISettingsStore settingsStore,
         ILocalizationService localization,
@@ -83,6 +87,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(downloads);
+        ArgumentNullException.ThrowIfNull(preloadImporter);
         ArgumentNullException.ThrowIfNull(thumbnailFetcher);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(localization);
@@ -99,6 +104,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         _capture = capture;
         _session = session;
         _downloads = downloads;
+        _preloadImporter = preloadImporter;
         _thumbnailFetcher = thumbnailFetcher;
         _settingsStore = settingsStore;
         _localization = localization;
@@ -209,6 +215,21 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// Gets a value indicating whether starting or retrying a download is allowed.
     /// </summary>
     public bool CanDownload => HasDownloadDirectory && !IsDirectoryMissing;
+
+    /// <summary>
+    /// Gets a value indicating whether the preload cache scan is running.
+    /// </summary>
+    public bool IsScanningPreload => _isScanningPreload;
+
+    /// <summary>
+    /// Gets a value indicating whether the preload cache can be scanned now.
+    /// </summary>
+    public bool CanScanPreload => CanDownload && !_isScanningPreload;
+
+    /// <summary>
+    /// Gets the text of the preload cache scan button.
+    /// </summary>
+    public string ScanPreloadText => _localization["Tool.WeChatVideo.ScanCache"];
 
     /// <summary>
     /// Gets the text of the download folder button.
@@ -371,6 +392,57 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Imports the complete videos LiteApp already preloaded and reports the outcome in the info
+    /// bar. Incomplete caches are skipped instead of producing a truncated file.
+    /// </summary>
+    /// <returns>A task that completes when the scan and import finished.</returns>
+    public async Task ScanPreloadCacheAsync()
+    {
+        if (_disposed || _isScanningPreload)
+        {
+            return;
+        }
+
+        RefreshDirectoryState();
+        if (!CanDownload)
+        {
+            return;
+        }
+
+        _isScanningPreload = true;
+        OnPropertyChanged(nameof(IsScanningPreload));
+        OnPropertyChanged(nameof(CanScanPreload));
+        try
+        {
+            WeChatPreloadImportResult result = await _preloadImporter.ImportAsync(_downloadDirectory!);
+            bool warning = result.Partial > 0 || result.Failed > 0;
+            _infoBar.ShowSummary(new InfoBarSummary(
+                _localization.Format(
+                    "Tool.WeChatVideo.ScanCache.Result",
+                    result.Imported,
+                    result.Partial + result.Failed),
+                warning,
+                result.SavedPaths.Count > 0 ? _downloadDirectory : null));
+        }
+#pragma warning disable CA1031 // The info bar is the user-facing outcome of a failed scan.
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "Scanning the LiteApp preload cache failed");
+            _infoBar.ShowSummary(new InfoBarSummary(
+                _localization["Tool.WeChatVideo.ScanCache.Failed"],
+                IsWarning: true,
+                FolderPath: null));
+        }
+#pragma warning restore CA1031
+        finally
+        {
+            _isScanningPreload = false;
+            OnPropertyChanged(nameof(IsScanningPreload));
+            OnPropertyChanged(nameof(CanScanPreload));
+        }
+    }
+
+    /// <summary>
     /// Records a folder-picker failure without breaking the page.
     /// </summary>
     /// <param name="exception">The picker failure.</param>
@@ -496,6 +568,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(EmptyHint));
         OnPropertyChanged(nameof(DirectoryLabel));
         OnPropertyChanged(nameof(DirectoryToolTip));
+        OnPropertyChanged(nameof(ScanPreloadText));
     }
 
     private void ApplySessionChange(WeChatVideoSessionChangedEventArgs e)
@@ -752,6 +825,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsDirectoryMissing));
         OnPropertyChanged(nameof(ShowDirectoryMissing));
         OnPropertyChanged(nameof(CanDownload));
+        OnPropertyChanged(nameof(CanScanPreload));
         OnPropertyChanged(nameof(DirectoryLabel));
         OnPropertyChanged(nameof(DirectoryToolTip));
         OnPropertyChanged(nameof(DownloadDirectory));
