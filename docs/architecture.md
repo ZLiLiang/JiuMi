@@ -952,13 +952,21 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - 三个登记错误码：`WeChatVideo.CaptureStartFailed` 与 `WeChatVideo.CertificateUninstallFailed` 走 InfoBar + 重试，`WeChatVideo.ProxyRestoreFailed` 走错误窗。
 - 首次开启监听且证书未信任时弹自定义确认窗；确认后先关窗再启动，避免与 Windows 信任弹窗叠加。设置页「数据与联网」显示证书状态并允许卸载，监听中禁用卸载。
 
+### 只读内存双阶段采集（设计，未实现）
+
+> 正式决策见 [ADR-0018](./adr/0018-wechat-video-download-memory-capture.md)；实现落地后将替换上方「代理与生命周期」「注入与回传」并移除 `Titanium.Web.Proxy`、根证书、PAC 与启动残留恢复。
+
+- **静默元数据索引**：后台每 2～3 秒以最小只读权限（`PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`）扫描 `Weixin.exe` 与 `WeChatAppEx.exe` 的可读私有内存，按 `{ ... }` JSON 边界与单趟反转义严格解析单条 `media` 对象，按 `encfilekey` 前缀缓存最近 500 条（不进 UI）。
+- **`NetworkService` 播放触发**：启动时对 `WeChatAppEx.exe` 的 `network.mojom.NetworkService` 子进程拍一次 `/20302/stodownload?encfilekey=` 基线快照；每 500 ms 轻扫一次（~22 ms），仅在出现新拉流 `encfilekey` 时从静默索引取出完整元数据推入 `WeChatVideoSession`（未命中时定向补扫并重试一次）。
+- **下载与解密契约沿用**：媒体与封面域名放宽为 `*.video.qq.com`，去重键优先使用 `encfilekey`；CDN 直连 Range 下载与 `Isaac64KeyStream` 头部 XOR 解密完全复用现有实现。
+
 ### 测试缝
 
 1. `JiuMi.Application` 纯函数：负载校验（kind、页面、主机、发现入口 `source`/`videoId`）、HTML 注入与脚本占位符、去重键与去 token、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消、启动残留结果一次性。
 2. Infrastructure：PAC 生成、证书名称与有效期、监听状态文件读写、listener 路径与请求上限、Titanium 注入与解密范围、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取；注册表与证书通过注入点隔离，不碰真实系统。
 3. UI 的证书确认、开关、列表与进度不设自动化测试。
 
-相关：[ADR-0013](./adr/0013-wechat-video-download.md)、[#68](https://github.com/ZLiLiang/JiuMi/issues/68)、[#94](https://github.com/ZLiLiang/JiuMi/issues/94)、[#171](https://github.com/ZLiLiang/JiuMi/issues/171)。
+相关：[ADR-0013](./adr/0013-wechat-video-download.md)、[ADR-0018](./adr/0018-wechat-video-download-memory-capture.md)、[#68](https://github.com/ZLiLiang/JiuMi/issues/68)、[#94](https://github.com/ZLiLiang/JiuMi/issues/94)、[#171](https://github.com/ZLiLiang/JiuMi/issues/171)、[#182](https://github.com/ZLiLiang/JiuMi/issues/182)。
 
 ## 参考
 
@@ -975,6 +983,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - [ADR-0011 批量重命名：文件模式的多来源批次](./adr/0011-multi-source-rename-batch.md)
 - [ADR-0012 最小化与关闭：最小化留在任务栏，关闭时询问](./adr/0012-minimize-and-close.md)
 - [ADR-0013 微信视频下载：MITM 抓取链路与按需代理](./adr/0013-wechat-video-download.md)
+- [ADR-0018 微信视频下载：纯只读内存双阶段采集（替代 MITM 链路）](./adr/0018-wechat-video-download-memory-capture.md)
 - [决议：日志与崩溃报告设施应做到什么程度？](https://github.com/ZLiLiang/JiuMi/issues/11)
 - [决议：启动序列与 splash 退出应遵循什么状态机？](https://github.com/ZLiLiang/JiuMi/issues/4)
 - [决议：本地化 JSON 的结构、键命名与缺键回退](https://github.com/ZLiLiang/JiuMi/issues/3)
