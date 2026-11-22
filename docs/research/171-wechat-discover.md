@@ -52,3 +52,12 @@
 - 独立小窗口在 4.2 实测可滚动，播放的视频按同一 5 秒规则加入；若未来版本改为纯原生渲染，窗口内无法按页面规则捕获，需要复验。
 - 同 feed 目录里时长相同且描述无法区分时，脚本选择不回传（宁缺毋滥）。
 - 抓包日志含 token，只留在本地 `artifacts/`，不提交、不外发。
+
+## 2026-11-22 复验：Weixin 4.2.0.53+（LiteApp，页面注入 no-go）
+
+- 现象：聊天分享与发现入口都捕获不到；只代理 `channels.weixin.qq.com` 时，隧道内只有 `POST /web/report-perf?pf=lite`，没有 `/web/pages/home|feed` 的 HTML/JS。
+- 页面形态：xweb `multitab` 的 `History` 显示 2026-11-17 仍是 `channels.weixin.qq.com/web/pages/*`，2026-11-22 变为 `liteapp.weixin.qq.com/a/finder/wxalite…`；本地缓存的 LiteApp 包（`…\xworker\liteapp\resources\wxalite…\226\main`，约 8 MB）含 `pages/lite/home` 与原生桥调用。
+- 数据通道：LiteApp 通过 `lite.jsapi.invoke("H5ExtTransfer", …)` 调 `pc_finder*`；`objectDesc.media[0]` 与 `decode_key` 只在该桥响应/页面内存，未出现在可观察网络、日志或磁盘。
+- 开关：页面走 LiteApp 还是远程 `/web/pages/feed` 由服务端实验 `pcDirectFlow` / `pcDetailFlow` 控制，用户侧无开关；这解释了严格 .52 对照仍无页面请求。
+- 调试与保存：`WeChatAppEx.exe` 无 `--remote-debugging-port` / `--inspect`，WMPF 进程无监听端口；没有原生「保存视频」入口，「复制链接」只返回 H5 分享页。
+- 结论：本版本页面注入 no-go；详见 [研究记录 #182](182-wechat-wmpf.md)。复验以 xweb `History` 的页面 URL 为准：回到 `channels.weixin.qq.com/web/pages/*` 才重新评估注入。
