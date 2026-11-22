@@ -1,6 +1,6 @@
 # ADR-0013 微信视频下载：MITM 抓取链路与按需代理
 
-- 状态：已接受（2026-11-17 修订：发现入口全屏可抓；2026-11-15 修订：PAC 按域名分流、证书会话间保留）
+- 状态：已接受（2026-11-22 修订：Weixin 4.2.0.53+ 页面为 LiteApp，页面注入 no-go；2026-11-17 修订：发现入口全屏可抓；2026-11-15 修订：PAC 按域名分流、证书会话间保留）
 - 日期：2026-11-15
 - 来源：地图 [#68](https://github.com/ZLiLiang/JiuMi/issues/68)；可行性 spike [#94](https://github.com/ZLiLiang/JiuMi/issues/94)，2026-11-15 在 Weixin 4.2 实机验证；发现入口复验 [#171](https://github.com/ZLiLiang/JiuMi/issues/171)，2026-11-17 在 Weixin 4.2 实机验证
 
@@ -86,8 +86,18 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 
 **中性**
 
-- 微信版本不锁定，本 ADR 只对验证日的 4.2.0.52 负责；升级后按同一清单复验。
+- 微信版本不锁定，本 ADR 只对验证日的 4.2.0.52 负责；4.2.0.53+ 已确认页面注入不可用，升级后按同一清单复验。
 - 视频清晰度跟随微信实际返回的档位，不额外请求更高码率。
+
+## 版本边界：Weixin 4.2.0.53+（2026-11-22）
+
+2026-11-22 的研究 [#182](https://github.com/ZLiLiang/JiuMi/issues/182) 确认：4.2.0.53 的视频号首页/详情由 WMPF **LiteApp**（`liteapp.weixin.qq.com/a/finder/…`，本地签名包）承载，不再请求 `channels.weixin.qq.com` 的远程 HTML；LiteApp 通过原生 `H5ExtTransfer` 调 `pc_finder*`，媒体元数据与 `decode_key` 只在桥响应/页面内存，网络、日志、磁盘均不可得。页面走 LiteApp 还是远程 `/web/pages/feed` 由服务端实验 `pcDirectFlow` / `pcDetailFlow` 控制，用户不可设置；因此降级 4.2.0.52 也不能恢复页面注入。
+
+本版本没有可用的 DevTools/调试端口、没有微信支持的远程页面开关、没有原生保存入口；替换方案（Frida/调试附加、运行时改写 LiteApp 模块、搬移 SDK 缓存、新增解密域名）均超出本 ADR 的边界，明确不做。页面注入在该版本为 no-go：应用应把视频号下载标为暂不可用并说明原因，等待服务端切回远程页面或出现官方入口。
+
+2026-11-22 追加研究修正：LiteApp 预下载会把 `seed`（即 `decode_key`）和视频前缀写入本地 IndexedDB / `finder_videoCache_*`。完整预下载缓存可用 Isaac64 解密为原文件（实测 7.52 秒 HEVC/AAC，可完整解码）；长视频需要把完整媒体 URL 与 seed 记录配对。该路径不注入、不解密额外域名，但依赖 LiteApp 内部缓存格式，需按 [#182](https://github.com/ZLiLiang/JiuMi/issues/182) 复验；长视频 URL + seed 配对尚未端到端验证。
+
+复验清单见 [研究记录 #182](../research/182-wechat-wmpf.md)：最关键的判据是 xweb `multitab` profile 的 `History` 最新页面是 `channels.weixin.qq.com/web/pages/*` 还是 `liteapp.weixin.qq.com/a/finder/*`。
 
 ## 不在本 ADR 内
 
@@ -102,5 +112,6 @@ JiuMi 要支持把微信里正在看的视频号视频下载到本地。旧 `Jiu
 - 地图：[#68](https://github.com/ZLiLiang/JiuMi/issues/68)
 - 可行性 spike：[#94](https://github.com/ZLiLiang/JiuMi/issues/94)（[2026-11-15 结论评论](https://github.com/ZLiLiang/JiuMi/issues/94#issuecomment-6895427287)）
 - 发现入口复验：[#171](https://github.com/ZLiLiang/JiuMi/issues/171)（2026-11-17：可抓；详见 [研究记录](../research/171-wechat-discover.md)）
+- 4.2.0.53+ LiteApp 抓取入口研究：[#182](https://github.com/ZLiLiang/JiuMi/issues/182)（2026-11-22：页面注入 no-go；详见 [研究记录](../research/182-wechat-wmpf.md)）
 - 原型归档：`research/94-wechat-mitm-spike` 分支（不合并、不 PR）
 - 旧实现：`ZLiLiang/JiumiTool` 的 `JiumiTool2` 分支
