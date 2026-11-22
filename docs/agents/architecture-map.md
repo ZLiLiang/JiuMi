@@ -24,7 +24,7 @@
 | 工具模块 | `工具模块` (724–783): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
 | 图片格式转换 | `图片格式转换` (784–839): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
 | 批量重命名 | `批量重命名` (840–893): rule model and numbering, sources/scope/skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md), [ADR-0011](../adr/0011-multi-source-rename-batch.md) |
-| 微信视频下载 | `微信视频下载` (899–961): layering, on-demand PAC proxy and certificate lifecycle, injection/loopback listener, session dedupe, range download and head-only XOR, residual restore, test seams | [ADR-0013](../adr/0013-wechat-video-download.md), [#68](https://github.com/ZLiLiang/JiuMi/issues/68), [#171](https://github.com/ZLiLiang/JiuMi/issues/171) |
+| 微信视频下载 | `微信视频下载` (899–970): layering, legacy MITM/PAC/cert pipeline (broken on 4.2.0.53+), two-stage read-only memory capture design, session dedupe, range download and head-only XOR, test seams | [ADR-0013](../adr/0013-wechat-video-download.md), [ADR-0018](../adr/0018-wechat-video-download-memory-capture.md), [#68](https://github.com/ZLiLiang/JiuMi/issues/68), [#171](https://github.com/ZLiLiang/JiuMi/issues/171), [#182](https://github.com/ZLiLiang/JiuMi/issues/182) |
 
 ## Stop rules
 

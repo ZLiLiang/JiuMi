@@ -1,6 +1,6 @@
 # ADR-0013 微信视频下载：MITM 抓取链路与按需代理
 
-- 状态：已接受（2026-11-22 修订：Weixin 4.2.0.53+ 页面为 LiteApp，页面注入 no-go；2026-11-17 修订：发现入口全屏可抓；2026-11-15 修订：PAC 按域名分流、证书会话间保留）
+- 状态：已替代（采集链路已被 [ADR-0018](./0018-wechat-video-download-memory-capture.md) 替代；下载、Range 分段与 ISAAC64 头部解密契约沿用。历史修订：2026-11-22 确认 Weixin 4.2.0.53+ 页面为 LiteApp，页面注入 no-go；2026-11-17 发现入口全屏可抓；2026-11-15 PAC 按域名分流、证书会话间保留）
 - 日期：2026-11-15
 - 来源：地图 [#68](https://github.com/ZLiLiang/JiuMi/issues/68)；可行性 spike [#94](https://github.com/ZLiLiang/JiuMi/issues/94)，2026-11-15 在 Weixin 4.2 实机验证；发现入口复验 [#171](https://github.com/ZLiLiang/JiuMi/issues/171)，2026-11-17 在 Weixin 4.2 实机验证
 
