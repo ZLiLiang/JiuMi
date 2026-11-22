@@ -421,14 +421,23 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
             }
 
             bool warning = result.Partial > 0 || result.Failed > 0;
-            _infoBar.ShowSummary(new InfoBarSummary(
+            var summary = new InfoBarSummary(
                 _localization.Format(
                     "Tool.WeChatVideo.ScanCache.Result",
                     result.Imported,
                     result.Partial,
                     result.Failed),
                 warning,
-                result.ImportedVideos.Count > 0 ? directory : null));
+                result.ImportedVideos.Count > 0 ? directory : null);
+            if (result.Imported == 0 && result.Partial > 0)
+            {
+                summary = summary with
+                {
+                    SecondaryMessage = _localization["Tool.WeChatVideo.ScanCache.PartialHint"],
+                };
+            }
+
+            _infoBar.ShowSummary(summary);
         }
 #pragma warning disable CA1031 // The info bar is the user-facing outcome of a failed scan.
         catch (Exception exception)
