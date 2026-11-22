@@ -339,7 +339,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public void OnWindowActivated()
     {
         StartCatalogCheckOnce();
-        _weChatVideoPage.ShowStartupNoticeOnce();
         if (ReferenceEquals(CurrentPage, _weChatVideoPage))
         {
             _weChatVideoPage.Activate();

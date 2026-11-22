@@ -81,18 +81,6 @@ public sealed class ErrorWindowTextTests
     }
 
     [Fact]
-    public void MessageFor_GivenProxyRestoreFailure_ExplainsTheManualRecovery()
-    {
-        ErrorWindowMessage message = ErrorWindowText.MessageFor(
-            "WeChatVideo.ProxyRestoreFailed",
-            canContinue: true);
-
-        Assert.Equal("系统代理未能还原", message.Headline);
-        Assert.Contains("设置 → 网络和 Internet → 代理", message.Body);
-        Assert.Contains("重新打开 JiuMi", message.Body);
-    }
-
-    [Fact]
     public void MessageFor_GivenUnregisteredCode_FallsBackToTheGenericMessage()
     {
         ErrorWindowMessage message = ErrorWindowText.MessageFor("Unknown.Code", canContinue: false);

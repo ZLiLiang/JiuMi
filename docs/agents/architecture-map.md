@@ -17,14 +17,14 @@
 | 单实例与窗口生命周期 | `单实例与窗口生命周期` (99–193): mutex/pipe, activation, tray, hidden-window errors, desktop-mode hide hook | [#7](https://github.com/ZLiLiang/JiuMi/issues/7) |
 | 我的JiuMi | `我的JiuMi` (194–292): page lifecycle, state machine, wander/sleep scheduling, normalized X persistence, frame resources, localization, test seams, desktop-mode design | [ADR-0015](../adr/0015-my-jiumi-page.md), [art spec](../pet-art-spec.md) |
 | 桌面模式（设计） | `我的JiuMi` 下的「桌面模式（设计，未实现）」(263–285): dual host, presence, drag-out/in, walk-out/in, degradation | [ADR-0016](../adr/0016-desktop-mode.md), [#122](https://github.com/ZLiLiang/JiuMi/issues/122) |
-| 错误呈现与诊断 | `错误呈现与诊断` (293–392): levels, carriers, `ErrorRecord`, global hooks, notifications | [ADR-0003](../adr/0003-error-presentation.md) |
-| 日志与诊断 | `日志与诊断` (393–501): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
-| 配置与外置文件 | `配置与外置文件` (502–599): locations, startup probe, file contract, atomic write, world clock state | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
-| 本地化 | `本地化` (600–723): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
-| 工具模块 | `工具模块` (724–783): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
-| 图片格式转换 | `图片格式转换` (784–839): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
-| 批量重命名 | `批量重命名` (840–893): rule model and numbering, sources/scope/skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md), [ADR-0011](../adr/0011-multi-source-rename-batch.md) |
-| 微信视频下载 | `微信视频下载` (899–970): layering, legacy MITM/PAC/cert pipeline (broken on 4.2.0.53+), two-stage read-only memory capture design, session dedupe, range download and head-only XOR, test seams | [ADR-0013](../adr/0013-wechat-video-download.md), [ADR-0018](../adr/0018-wechat-video-download-memory-capture.md), [#68](https://github.com/ZLiLiang/JiuMi/issues/68), [#171](https://github.com/ZLiLiang/JiuMi/issues/171), [#182](https://github.com/ZLiLiang/JiuMi/issues/182) |
+| 错误呈现与诊断 | `错误呈现与诊断` (293–393): levels, carriers, `ErrorRecord`, global hooks, notifications | [ADR-0003](../adr/0003-error-presentation.md) |
+| 日志与诊断 | `日志与诊断` (394–502): Serilog boundary, location, levels, fields, redaction, bundle | [ADR-0004](../adr/0004-logging.md) |
+| 配置与外置文件 | `配置与外置文件` (503–600): locations, startup probe, file contract, atomic write, world clock state | [ADR-0001](../adr/0001-settings-persistence.md), [ADR-0005](../adr/0005-window-state-memory.md) |
+| 本地化 | `本地化` (601–725): files, key naming, placeholders, language list, fallback, tests | [#3](https://github.com/ZLiLiang/JiuMi/issues/3) |
+| 工具模块 | `工具模块` (726–785): tool layering, page skeleton, bundled catalog, holiday provider and cache, calculation, test seams | [ADR-0007](../adr/0007-holiday-network.md), [ADR-0008](../adr/0008-world-clock-catalog.md) |
+| 图片格式转换 | `图片格式转换` (786–841): conversion layering, formats and parameters, colour and metadata, output naming, batch execution, degradation, test seams | [ADR-0009](../adr/0009-image-conversion.md) |
+| 批量重命名 | `批量重命名` (842–895): rule model and numbering, sources/scope/skips, precheck, execute/undo/backup, settings, test seams | [ADR-0010](../adr/0010-batch-rename.md), [ADR-0011](../adr/0011-multi-source-rename-batch.md) |
+| 微信视频下载 | `微信视频下载` (896–948): layering, two-stage read-only memory capture, session dedupe, range download and head-only XOR, test seams | [ADR-0018](../adr/0018-wechat-video-download-memory-capture.md), [#68](https://github.com/ZLiLiang/JiuMi/issues/68), [#182](https://github.com/ZLiLiang/JiuMi/issues/182), [#189](https://github.com/ZLiLiang/JiuMi/issues/189) |
 
 ## Stop rules
 

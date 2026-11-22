@@ -85,7 +85,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         if (OperatingSystem.IsWindows())
         {
-            services.AddSingleton<IWeChatVideoCapture, WeChatVideoCapture>();
+            AddWindowsWeChatVideoCapture(services);
             AddWindowsTray(services);
         }
         else
@@ -117,6 +117,18 @@ public static class InfrastructureServiceCollectionExtensions
             provider.GetRequiredService<ISettingsStore>(),
             provider.GetRequiredService<TimeProvider>()));
         return services;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void AddWindowsWeChatVideoCapture(IServiceCollection services)
+    {
+        services.AddSingleton<IWeChatProcessMemoryReader, WindowsWeChatProcessMemoryReader>();
+        services.AddSingleton<IWeChatProcessLocator, WindowsWeChatProcessLocator>();
+        services.AddSingleton<IWeChatVideoCapture>(provider => new MemoryWeChatVideoCapture(
+            provider.GetRequiredService<IWeChatProcessLocator>(),
+            provider.GetRequiredService<IWeChatProcessMemoryReader>(),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<Serilog.ILogger>()));
     }
 
     [SupportedOSPlatform("windows")]
