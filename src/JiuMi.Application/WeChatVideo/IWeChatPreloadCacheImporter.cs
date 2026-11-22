@@ -10,9 +10,11 @@ public interface IWeChatPreloadCacheImporter
     /// directory after removing the encrypted head. Incomplete caches are skipped.
     /// </summary>
     /// <param name="outputDirectory">The existing output directory.</param>
+    /// <param name="fileStemPrefix">The localized prefix used for output file names.</param>
     /// <param name="cancellationToken">Cancels the import.</param>
     /// <returns>The import outcome.</returns>
     Task<WeChatPreloadImportResult> ImportAsync(
         string outputDirectory,
+        string fileStemPrefix,
         CancellationToken cancellationToken = default);
 }

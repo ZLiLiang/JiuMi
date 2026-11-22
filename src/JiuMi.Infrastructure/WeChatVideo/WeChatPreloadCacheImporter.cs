@@ -12,21 +12,21 @@ namespace JiuMi.Infrastructure.WeChatVideo;
 /// </summary>
 public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
 {
-    private const int EncryptedHeadLength = 131072;
-
     private static readonly Regex _recordPattern = new(
         "\\{\"createTime\":(?<created>[0-9]+),\"feedId\":\"(?<feed>[^\"]*)\",\"videoKey\":\"(?<key>(?:[^\"\\\\]|\\\\.)*)\",\"preDownloadedContentLen\":(?<pre>[0-9]+),\"videoContentLen\":(?<total>[0-9]+),\"seed\":\"(?<seed>[0-9]*)\"\\}",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private readonly Serilog.ILogger _logger;
+    private readonly TimeProvider _timeProvider;
     private readonly string _radiumRoot;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WeChatPreloadCacheImporter"/> class.
     /// </summary>
     /// <param name="logger">Receives per-file diagnostics without seeds or media tokens.</param>
-    public WeChatPreloadCacheImporter(Serilog.ILogger logger)
-        : this(logger, DefaultRadiumRoot())
+    /// <param name="timeProvider">Supplies the output file timestamp.</param>
+    public WeChatPreloadCacheImporter(Serilog.ILogger logger, TimeProvider timeProvider)
+        : this(logger, timeProvider, DefaultRadiumRoot())
     {
     }
 
@@ -37,19 +37,31 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
     /// <param name="logger">Receives per-file diagnostics without seeds or media tokens.</param>
     /// <param name="radiumRoot">The Weixin <c>radium</c> directory.</param>
     public WeChatPreloadCacheImporter(Serilog.ILogger logger, string radiumRoot)
+        : this(logger, TimeProvider.System, radiumRoot)
+    {
+    }
+
+    private WeChatPreloadCacheImporter(
+        Serilog.ILogger logger,
+        TimeProvider timeProvider,
+        string radiumRoot)
     {
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(radiumRoot);
         _logger = logger;
+        _timeProvider = timeProvider;
         _radiumRoot = radiumRoot;
     }
 
     /// <inheritdoc />
     public async Task<WeChatPreloadImportResult> ImportAsync(
         string outputDirectory,
+        string fileStemPrefix,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileStemPrefix);
         if (!Directory.Exists(outputDirectory))
         {
             throw new DirectoryNotFoundException(outputDirectory);
@@ -58,6 +70,7 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
         int imported = 0;
         int partial = 0;
         int failed = 0;
+        int skipped = 0;
         List<string> saved = [];
 
         foreach (PreloadRecord record in ReadRecords())
@@ -73,7 +86,8 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
             }
 
             long actualLength = new FileInfo(cachePath).Length;
-            if (actualLength < record.VideoContentLength)
+            if (record.PreDownloadedContentLength < record.VideoContentLength ||
+                actualLength < record.VideoContentLength)
             {
                 partial++;
                 continue;
@@ -82,23 +96,23 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
             try
             {
                 byte[] data = await File.ReadAllBytesAsync(cachePath, cancellationToken).ConfigureAwait(false);
-                byte[] mask = new Isaac64KeyStream(record.Seed).CreateDecryptionArray(
-                    Math.Min(EncryptedHeadLength, data.Length));
-                for (int index = 0; index < mask.Length; index++)
+                Isaac64KeyStream.DecryptHead(data, record.Seed);
+                if (!HasMp4Header(data))
                 {
-                    data[index] ^= mask[index];
+                    failed++;
+                    _logger.Debug("A LiteApp preload did not decrypt to an MP4 for feed {FeedId}", record.FeedId);
+                    continue;
                 }
 
                 string stem = WeChatVideoFileName.CreateStem(
-                    $"视频号缓存 {record.FeedId}",
-                    DateTimeOffset.Now);
+                    $"{fileStemPrefix} {record.FeedId}",
+                    _timeProvider.GetLocalNow());
                 string path = Path.Combine(
                     outputDirectory,
                     stem + WeChatVideoFileName.Extension);
                 if (File.Exists(path))
                 {
-                    imported++;
-                    saved.Add(path);
+                    skipped++;
                     continue;
                 }
 
@@ -116,7 +130,16 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
             }
         }
 
-        return new WeChatPreloadImportResult(imported, partial, failed, saved);
+        return new WeChatPreloadImportResult(imported, partial, failed, skipped, saved);
+    }
+
+    private static bool HasMp4Header(byte[] data)
+    {
+        return data.Length >= 8 &&
+            data[4] == (byte)'f' &&
+            data[5] == (byte)'t' &&
+            data[6] == (byte)'y' &&
+            data[7] == (byte)'p';
     }
 
     private IReadOnlyList<PreloadRecord> ReadRecords()
@@ -160,9 +183,25 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
         {
             using JsonDocument document = JsonDocument.Parse(value);
             JsonElement root = document.RootElement;
-            string feedId = root.GetProperty("feedId").GetString() ?? string.Empty;
-            string videoKey = root.GetProperty("videoKey").GetString() ?? string.Empty;
-            string seedText = root.GetProperty("seed").GetString() ?? string.Empty;
+            if (!root.TryGetProperty("feedId", out JsonElement feedElement) ||
+                feedElement.ValueKind != JsonValueKind.String ||
+                !root.TryGetProperty("videoKey", out JsonElement keyElement) ||
+                keyElement.ValueKind != JsonValueKind.String ||
+                !root.TryGetProperty("seed", out JsonElement seedElement) ||
+                seedElement.ValueKind != JsonValueKind.String ||
+                !root.TryGetProperty("createTime", out JsonElement createdElement) ||
+                !createdElement.TryGetInt64(out long createTime) ||
+                !root.TryGetProperty("preDownloadedContentLen", out JsonElement preloadedElement) ||
+                !preloadedElement.TryGetInt64(out long preloadedLength) ||
+                !root.TryGetProperty("videoContentLen", out JsonElement totalElement) ||
+                !totalElement.TryGetInt64(out long totalLength))
+            {
+                return null;
+            }
+
+            string feedId = feedElement.GetString() ?? string.Empty;
+            string videoKey = keyElement.GetString() ?? string.Empty;
+            string seedText = seedElement.GetString() ?? string.Empty;
             if (videoKey.Length == 0 ||
                 !ulong.TryParse(seedText, NumberStyles.None, CultureInfo.InvariantCulture, out ulong seed))
             {
@@ -170,18 +209,14 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
             }
 
             return new PreloadRecord(
-                root.GetProperty("createTime").GetInt64(),
+                createTime,
                 feedId,
                 videoKey,
-                root.GetProperty("preDownloadedContentLen").GetInt64(),
-                root.GetProperty("videoContentLen").GetInt64(),
+                preloadedLength,
+                totalLength,
                 seed);
         }
         catch (JsonException)
-        {
-            return null;
-        }
-        catch (KeyNotFoundException)
         {
             return null;
         }

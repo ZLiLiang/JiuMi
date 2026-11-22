@@ -14,6 +14,9 @@ namespace JiuMi.Application.WeChatVideo;
     Justification = "The ticket names the ISAAC64 key stream; it is not a System.IO.Stream.")]
 public sealed class Isaac64KeyStream
 {
+    /// <summary>The number of head bytes WeChat encrypts.</summary>
+    public const int EncryptedHeadLength = 131072;
+
     private const int WordCount = 256;
     private const ulong IndexMask = 0x7F8;
 
@@ -44,6 +47,21 @@ public sealed class Isaac64KeyStream
     {
         _state[0] = seed;
         Initialize();
+    }
+
+    /// <summary>
+    /// Decrypts the encrypted head of a WeChat video in place.
+    /// </summary>
+    /// <param name="data">The complete video bytes, or the cached prefix.</param>
+    /// <param name="seed">The numeric <c>decode_key</c>.</param>
+    public static void DecryptHead(Span<byte> data, ulong seed)
+    {
+        int length = Math.Min(EncryptedHeadLength, data.Length);
+        byte[] mask = new Isaac64KeyStream(seed).CreateDecryptionArray(length);
+        for (int index = 0; index < length; index++)
+        {
+            data[index] ^= mask[index];
+        }
     }
 
     /// <summary>

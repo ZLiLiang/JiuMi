@@ -154,14 +154,7 @@ public partial class WeChatVideoView : UserControl
             return;
         }
 
-        try
-        {
-            await viewModel.ScanPreloadCacheAsync();
-        }
-        catch (Exception exception)
-        {
-            viewModel.ReportPageFailure(exception);
-        }
+        await viewModel.ScanPreloadCacheAsync();
     }
 
     private async void OnChooseDirectoryClick(object? sender, RoutedEventArgs e)

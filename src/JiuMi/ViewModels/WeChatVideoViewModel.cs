@@ -217,11 +217,6 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     public bool CanDownload => HasDownloadDirectory && !IsDirectoryMissing;
 
     /// <summary>
-    /// Gets a value indicating whether the preload cache scan is running.
-    /// </summary>
-    public bool IsScanningPreload => _isScanningPreload;
-
-    /// <summary>
     /// Gets a value indicating whether the preload cache can be scanned now.
     /// </summary>
     public bool CanScanPreload => CanDownload && !_isScanningPreload;
@@ -404,25 +399,27 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         }
 
         RefreshDirectoryState();
-        if (!CanDownload)
+        if (!CanDownload || _downloadDirectory is not { } directory)
         {
             return;
         }
 
         _isScanningPreload = true;
-        OnPropertyChanged(nameof(IsScanningPreload));
         OnPropertyChanged(nameof(CanScanPreload));
         try
         {
-            WeChatPreloadImportResult result = await _preloadImporter.ImportAsync(_downloadDirectory!);
+            WeChatPreloadImportResult result = await _preloadImporter.ImportAsync(
+                directory,
+                _localization["Tool.WeChatVideo.ScanCache.FilePrefix"]);
             bool warning = result.Partial > 0 || result.Failed > 0;
             _infoBar.ShowSummary(new InfoBarSummary(
                 _localization.Format(
                     "Tool.WeChatVideo.ScanCache.Result",
                     result.Imported,
-                    result.Partial + result.Failed),
+                    result.Partial,
+                    result.Failed),
                 warning,
-                result.SavedPaths.Count > 0 ? _downloadDirectory : null));
+                result.SavedPaths.Count > 0 ? directory : null));
         }
 #pragma warning disable CA1031 // The info bar is the user-facing outcome of a failed scan.
         catch (Exception exception)
@@ -437,7 +434,6 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         finally
         {
             _isScanningPreload = false;
-            OnPropertyChanged(nameof(IsScanningPreload));
             OnPropertyChanged(nameof(CanScanPreload));
         }
     }

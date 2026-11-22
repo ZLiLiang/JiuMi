@@ -37,7 +37,7 @@ public sealed class WeChatPreloadCacheImporterTests : IDisposable
         Directory.CreateDirectory(output);
         WriteRecord(seed, plain.Length, plain.Length, CreateEncrypted(plain, seed));
 
-        WeChatPreloadImportResult result = await CreateImporter().ImportAsync(output);
+        WeChatPreloadImportResult result = await CreateImporter().ImportAsync(output, "cache");
 
         Assert.Equal(1, result.Imported);
         Assert.Equal(0, result.Partial);
@@ -55,12 +55,50 @@ public sealed class WeChatPreloadCacheImporterTests : IDisposable
         Directory.CreateDirectory(output);
         WriteRecord(seed, plain.Length, plain.Length + 1024, CreateEncrypted(plain, seed));
 
-        WeChatPreloadImportResult result = await CreateImporter().ImportAsync(output);
+        WeChatPreloadImportResult result = await CreateImporter().ImportAsync(output, "cache");
 
         Assert.Equal(0, result.Imported);
         Assert.Equal(1, result.Partial);
         Assert.Empty(result.SavedPaths);
         Assert.Empty(Directory.GetFiles(output, "*.mp4"));
+    }
+
+    [Fact]
+    public async Task ImportAsync_GivenLongVideo_DecryptsOnlyTheHead()
+    {
+        const ulong seed = 123456789;
+        byte[] plain = CreateMp4Header(200000);
+        for (int index = 131072; index < plain.Length; index++)
+        {
+            plain[index] = 0xAB;
+        }
+
+        string output = Path.Combine(_root, "output");
+        Directory.CreateDirectory(output);
+        WriteRecord(seed, plain.Length, plain.Length, CreateEncrypted(plain, seed));
+
+        WeChatPreloadImportResult result = await CreateImporter().ImportAsync(output, "cache");
+
+        string path = Assert.Single(result.SavedPaths);
+        Assert.Equal(plain, await File.ReadAllBytesAsync(path));
+    }
+
+    [Fact]
+    public async Task ImportAsync_GivenExistingOutput_SkipsTheDuplicate()
+    {
+        const ulong seed = 987654321;
+        byte[] plain = CreateMp4Header(256);
+        string output = Path.Combine(_root, "output");
+        Directory.CreateDirectory(output);
+        WriteRecord(seed, plain.Length, plain.Length, CreateEncrypted(plain, seed));
+        WeChatPreloadCacheImporter importer = CreateImporter();
+        await importer.ImportAsync(output, "cache");
+
+        WeChatPreloadImportResult result = await importer.ImportAsync(output, "cache");
+
+        Assert.Equal(0, result.Imported);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(result.SavedPaths);
     }
 
     private WeChatPreloadCacheImporter CreateImporter()
