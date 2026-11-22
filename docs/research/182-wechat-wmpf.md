@@ -102,6 +102,8 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
 - `decodeKey` 只来自 `objectDesc.media[0]`，即 `H5ExtTransfer` 响应；它不出现在媒体 URL、`urlToken` 或请求头里，无法从 URL 推导。
 - 因此：能看到「请求了 `finder.video.qq.com`」（主机/连接级），但拿不到 `decode_key`；ADR-0013 已实测媒体响应 `X-encflag: 1`、`X-enclen: 131072`，只解首 128 KB，没有 key 就无法还原。
 - 限制：本次没有重新抓包（避免扩大解密面）；媒体侧结论沿用 ADR-0013 的实测与本次代码证据。
+- 2026-11-22 追加实测：播放后，xweb `Cache/Cache_Data/data_1|data_2` 中可检索到完整的 `20302/stodownload` URL（参数含 `encfilekey`、`token`、`sign`、`exportkey`、`pass_ticket` 等，不含 `decode_key`）。用该 URL 做 `Range: 0-0` 与 `0-131071` 请求均返回 `206 video/mp4`，总长 236,107 字节，`X-encflag: 1`、`X-enclen: 131072`；测试时 URL 仍有效。
+- 因此“加载视频的请求”可以抓到（xweb 缓存，或把媒体域名送进代理），但抓到的只有 URL、令牌和加密标记，没有 `decode_key`；加密视频仍无法仅凭请求下载播放。未加密视频（无 `X-encflag`）可能可以直接下载，但需逐条验证。
 
 ### 5. 是否有可驱动的原生保存/分享/复制链接入口？
 
