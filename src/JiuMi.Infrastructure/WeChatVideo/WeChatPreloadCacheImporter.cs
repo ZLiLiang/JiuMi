@@ -155,7 +155,16 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
             string text;
             try
             {
-                text = File.ReadAllText(file, Encoding.UTF8);
+                using var stream = new FileStream(
+                    file,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(
+                    stream,
+                    Encoding.UTF8,
+                    detectEncodingFromByteOrderMarks: false);
+                text = reader.ReadToEnd();
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
