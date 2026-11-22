@@ -312,7 +312,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- | --- |
 | 全局 InfoBar | 默认载体：启动期入队的告警、会话中途的失败 | 内容岛内部顶部，推挤内容不覆盖；跨页常驻 |
 | 容器内占位 | 局部资源加载失败（GIF / hero / 图标） | 只降级该容器，不弹提示 |
-| 独立错误窗口 | 阻断级失败；主窗口可用时的 UI 线程未捕获异常；以及需要用户离开界面手动恢复的非阻断失败（如微信代理残留） | 不依赖主窗口、本地化资源与主题资源 |
+| 独立错误窗口 | 阻断级失败；主窗口可用时的 UI 线程未捕获异常 | 不依赖主窗口、本地化资源与主题资源 |
 | 系统通知（端口） | 无可见窗口时投递非阻断 Error | 其余平台为 no-op |
 
 - **不做 `ContentDialog`**：本期唯一的阻断场景发生在启动期，主窗口不存在、没有 owner；其余场景已定不弹模态（见启动序列章节与 ADR-0002），留着就是死代码。
@@ -333,9 +333,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 配置两处都不可写 → 仅内存 | Error（常驻、不可关闭） | `Config.MemoryOnly` | InfoBar + 设置页「关于」 | 复制详情 |
 | 导出诊断包失败 | Error | `Diagnostics.ExportFailed` | InfoBar | 重试 + 复制详情 |
 | 批量重命名单项失败或日志导出失败 | Warning | `FileRename.Failed` | 仅日志 | —（批次结束另发一条 InfoBar 汇总） |
-| 微信监听启动失败（证书安装或代理启动被取消 / 出错） | Error | `WeChatVideo.CaptureStartFailed` | InfoBar | 重试 + 复制详情 |
-| 微信视频证书卸载失败 | Error | `WeChatVideo.CertificateUninstallFailed` | InfoBar | 重试 + 复制详情 |
-| 微信监听停止或启动残留的系统代理还原失败 | Error | `WeChatVideo.ProxyRestoreFailed` | 错误窗口（主窗口可用时含继续运行） | 继续运行 / 退出 / 复制详情；正文给出手动恢复步骤 |
+| 微信监听启动失败（微信未运行或进程权限不足） | Error | `WeChatVideo.CaptureStartFailed` | InfoBar | 重试 + 复制详情 |
 | 初始化超过 10 秒 | Warning | `Startup.Timeout` | 队列 → InfoBar | 复制详情 |
 | 初始化在超时后完成 | Error | `Startup.LateCompletion` | 仅日志 | —（结果按热切换应用） |
 | 初始化抛未捕获异常（交接前，`Faulted`） | 阻断 | `Startup.Faulted` | 错误窗口 | 复制详情 + 退出 |
@@ -656,10 +654,9 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | `Tool.WorldClock.Empty` / `Tool.WorldClock.Empty.Hint` | 无地点时的空态标题与说明 |
 | `Tool.WorldClock.Manage.*` | 管理地点对话框：标题、副标题、国家 / 城市分段、两种搜索占位、已选、两种空结果、类型徽标、恢复默认 / 取消 / 完成、编辑与移除、拖动排序提示、工作时间编辑器与校验 |
 | `Tool.FileRename.*` | 批量重命名页：页头与空态、入口与来源列表、改名对象 / 规则层级 / 任务、普通任务字段、进阶查找替换与模板、范围与备份、预览表头与状态、跳过项及原因、预检摘要与原因、确认框、执行 / 撤销 / 导出、InfoBar 汇总、底栏统计与拖放提示 |
-| `Tool.WeChatVideo.*` | 微信视频下载页：页头、目录、监听状态、列表摘要与状态、失败原因、过期提示、证书确认、残留提示、空态 |
+| `Tool.WeChatVideo.*` | 微信视频下载页：页头、目录、监听状态、列表摘要与状态、失败原因、过期提示、空态 |
 | `Settings.Data.Section` / `Settings.Data.Label` / `Settings.Data.Hint` | 「数据与联网」分区标题与开关行 |
 | `Settings.Data.Catalog.*` | 「世界时钟目录」行：标题与说明、立即检查、检查中、上次检查（`LastChecked` 含 `{0}`）、从未检查、目录更新于（含 `{0}`）、内置版本 |
-| `Settings.Data.Certificate.*` | 「微信视频证书」行：标题与说明、已安装 / 未安装、监听中提示、卸载按钮与卸载确认框 |
 | `Settings.Subtitle` | 设置页副标题 |
 | `Settings.Language.Section` / `Settings.Language.Label` / `Settings.Language.Hint` | 「语言和区域」分区标题与行 |
 | `Settings.Appearance.Section` / `Settings.Appearance.Label` / `Settings.Appearance.Hint` | 「外观」分区标题与行 |
@@ -898,40 +895,30 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ## 微信视频下载
 
-工具页的外壳、页头与导航复用「工具模块」章节；本节只记该工具的抓取链路、领域规则、接缝与降级。抓取形态的取舍见 [ADR-0013](./adr/0013-wechat-video-download.md)。
+工具页的外壳、页头与导航复用「工具模块」章节；本节只记该工具的只读内存双阶段采集链路、领域规则、接缝与降级。架构取舍见 [ADR-0018](./adr/0018-wechat-video-download-memory-capture.md)（替代 [ADR-0013](./adr/0013-wechat-video-download.md) 的 MITM 抓取链路）。
 
 ### 分层
 
 | 层 | 内容 | 约束 |
 | --- | --- | --- |
-| `JiuMi.Application` | `WeChatVideo/`：`IWeChatVideoCapture` 契约、`WeChatVideoSession` 会话列表、注入脚本与回传负载校验、去重键、文件名清洗、文本格式、下载协调与串行队列、设置、启动残留结果 | 纯逻辑，不碰注册表、证书库与 Avalonia |
-| `JiuMi.Infrastructure` | `WeChatVideo/`：Titanium 抓包代理、PAC、回环 listener、WinINet 快照与还原、根证书、Range 下载器、封面抓取、监听状态文件 | 唯一持有系统副作用；注册表、证书与网络实现都可替换 |
-| `JiuMi.Desktop` | 组合根：服务注册与启动时的残留恢复 | 不承载领域规则 |
-| `JiuMi`（UI） | `WeChatVideoViewModel`、`WeChatVideoRowViewModel`、`WeChatVideoView`、证书确认窗、设置页证书段 | 绑定与编组，文案走 i18n |
+| `JiuMi.Application` | `WeChatVideo/`：`IWeChatVideoCapture` 契约、`WeChatVideoSession` 会话列表、`WeChatMediaJsonExtractor`、`WeChatMetadataCache`、`WeChatPlaybackCorrelator`、去重键与主机校验、文件名清洗、文本格式、下载协调与串行队列、设置 | 纯逻辑，不碰 Win32、注册表与 Avalonia |
+| `JiuMi.Infrastructure` | `WeChatVideo/`：`IWeChatProcessMemoryReader` / `WindowsWeChatProcessMemoryReader`、`IWeChatProcessLocator` / `WindowsWeChatProcessLocator`、`MemoryWeChatVideoCapture`、`NullWeChatVideoCapture`、Range 下载器、封面抓取 | 唯一持有 Win32 只读内存 API 与网络实现，全部通过接口接缝可替换 |
+| `JiuMi.Desktop` | 组合根：服务注册 | 不承载领域规则 |
+| `JiuMi`（UI） | `WeChatVideoViewModel`、`WeChatVideoRowViewModel`、`WeChatVideoView` | 绑定与编组，文案走 i18n，零证书弹窗 |
 
-### 代理与生命周期
+### 只读内存双阶段采集与生命周期
 
-- 抓包按需启停、不常驻；`WeChatVideoCaptureStatus` 只有 `Stopped` / `Starting` / `Running` / `Stopping`，抓包状态只在会话内，不随设置保存。
-- 启动顺序：拒绝遗留状态文件 → 确保根证书已信任 → 快照 WinINet 代理五项 → 起回环 listener（随机端口 + 32 位十六进制路径，并在同一监听器上托管 PAC）→ 写监听状态文件 → 起 Titanium 代理 → 把 `AutoConfigURL` 指向 PAC。
-- PAC 只把 `channels.weixin.qq.com` 指向本机代理，其余主机回退用户原代理（没有则 `DIRECT`）；`finder.video.qq.com` 不经 MITM。代理只解密页面与媒体两个域名，其余 HTTPS 保持隧道。
-- 证书只装 `CurrentUser`（私钥 `CurrentUser\My`、信任 `CurrentUser\Root`），5 年有效，跨会话复用；设置页显式卸载，抓包启停不重装或删除，避免反复系统确认。
-- 停止时先还原系统代理并删除状态文件，再停代理与 listener；证书保留。还原失败则保留状态文件、停止其余资源并报错，下次启动仍可恢复。
-- 证书系统弹窗与 Titanium 启动在后台线程执行，不阻塞界面；启动失败回滚已改动的代理与资源。
-- 启动序列调用 `RestoreResidualAsync` 读 `cache\wechat\state.json`：`Restored` 在主窗口首次激活时给一条一次性警告 InfoBar，`Failed` 走错误窗口；非 Windows 注册空实现。
-
-### 注入与回传
-
-- 只对页面域名的 200 HTML 响应注入（正文上限 4 MB），脚本插在 `</body>` 前，靠 `__JIUMI_WECHAT_CAPTURE__` 标记保证只注入一次；响应改写为 `no-store`，避免缓存页面缺少脚本。
-- 脚本包装 `WeixinJSBridge.invoke` 的第三个回调参数；`err_msg` 含 `H5ExtTransfer:ok` 时解析 `jsapi_resp.resp_json`，取 `object.object_desc.media[0]` 的地址、`decode_key`、封面、描述、作者、时长与 `file_size`。`/web/pages/feed` 只走这条路径。
-- 发现首页 `/web/pages/home` 不触发 `H5ExtTransfer:ok`：脚本绑定页面自己的 `window.xweb.worker` 消息，在内存里缓存 feed 项（含 `media[0]`，上限 500 条）；侧窗口、独立小窗口或全屏里的当前视频连续播放满 5 秒时，取当前播放的 `<video>`，用时长 ±1.5 秒（必要时用描述）唯一匹配一条 feed，只回传这一条。快速滑过的预览不加入；同一视频只回传一次。
-- 回传走独立的回环 listener：随机端口 + 随机路径，不复用代理端口；只接受该路径的 POST，请求体上限 64 KB。负载必须是 `kind=video`，页面为 `https://channels.weixin.qq.com/web/pages/feed`，或为 `/web/pages/home` 且带 `source=discover` 与非空 `videoId`；媒体与封面必须属于 `finder.video.qq.com`，否则整条忽略。发现入口用 `videoId` 作 `oid`、固定标记 `discover` 作 `nid`，仍走 `oid+nid` 去重。
-- 独立小窗口与侧窗口使用同一页面/脚本和同一 5 秒规则（4.2 实测可滚动）；若未来版本改为纯原生渲染，窗口内无法按页面规则捕获，需要复验。
-- 媒体地址是 `media.url + media.url_token`；下载与封面都带 `User-Agent`、`Referer: https://channels.weixin.qq.com/`、`Origin: https://channels.weixin.qq.com`，不需要微信 cookie。
+- 采集按需启停、不做后台常驻监听；`WeChatVideoCaptureStatus` 只有 `Stopped` / `Starting` / `Running` / `Stopping`，状态仅在本次会话内。
+- 启动前检：`StartAsync()` 定位 `Weixin.exe` 与 `WeChatAppEx.exe` 并验证只读访问权限（`PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`，`0x0410`）；若微信未运行或 `OpenProcess` 因权限不足失败（如微信以管理员身份运行而 JiuMi 为普通用户），直接抛出明确异常，由 UI 走 `WeChatVideo.CaptureStartFailed` InfoBar 与「重试」，开关保持 `Stopped`。
+- 阶段一（静默元数据索引）：后台每 2.5 秒扫描 `Weixin.exe` 主进程与 `WeChatAppEx.exe`（过滤 `wxocr`/`wxutility`/`wxpublic`/`xplayer`/`gpu-process`/`ILinkServiceHost` 等无关子进程）的可读私有内存（跳过 `MEM_IMAGE`、保护页与不可读页），按锚点自身引号判断是否双重转义（避免 `spec[].bypass` 内嵌字符串误判），从 `decode_key` / `decodeKey` 锚点按 `{ ... }` 括号平衡切出单条 `media` 对象并用 `System.Text.Json` 严格解析，提取 `url`、`url_token`、`decode_key`、`thumb_url`、时长、`spec` 及严格限定在当前 `object_desc` 内的 `description`、对象头内的 `nickname` 与 `id`，按 32 位 `encfilekey` 前缀写入有界内存 LRU 缓存（上限 500 条），同时记录 `feed_id → encfilekey` 映射，不直接推送到 UI。
+- 阶段二（`videoPlayStart` 播放触发）：启动时在后台线程先拍一次现有 `videoPlayStart` 事件（按每次播放唯一的 `play_id` 标识，无 `play_id` 时回退 `feed_id`）的基线快照并忽略；随后每 500 ms 轻扫一次 `videoPlayStart` 与播放器 `feed_id → encfilekey` 桥接记录，仅当出现新的播放事件时关联静默索引取出完整元数据推入 `WeChatVideoSession`（屏蔽预加载与预缓冲的 N+1～N+3 视频，且重开已看过的视频因生成新 `play_id` 仍可刷新入列）。若静默索引尚未命中或缺少 `decode_key`，定向补扫并在必要时 600 ms 后重试一次（过滤无元数据残缺日志片段，未解析事件最多跨轮次重试 5 次）。
+- 隐私与安全边界：仅使用最小只读权限，不写内存、不注入、不改系统代理、不装根证书；提取出的 `url_token`、`decode_key` 与原始内存片段只驻留会话内存，严禁写入日志、崩溃文件或诊断包。
+- 媒体地址是 `media.url + media.url_token`；媒体与封面主机校验允许 `*.video.qq.com`（HTTPS，覆盖 `finder.video.qq.com`、`findera4.video.qq.com`、`findernd.video.qq.com`）。下载与封面请求带 `User-Agent`、`Referer: https://channels.weixin.qq.com/`、`Origin: https://channels.weixin.qq.com`，不需要微信 cookie。非 Windows 平台注册 `NullWeChatVideoCapture`。
 
 ### 会话列表与去重
 
 - `WeChatVideoSession` 只存在本次会话，关闭应用即清空；按捕获时间倒序。
-- 去重键优先 `oid` + `nid`，两者缺一时退回去掉 `token` 参数的 URL；重复捕获只刷新媒体信息，保留首次捕获时间与下载状态。
+- 去重键优先取 URL 中的 `encfilekey`（同视频在不同入口刷新会重新分配 `decode_key` 与 `token`），缺失时依次回退 `oid` + `nid` 与去掉 `token` 参数的 URL；重复捕获只刷新媒体信息，保留首次捕获时间与下载状态。
 - 列表插入与封面异步加载在 UI 层完成；封面抓取失败只留占位色，不产生错误记录。
 
 ### 下载与解密
@@ -946,27 +933,18 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 状态与呈现
 
-- 唯一持久化字段是 `weChatVideo.downloadDirectory`；列表、进度、监听状态与下载结果都只在会话内。证书状态在 Windows 证书库，`state.json` 只作崩溃恢复。
+- 唯一持久化字段是 `weChatVideo.downloadDirectory`；列表、进度、监听状态与下载结果都只在会话内。
 - 行状态 `WeChatVideoDownloadState`：`Idle` / `Queued` / `Downloading` / `Completed` / `Failed` / `Expired` / `Canceled`。按钮随状态变化：空闲、失败、取消可下载或重试；排队、下载中可取消；完成、过期只能移除。
 - 失败原因取 `DirectoryMissing` / `Network` / `Protocol` / `FileWrite` 之一；行内给出原因，不弹全局错误窗。
-- 三个登记错误码：`WeChatVideo.CaptureStartFailed` 与 `WeChatVideo.CertificateUninstallFailed` 走 InfoBar + 重试，`WeChatVideo.ProxyRestoreFailed` 走错误窗。
-- 首次开启监听且证书未信任时弹自定义确认窗；确认后先关窗再启动，避免与 Windows 信任弹窗叠加。设置页「数据与联网」显示证书状态并允许卸载，监听中禁用卸载。
-
-### 只读内存双阶段采集（设计，未实现）
-
-> 正式决策见 [ADR-0018](./adr/0018-wechat-video-download-memory-capture.md)；实现落地后将替换上方「代理与生命周期」「注入与回传」并移除 `Titanium.Web.Proxy`、根证书、PAC 与启动残留恢复。
-
-- **静默元数据索引**：后台每 2～3 秒以最小只读权限（`PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`）扫描 `Weixin.exe` 与 `WeChatAppEx.exe` 的可读私有内存，按 `{ ... }` JSON 边界与单趟反转义严格解析单条 `media` 对象，按 `encfilekey` 前缀缓存最近 500 条（不进 UI）。
-- **`NetworkService` 播放触发**：启动时对 `WeChatAppEx.exe` 的 `network.mojom.NetworkService` 子进程拍一次 `/20302/stodownload?encfilekey=` 基线快照；每 500 ms 轻扫一次（~22 ms），仅在出现新拉流 `encfilekey` 时从静默索引取出完整元数据推入 `WeChatVideoSession`（未命中时定向补扫并重试一次）。
-- **下载与解密契约沿用**：媒体与封面域名放宽为 `*.video.qq.com`，去重键优先使用 `encfilekey`；CDN 直连 Range 下载与 `Isaac64KeyStream` 头部 XOR 解密完全复用现有实现。
+- 登记错误码：`WeChatVideo.CaptureStartFailed` 走 InfoBar + 重试。
 
 ### 测试缝
 
-1. `JiuMi.Application` 纯函数：负载校验（kind、页面、主机、发现入口 `source`/`videoId`）、HTML 注入与脚本占位符、去重键与去 token、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消、启动残留结果一次性。
-2. Infrastructure：PAC 生成、证书名称与有效期、监听状态文件读写、listener 路径与请求上限、Titanium 注入与解密范围、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取；注册表与证书通过注入点隔离，不碰真实系统。
-3. UI 的证书确认、开关、列表与进度不设自动化测试。
+1. `JiuMi.Application` 纯函数：`WeChatMediaJsonExtractor`（普通 JSON、双重转义 JSON、跨对象边界、多 CDN 子域校验、无加密定向提取、`NetworkService` `encfilekey` 扫描）、`WeChatMetadataCache`（LRU 淘汰与完整度合并）、`WeChatPlaybackCorrelator`（基线过滤、预加载去噪与去重）、`WeChatVideoUrl`（`encfilekey` 去重、`*.video.qq.com` 校验与去 token）、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消。
+2. `JiuMi.Infrastructure`：`MemoryWeChatVideoCapture`（通过模拟 `IWeChatProcessLocator` 与 `IWeChatProcessMemoryReader` 覆盖微信未运行、权限不足、基线过滤、预加载去噪、定向补扫重试、`NetworkService` 子进程重启重定位）、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取。
+3. UI 的开关、列表与进度不设自动化测试。
 
-相关：[ADR-0013](./adr/0013-wechat-video-download.md)、[ADR-0018](./adr/0018-wechat-video-download-memory-capture.md)、[#68](https://github.com/ZLiLiang/JiuMi/issues/68)、[#94](https://github.com/ZLiLiang/JiuMi/issues/94)、[#171](https://github.com/ZLiLiang/JiuMi/issues/171)、[#182](https://github.com/ZLiLiang/JiuMi/issues/182)。
+相关：[ADR-0018](./adr/0018-wechat-video-download-memory-capture.md)、[ADR-0013](./adr/0013-wechat-video-download.md)（已替代）、[#68](https://github.com/ZLiLiang/JiuMi/issues/68)、[#182](https://github.com/ZLiLiang/JiuMi/issues/182)、[#189](https://github.com/ZLiLiang/JiuMi/issues/189)。
 
 ## 参考
 

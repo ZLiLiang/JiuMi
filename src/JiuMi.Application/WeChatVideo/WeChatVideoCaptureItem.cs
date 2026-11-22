@@ -1,7 +1,7 @@
 ﻿namespace JiuMi.Application.WeChatVideo;
 
 /// <summary>
-/// One video reported by the injected page script.
+/// One video captured from WeChat.
 /// </summary>
 public sealed record WeChatVideoCaptureItem
 {
@@ -15,9 +15,9 @@ public sealed record WeChatVideoCaptureItem
     }
 
     /// <summary>
-    /// Gets the page the video was opened from.
+    /// Gets the page the video was opened from, when known.
     /// </summary>
-    public required string PageUrl
+    public string? PageUrl
     {
         get;
         init;
@@ -88,12 +88,20 @@ public sealed record WeChatVideoCaptureItem
     }
 
     /// <summary>
-    /// Gets the feed item identifier, used together with <see cref="Oid"/> for de-duplication.
-    /// Discovery captures use a fixed marker here because the home page has no feed identifiers.
+    /// Gets the feed item identifier, used together with <see cref="Oid"/> as a fallback de-duplication key.
     /// </summary>
     public string? Nid
     {
         get;
         init;
     }
+
+    /// <summary>
+    /// Gets the quality variants reported in the media <c>spec</c> array.
+    /// </summary>
+    public IReadOnlyList<WeChatVideoSpec> Specs
+    {
+        get;
+        init;
+    } = [];
 }

@@ -9,11 +9,9 @@ using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Logging;
 using JiuMi.Application.Settings;
-using JiuMi.Application.WeChatVideo;
 using JiuMi.Application.WorldClock;
 using JiuMi.Diagnostics;
 using JiuMi.Threading;
-using JiuMi.WeChatVideo;
 
 namespace JiuMi.ViewModels;
 
@@ -35,9 +33,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly ISystemLauncher _systemLauncher;
     private readonly IThemeService _themeService;
     private readonly IUiThreadDispatcher _uiThreadDispatcher;
-    private readonly IWeChatVideoCapture _weChatVideoCapture;
-    private readonly IWeChatVideoCertificatePrompt _certificatePrompt;
-    private readonly ErrorRetryRegistry _retryRegistry;
     private readonly Uri _repositoryUri;
     private LanguageOption _selectedLanguage;
 
@@ -56,9 +51,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="exportController">Runs the export and reports its failures.</param>
     /// <param name="loggingStatus">Reports whether file logging is working.</param>
     /// <param name="catalogUpdater">Checks the published world clock catalog and reports its state.</param>
-    /// <param name="weChatVideoCapture">Supplies the certificate state and removes the certificate.</param>
-    /// <param name="certificatePrompt">Asks before the certificate is removed.</param>
-    /// <param name="retryRegistry">Supplies the in-place retry action for a failed removal.</param>
     /// <param name="logger">Receives settings saves from this page.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -73,9 +65,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         DiagnosticsExportController exportController,
         ILoggingStatus loggingStatus,
         IWorldClockCatalogUpdater catalogUpdater,
-        IWeChatVideoCapture weChatVideoCapture,
-        IWeChatVideoCertificatePrompt certificatePrompt,
-        ErrorRetryRegistry retryRegistry,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -90,9 +79,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(exportController);
         ArgumentNullException.ThrowIfNull(loggingStatus);
         ArgumentNullException.ThrowIfNull(catalogUpdater);
-        ArgumentNullException.ThrowIfNull(weChatVideoCapture);
-        ArgumentNullException.ThrowIfNull(certificatePrompt);
-        ArgumentNullException.ThrowIfNull(retryRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
         _applicationInfo = applicationInfo;
@@ -108,9 +94,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _themeService = themeService;
         _uiThreadDispatcher = uiThreadDispatcher;
         _systemLauncher = systemLauncher;
-        _weChatVideoCapture = weChatVideoCapture;
-        _certificatePrompt = certificatePrompt;
-        _retryRegistry = retryRegistry;
         _repositoryUri = new Uri(applicationInfo.RepositoryUrl, UriKind.Absolute);
 
         Languages = localization.Languages;
@@ -122,18 +105,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
         SelectCloseActionCommand = new RelayCommand<CloseAction>(SelectCloseAction);
         CheckCatalogCommand = new AsyncRelayCommand(CheckCatalogAsync, () => CanCheckCatalog);
-        UninstallCertificateCommand = new AsyncRelayCommand(
-            ConfirmAndUninstallCertificateAsync,
-            () => CanUninstallCertificate);
         _localization.PropertyChanged += OnLocalizationChanged;
         _themeService.PropertyChanged += OnThemeServiceChanged;
         _loggingStatus.PropertyChanged += OnLoggingStatusChanged;
         _exportController.ExportingChanged += OnExportingChanged;
         _catalogUpdater.StatusChanged += OnCatalogStatusChanged;
-        _weChatVideoCapture.StatusChanged += OnWeChatVideoStatusChanged;
-        _retryRegistry.Register(
-            ErrorCodes.WeChatVideoCertificateUninstallFailed,
-            RetryCertificateUninstallAsync);
     }
 
     /// <summary>
@@ -353,36 +329,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Gets a value indicating whether the WeChat video certificate is installed.
-    /// </summary>
-    public bool IsCertificateInstalled => _weChatVideoCapture.IsCertificateInstalled;
-
-    /// <summary>
-    /// Gets a value indicating whether the WeChat video listener is active.
-    /// </summary>
-    public bool IsCertificateRunning => _weChatVideoCapture.Status != WeChatVideoCaptureStatus.Stopped;
-
-    /// <summary>
-    /// Gets a value indicating whether the certificate may be removed now.
-    /// </summary>
-    public bool CanUninstallCertificate => IsCertificateInstalled && !IsCertificateRunning;
-
-    /// <summary>
-    /// Gets the certificate state line.
-    /// </summary>
-    public string CertificateStatusText => _localization[IsCertificateInstalled
-        ? "Settings.Data.Certificate.Installed"
-        : "Settings.Data.Certificate.NotInstalled"];
-
-    /// <summary>
-    /// Gets the command that confirms and removes the WeChat video certificate.
-    /// </summary>
-    public IAsyncRelayCommand UninstallCertificateCommand
-    {
-        get;
-    }
-
-    /// <summary>
     /// Gets the command that switches the appearance theme.
     /// </summary>
     public IRelayCommand<AppTheme> SelectThemeCommand
@@ -422,8 +368,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _loggingStatus.PropertyChanged -= OnLoggingStatusChanged;
         _exportController.ExportingChanged -= OnExportingChanged;
         _catalogUpdater.StatusChanged -= OnCatalogStatusChanged;
-        _weChatVideoCapture.StatusChanged -= OnWeChatVideoStatusChanged;
-        _retryRegistry.Unregister(ErrorCodes.WeChatVideoCertificateUninstallFailed);
     }
 
     private void SelectTheme(AppTheme theme)
@@ -545,7 +489,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(VersionText));
         OnPropertyChanged(nameof(CatalogStatusText));
         OnPropertyChanged(nameof(CatalogVersionText));
-        OnPropertyChanged(nameof(CertificateStatusText));
 
         LanguageOption? current = FindLanguage(_localization.CurrentLanguage);
         if (current is not null && !ReferenceEquals(current, _selectedLanguage))
@@ -609,53 +552,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         {
             _logger.Warning(exception, "World clock catalog check failed");
         }
-    }
-
-    private async Task ConfirmAndUninstallCertificateAsync()
-    {
-        if (!CanUninstallCertificate ||
-            !await _certificatePrompt.ConfirmUninstallAsync())
-        {
-            return;
-        }
-
-        await UninstallCertificateCoreAsync();
-    }
-
-#pragma warning disable CA1031 // The InfoBar is the user-facing outcome of a failed removal.
-    private async Task<bool> UninstallCertificateCoreAsync()
-    {
-        try
-        {
-            await _weChatVideoCapture.UninstallCertificateAsync();
-            RefreshCertificateState();
-            return true;
-        }
-        catch (Exception exception)
-        {
-            _logger.Warning(exception, "Removing the WeChat video certificate failed");
-            _errorReporter.Report(_recordFactory.Create(
-                ErrorCodes.WeChatVideoCertificateUninstallFailed,
-                "WeChatVideo.CertificateUninstall",
-                exception));
-            RefreshCertificateState();
-            return false;
-        }
-    }
-#pragma warning restore CA1031
-
-    private Task<bool> RetryCertificateUninstallAsync() => UninstallCertificateCoreAsync();
-
-    private void OnWeChatVideoStatusChanged(object? sender, EventArgs e) =>
-        _uiThreadDispatcher.Post(RefreshCertificateState);
-
-    private void RefreshCertificateState()
-    {
-        OnPropertyChanged(nameof(IsCertificateInstalled));
-        OnPropertyChanged(nameof(IsCertificateRunning));
-        OnPropertyChanged(nameof(CanUninstallCertificate));
-        OnPropertyChanged(nameof(CertificateStatusText));
-        UninstallCertificateCommand.NotifyCanExecuteChanged();
     }
 
     private static string FormatInstant(DateTimeOffset value) =>

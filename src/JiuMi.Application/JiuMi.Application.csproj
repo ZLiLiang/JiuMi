@@ -9,7 +9,6 @@
   <ItemGroup>
     <Content Include="Assets\i18n\*.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\world-clock\*.json" CopyToOutputDirectory="PreserveNewest" />
-    <EmbeddedResource Include="WeChatVideo\InjectionScript.js" />
   </ItemGroup>
 
   <ItemGroup>

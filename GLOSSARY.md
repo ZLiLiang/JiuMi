@@ -79,11 +79,8 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 
 | 术语 | 代码名 | 定义 |
 | --- | --- | --- |
-| 静默元数据索引 | `WeChatMetadataCache` | 后台低频只读扫描微信进程内存得到的有界 `encfilekey` 元数据缓存（含直链、`decode_key`、作者、标题、封面与 `spec`）；不直接展示在界面，只在播放触发时供反查（[ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md)，设计态）。 |
-| 播放触发 | `WeChatPlaybackCorrelator` | 高频只读扫描 `WeChatAppEx` 的 `NetworkService` 子进程，仅在出现新的 `/20302/stodownload?encfilekey=` 拉流记录时才从静默元数据索引取出条目推入会话列表，过滤预加载噪音（[ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md)，设计态）。 |
-| 注入回调 | `InjectionScript.js` | 旧版 MITM 链路注入视频号页面、包装 `WeixinJSBridge.invoke` 的回调（Weixin 4.2.0.53+ LiteApp 已失效，待按 [ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md) 移除）。 |
-| 发现入口捕获 | `InjectionScript.js` | 旧版 MITM 链路在 `/web/pages/home` 下读取 `xweb` worker 的 feed 数据并按 5 秒播放匹配（Weixin 4.2.0.53+ LiteApp 已失效，待按 [ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md) 移除）。 |
+| 静默元数据索引 | `WeChatMetadataCache` | 后台低频只读扫描微信进程内存得到的有界 `encfilekey` 元数据缓存（含直链、`decode_key`、作者、标题、封面与 `spec`）；不直接展示在界面，只在播放触发时供反查（[ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md)）。 |
+| 播放触发 | `WeChatPlaybackCorrelator` | 高频只读扫描微信进程内存中的 `videoPlayStart` 事件（按 `play_id` 去重）与 `feed_id → encfilekey` 映射，仅在视频真正开始播放时才从静默元数据索引取出条目推入会话列表，过滤预加载与预缓冲噪音（[ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md)）。 |
 | 密钥流 | `Isaac64KeyStream` | 以媒体信息里的 `decode_key` 为种子生成的 ISAAC64 字节流；只覆盖文件开头 `X-enclen` 指定的字节数，与本次媒体 URL 绑定。 |
 | 过期链接 | `WeChatVideoDownloadState.Expired` | 媒体链接随会话失效后的下载结果：服务端返回 403/404/410 或 Range 不符；该行不复用旧链接重试，只能回微信重新打开视频。 |
-| 监听状态文件 | `WeChatCaptureStateStore`（`cache\wechat\state.json`） | 旧版 MITM 链路抓包启动时写下的代理快照与端口，用于异常退出后还原系统代理（待按 [ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md) 移除）。 |
 
