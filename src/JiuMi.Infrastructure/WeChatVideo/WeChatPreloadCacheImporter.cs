@@ -71,7 +71,7 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
         int partial = 0;
         int failed = 0;
         int skipped = 0;
-        List<string> saved = [];
+        List<WeChatPreloadImportedVideo> importedVideos = [];
 
         foreach (PreloadRecord record in ReadRecords())
         {
@@ -118,7 +118,7 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
 
                 await File.WriteAllBytesAsync(path, data, cancellationToken).ConfigureAwait(false);
                 imported++;
-                saved.Add(path);
+                importedVideos.Add(new WeChatPreloadImportedVideo(record.FeedId, path, data.Length));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -130,7 +130,12 @@ public sealed class WeChatPreloadCacheImporter : IWeChatPreloadCacheImporter
             }
         }
 
-        return new WeChatPreloadImportResult(imported, partial, failed, skipped, saved);
+        return new WeChatPreloadImportResult(
+            imported,
+            partial,
+            failed,
+            skipped,
+            importedVideos);
     }
 
     private static bool HasMp4Header(byte[] data)

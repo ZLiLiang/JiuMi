@@ -193,6 +193,8 @@
   "Tool.WeChatVideo.Order": "按捕获时间倒序",
   "Tool.WeChatVideo.ScanCache": "扫描缓存",
   "Tool.WeChatVideo.ScanCache.FilePrefix": "视频号缓存",
+  "Tool.WeChatVideo.ScanCache.Item": "缓存视频 {0}",
+  "Tool.WeChatVideo.Action.Open": "打开",
   "Tool.WeChatVideo.ScanCache.Result": "已导入 {0} 个视频；{1} 个缓存不完整；{2} 个处理失败",
   "Tool.WeChatVideo.ScanCache.Failed": "扫描预下载缓存失败",
   "Tool.WeChatVideo.Untitled": "未命名视频",

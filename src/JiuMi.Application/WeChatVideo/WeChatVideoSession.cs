@@ -84,6 +84,72 @@ public sealed class WeChatVideoSession
     }
 
     /// <summary>
+    /// Adds or refreshes a video that was already decrypted from LiteApp's local preload cache.
+    /// </summary>
+    /// <param name="feedId">The LiteApp feed identifier.</param>
+    /// <param name="savedPath">The written MP4 path.</param>
+    /// <param name="description">The localized row description.</param>
+    /// <param name="fileSize">The written file size.</param>
+    /// <returns>The item after the change.</returns>
+    public WeChatVideoItem AddLocal(
+        string feedId,
+        string savedPath,
+        string description,
+        long fileSize)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(feedId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(savedPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+
+        var capture = new WeChatVideoCaptureItem
+        {
+            Url = "local://preload-cache/" + feedId,
+            PageUrl = "local://preload-cache",
+            Oid = feedId,
+            Nid = "preload-cache",
+            Description = description,
+        };
+        string key = WeChatVideoUrl.CreateDeduplicationKey(capture);
+        WeChatVideoItem item;
+        WeChatVideoSessionChange change;
+        lock (_gate)
+        {
+            if (_byKey.TryGetValue(key, out WeChatVideoItem? existing))
+            {
+                item = existing with
+                {
+                    Capture = capture,
+                    State = WeChatVideoDownloadState.Completed,
+                    SavedPath = savedPath,
+                    TotalBytes = fileSize,
+                    IsLocal = true,
+                };
+                Replace(key, item);
+                change = WeChatVideoSessionChange.Updated;
+            }
+            else
+            {
+                item = new WeChatVideoItem
+                {
+                    Key = key,
+                    Capture = capture,
+                    CapturedAt = _timeProvider.GetLocalNow(),
+                    State = WeChatVideoDownloadState.Completed,
+                    SavedPath = savedPath,
+                    TotalBytes = fileSize,
+                    IsLocal = true,
+                };
+                _byKey.Add(key, item);
+                _ordered.Insert(0, item);
+                change = WeChatVideoSessionChange.Added;
+            }
+        }
+
+        RaiseChanged(change, item);
+        return item;
+    }
+
+    /// <summary>
     /// Removes a video from the list.
     /// </summary>
     /// <param name="key">The de-duplication key.</param>

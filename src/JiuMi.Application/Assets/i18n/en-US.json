@@ -67,6 +67,8 @@
   "Tool.WeChatVideo.Order": "Newest first",
   "Tool.WeChatVideo.ScanCache": "Scan cache",
   "Tool.WeChatVideo.ScanCache.FilePrefix": "Channels cache",
+  "Tool.WeChatVideo.ScanCache.Item": "Cached video {0}",
+  "Tool.WeChatVideo.Action.Open": "Open",
   "Tool.WeChatVideo.ScanCache.Result": "Imported {0} video(s); {1} incomplete cache(s); {2} failed",
   "Tool.WeChatVideo.ScanCache.Failed": "Scanning the preload cache failed",
   "Tool.WeChatVideo.Untitled": "Untitled video",

@@ -142,15 +142,26 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets the text of the state button.
     /// </summary>
-    public string PrimaryActionText => _localization[_item.State switch
+    public string PrimaryActionText
     {
-        WeChatVideoDownloadState.Queued or WeChatVideoDownloadState.Downloading =>
-            "Tool.WeChatVideo.Action.Cancel",
-        WeChatVideoDownloadState.Completed or WeChatVideoDownloadState.Expired =>
-            "Tool.WeChatVideo.Action.Remove",
-        WeChatVideoDownloadState.Failed => "Tool.WeChatVideo.Action.Retry",
-        _ => "Tool.WeChatVideo.Action.Download",
-    }];
+        get
+        {
+            if (_item.State == WeChatVideoDownloadState.Completed && _item.IsLocal)
+            {
+                return _localization["Tool.WeChatVideo.Action.Open"];
+            }
+
+            return _localization[_item.State switch
+            {
+                WeChatVideoDownloadState.Queued or WeChatVideoDownloadState.Downloading =>
+                    "Tool.WeChatVideo.Action.Cancel",
+                WeChatVideoDownloadState.Completed or WeChatVideoDownloadState.Expired =>
+                    "Tool.WeChatVideo.Action.Remove",
+                WeChatVideoDownloadState.Failed => "Tool.WeChatVideo.Action.Retry",
+                _ => "Tool.WeChatVideo.Action.Download",
+            }];
+        }
+    }
 
     /// <summary>
     /// Gets a value indicating whether the state button can run now.

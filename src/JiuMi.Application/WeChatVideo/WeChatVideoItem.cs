@@ -33,6 +33,16 @@ public sealed record WeChatVideoItem
     }
 
     /// <summary>
+    /// Gets a value indicating whether the video came from a local preload cache instead of a
+    /// network capture.
+    /// </summary>
+    public bool IsLocal
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
     /// Gets the download state.
     /// </summary>
     public WeChatVideoDownloadState State

@@ -42,7 +42,7 @@ public sealed class WeChatPreloadCacheImporterTests : IDisposable
         Assert.Equal(1, result.Imported);
         Assert.Equal(0, result.Partial);
         Assert.Equal(0, result.Failed);
-        string path = Assert.Single(result.SavedPaths);
+        string path = Assert.Single(result.ImportedVideos).SavedPath;
         Assert.Equal(plain, await File.ReadAllBytesAsync(path));
     }
 
@@ -59,7 +59,7 @@ public sealed class WeChatPreloadCacheImporterTests : IDisposable
 
         Assert.Equal(0, result.Imported);
         Assert.Equal(1, result.Partial);
-        Assert.Empty(result.SavedPaths);
+        Assert.Empty(result.ImportedVideos);
         Assert.Empty(Directory.GetFiles(output, "*.mp4"));
     }
 
@@ -79,7 +79,7 @@ public sealed class WeChatPreloadCacheImporterTests : IDisposable
 
         WeChatPreloadImportResult result = await CreateImporter().ImportAsync(output, "cache");
 
-        string path = Assert.Single(result.SavedPaths);
+        string path = Assert.Single(result.ImportedVideos).SavedPath;
         Assert.Equal(plain, await File.ReadAllBytesAsync(path));
     }
 
@@ -98,7 +98,7 @@ public sealed class WeChatPreloadCacheImporterTests : IDisposable
 
         Assert.Equal(0, result.Imported);
         Assert.Equal(1, result.Skipped);
-        Assert.Empty(result.SavedPaths);
+        Assert.Empty(result.ImportedVideos);
     }
 
     private WeChatPreloadCacheImporter CreateImporter()

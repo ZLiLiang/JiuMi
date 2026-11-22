@@ -89,6 +89,46 @@ public sealed class WeChatVideoSessionTests
     }
 
     [Fact]
+    public void AddLocal_GivenNewFeed_AddsACompletedLocalItem()
+    {
+        WeChatVideoItem item = _session.AddLocal(
+            "feed-1",
+            @"C:\videos\clip.mp4",
+            "缓存视频 feed-1",
+            1234);
+
+        Assert.True(item.IsLocal);
+        Assert.Equal(WeChatVideoDownloadState.Completed, item.State);
+        Assert.Equal(@"C:\videos\clip.mp4", item.SavedPath);
+        Assert.Equal(1234, item.TotalBytes);
+        Assert.Equal("缓存视频 feed-1", item.Capture.Description);
+        Assert.Same(item, Assert.Single(_session.Items));
+    }
+
+    [Fact]
+    public void AddLocal_GivenExistingFeed_UpdatesThePathInPlace()
+    {
+        WeChatVideoItem first = _session.AddLocal(
+            "feed-1",
+            @"C:\videos\first.mp4",
+            "缓存视频 feed-1",
+            1234);
+        _timeProvider.Advance(TimeSpan.FromMinutes(1));
+
+        WeChatVideoItem updated = _session.AddLocal(
+            "feed-1",
+            @"C:\videos\second.mp4",
+            "缓存视频 feed-1",
+            5678);
+
+        Assert.Equal(first.Key, updated.Key);
+        Assert.Equal(first.CapturedAt, updated.CapturedAt);
+        Assert.Equal(@"C:\videos\second.mp4", updated.SavedPath);
+        Assert.Equal(5678, updated.TotalBytes);
+        Assert.Single(_session.Items);
+    }
+
+    [Fact]
     public void Remove_GivenExistingKey_RemovesAndRaises()
     {
         WeChatVideoItem item = _session.AddOrUpdate(

@@ -411,6 +411,15 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
             WeChatPreloadImportResult result = await _preloadImporter.ImportAsync(
                 directory,
                 _localization["Tool.WeChatVideo.ScanCache.FilePrefix"]);
+            foreach (WeChatPreloadImportedVideo video in result.ImportedVideos)
+            {
+                _session.AddLocal(
+                    video.FeedId,
+                    video.SavedPath,
+                    _localization.Format("Tool.WeChatVideo.ScanCache.Item", video.FeedId),
+                    video.FileSize);
+            }
+
             bool warning = result.Partial > 0 || result.Failed > 0;
             _infoBar.ShowSummary(new InfoBarSummary(
                 _localization.Format(
@@ -419,7 +428,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
                     result.Partial,
                     result.Failed),
                 warning,
-                result.SavedPaths.Count > 0 ? directory : null));
+                result.ImportedVideos.Count > 0 ? directory : null));
         }
 #pragma warning disable CA1031 // The info bar is the user-facing outcome of a failed scan.
         catch (Exception exception)
@@ -762,9 +771,38 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
                 CancelDownload(row.Key);
                 break;
             case WeChatVideoDownloadState.Completed:
+                if (row.Item.IsLocal && row.Item.SavedPath is { } path)
+                {
+                    OpenSavedFile(path);
+                    break;
+                }
+
+                _session.Remove(row.Key);
+                break;
             case WeChatVideoDownloadState.Expired:
                 _session.Remove(row.Key);
                 break;
+        }
+    }
+
+    private void OpenSavedFile(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                _logger.Warning("The imported WeChat video file is missing: {Path}", path);
+                return;
+            }
+
+            using var process = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (exception is
+            System.ComponentModel.Win32Exception or
+            InvalidOperationException)
+        {
+            _logger.Warning(exception, "Opening the imported WeChat video failed");
         }
     }
 
