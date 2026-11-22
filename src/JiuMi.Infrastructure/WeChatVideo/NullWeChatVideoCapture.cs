@@ -26,6 +26,18 @@ internal sealed class NullWeChatVideoCapture : IWeChatVideoCapture
     }
 
     /// <inheritdoc />
+    public event EventHandler<WeChatMediaCapture>? MediaCaptured
+    {
+        add
+        {
+        }
+
+        remove
+        {
+        }
+    }
+
+    /// <inheritdoc />
     public event EventHandler? StatusChanged
     {
         add

@@ -191,6 +191,7 @@
   "Tool.WeChatVideo.Subtitle": "在微信里打开视频后，在这里下载。",
   "Tool.WeChatVideo.Summary": "{0} 个视频 · 仅本次会话，关闭应用后清空",
   "Tool.WeChatVideo.Order": "按捕获时间倒序",
+  "Tool.WeChatVideo.MediaItem": "视频号视频 {0}",
   "Tool.WeChatVideo.Untitled": "未命名视频",
   "Tool.WeChatVideo.Empty": "还没有捕获到视频",
   "Tool.WeChatVideo.Empty.Hint": "用右上角的『监听』开关开始监听，然后在微信视频号中打开视频。",

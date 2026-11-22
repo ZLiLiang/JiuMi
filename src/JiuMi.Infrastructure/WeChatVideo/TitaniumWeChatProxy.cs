@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using JiuMi.Application.WeChatVideo;
@@ -18,6 +19,9 @@ internal sealed class TitaniumWeChatProxy : IDisposable
     private readonly X509Certificate2 _rootCertificate;
     private readonly string _script;
     private readonly Serilog.ILogger _logger;
+    private readonly Action<WeChatMediaCapture>? _onMediaCaptured;
+    private readonly TimeProvider _timeProvider;
+    private readonly ConcurrentDictionary<string, byte> _capturedMediaUrls = new(StringComparer.Ordinal);
     private ProxyServer? _proxy;
     private ExplicitProxyEndPoint? _endpoint;
     private bool _disposed;
@@ -28,10 +32,14 @@ internal sealed class TitaniumWeChatProxy : IDisposable
     /// <param name="rootCertificate">The signing authority trusted for the current user.</param>
     /// <param name="receiverUrl">The loopback listener the script posts to.</param>
     /// <param name="logger">Records injection failures without tokens.</param>
+    /// <param name="onMediaCaptured">Receives complete video responses, when provided.</param>
+    /// <param name="timeProvider">Supplies the media capture time, when provided.</param>
     public TitaniumWeChatProxy(
         X509Certificate2 rootCertificate,
         Uri receiverUrl,
-        Serilog.ILogger logger)
+        Serilog.ILogger logger,
+        Action<WeChatMediaCapture>? onMediaCaptured = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(rootCertificate);
         ArgumentNullException.ThrowIfNull(receiverUrl);
@@ -39,6 +47,8 @@ internal sealed class TitaniumWeChatProxy : IDisposable
         _rootCertificate = rootCertificate;
         _script = WeChatInjectionScript.Create(receiverUrl);
         _logger = logger;
+        _onMediaCaptured = onMediaCaptured;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -160,6 +170,40 @@ internal sealed class TitaniumWeChatProxy : IDisposable
     {
         Request request = e.HttpClient.Request;
         Response response = e.HttpClient.Response;
+        if (_onMediaCaptured is not null &&
+            WeChatMediaRequestPolicy.IsVideoResponse(
+                request.RequestUri.Host,
+                request.RequestUri.AbsolutePath,
+                response.StatusCode) &&
+            WeChatMediaRequestPolicy.TryGetTotalBytes(
+                response.Headers
+                    .FirstOrDefault(header => string.Equals(
+                        header.Name,
+                        "Content-Range",
+                        StringComparison.OrdinalIgnoreCase))
+                    ?.Value,
+                response.ContentLength,
+                out long totalBytes))
+        {
+            string url = request.RequestUri.AbsoluteUri;
+            if (_capturedMediaUrls.TryAdd(url, 0))
+            {
+                try
+                {
+                    _onMediaCaptured(new WeChatMediaCapture(
+                        request.RequestUri,
+                        totalBytes,
+                        _timeProvider.GetUtcNow()));
+                }
+                catch (Exception exception)
+                {
+                    _logger.Warning(exception, "The WeChat media capture callback failed");
+                }
+            }
+
+            return;
+        }
+
         if (!WeChatCaptureResponsePolicy.ShouldInject(
             request.RequestUri.Host,
             response.StatusCode,

@@ -65,6 +65,7 @@
   "Tool.WeChatVideo.Subtitle": "Open a video in WeChat, then download it here.",
   "Tool.WeChatVideo.Summary": "Videos: {0} · this session only; cleared when the app closes",
   "Tool.WeChatVideo.Order": "Newest first",
+  "Tool.WeChatVideo.MediaItem": "Channels video {0}",
   "Tool.WeChatVideo.Untitled": "Untitled video",
   "Tool.WeChatVideo.Empty": "No videos captured yet",
   "Tool.WeChatVideo.Empty.Hint": "Turn on the Listen for Channels videos switch at the top right, then open a Channels video in WeChat.",

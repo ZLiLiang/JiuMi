@@ -28,6 +28,12 @@ public interface IWeChatVideoCapture
     event EventHandler<WeChatVideoCaptureItem>? ItemCaptured;
 
     /// <summary>
+    /// Occurs when the proxy observes a complete video response. The event is raised on a
+    /// background thread and the URL still contains its session token.
+    /// </summary>
+    event EventHandler<WeChatMediaCapture>? MediaCaptured;
+
+    /// <summary>
     /// Occurs after <see cref="Status"/> changes. The event is raised on the thread that changed the state.
     /// </summary>
     event EventHandler? StatusChanged;

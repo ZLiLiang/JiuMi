@@ -27,7 +27,9 @@ internal static class WeChatPacScript
         return $$"""
             function FindProxyForURL(url, host) {
               host = host.toLowerCase();
-              if (host === '{{WeChatCaptureHosts.PageHost}}') {
+              if (host === '{{WeChatCaptureHosts.PageHost}}' ||
+                  host === 'video.qq.com' ||
+                  shExpMatch(host, '*.video.qq.com')) {
                 return 'PROXY 127.0.0.1:{{capturePort.ToString(CultureInfo.InvariantCulture)}}';
               }
               {{fallback}}

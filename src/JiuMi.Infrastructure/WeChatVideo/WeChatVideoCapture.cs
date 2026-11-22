@@ -75,6 +75,9 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
     public event EventHandler<WeChatVideoCaptureItem>? ItemCaptured;
 
     /// <inheritdoc />
+    public event EventHandler<WeChatMediaCapture>? MediaCaptured;
+
+    /// <inheritdoc />
     public event EventHandler? StatusChanged;
 
     /// <inheritdoc />
@@ -299,7 +302,12 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
         _stateWritten = true;
         _snapshot = snapshot;
 
-        var proxy = new TitaniumWeChatProxy(_certificate, listenerStart.ReceiverUrl, _logger);
+        var proxy = new TitaniumWeChatProxy(
+            _certificate,
+            listenerStart.ReceiverUrl,
+            _logger,
+            OnMediaCaptured,
+            _timeProvider);
         _proxy = proxy;
         proxy.Start(proxyPort);
 
@@ -367,6 +375,27 @@ public sealed class WeChatVideoCapture : IWeChatVideoCapture, IDisposable
     {
         _status = status;
         StatusChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnMediaCaptured(WeChatMediaCapture media)
+    {
+        [SuppressMessage(
+            "Design",
+            "CA1031:Do not catch general exception types",
+            Justification = "A subscriber fault must not break the capture proxy.")]
+        void Raise()
+        {
+            try
+            {
+                MediaCaptured?.Invoke(this, media);
+            }
+            catch (Exception exception)
+            {
+                _logger.Warning(exception, "A WeChat media capture subscriber failed");
+            }
+        }
+
+        Raise();
     }
 
     private void OnItemCaptured(WeChatVideoCaptureItem item)

@@ -8,6 +8,9 @@ public sealed class WeChatCapturePolicyTests
     [InlineData("channels.weixin.qq.com")]
     [InlineData("CHANNELS.WEIXIN.QQ.COM")]
     [InlineData("finder.video.qq.com")]
+    [InlineData("findera4.video.qq.com")]
+    [InlineData("findernd.video.qq.com")]
+    [InlineData("video.qq.com")]
     public void ShouldDecrypt_GivenCaptureHost_ReturnsTrue(string host)
     {
         Assert.True(WeChatCaptureHosts.ShouldDecrypt(host));

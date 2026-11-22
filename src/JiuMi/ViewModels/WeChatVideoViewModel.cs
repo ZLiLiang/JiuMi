@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -25,6 +26,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly IWeChatVideoCapture _capture;
     private readonly WeChatVideoSession _session;
     private readonly WeChatVideoDownloadCoordinator _downloads;
+    private readonly IWeChatPreloadSeedLookup _seedLookup;
     private readonly IWeChatVideoThumbnailFetcher _thumbnailFetcher;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localization;
@@ -51,6 +53,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// <param name="capture">Starts and stops the WeChat capture.</param>
     /// <param name="session">Holds the captured videos for this session.</param>
     /// <param name="downloads">Runs the serial downloads.</param>
+    /// <param name="seedLookup">Finds the preload seed for a captured media response.</param>
     /// <param name="thumbnailFetcher">Fetches the covers into memory.</param>
     /// <param name="settingsStore">Supplies and stores the download directory.</param>
     /// <param name="localization">Supplies the interface text.</param>
@@ -67,6 +70,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         IWeChatVideoCapture capture,
         WeChatVideoSession session,
         WeChatVideoDownloadCoordinator downloads,
+        IWeChatPreloadSeedLookup seedLookup,
         IWeChatVideoThumbnailFetcher thumbnailFetcher,
         ISettingsStore settingsStore,
         ILocalizationService localization,
@@ -83,6 +87,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(downloads);
+        ArgumentNullException.ThrowIfNull(seedLookup);
         ArgumentNullException.ThrowIfNull(thumbnailFetcher);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(localization);
@@ -99,6 +104,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         _capture = capture;
         _session = session;
         _downloads = downloads;
+        _seedLookup = seedLookup;
         _thumbnailFetcher = thumbnailFetcher;
         _settingsStore = settingsStore;
         _localization = localization;
@@ -114,6 +120,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         _downloadDirectory = settingsStore.Current.WeChatVideo.DownloadDirectory;
 
         _capture.ItemCaptured += OnItemCaptured;
+        _capture.MediaCaptured += OnMediaCaptured;
         _capture.StatusChanged += OnCaptureStatusChanged;
         _session.Changed += OnSessionChanged;
         _localization.PropertyChanged += OnLocalizationChanged;
@@ -401,6 +408,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         _disposed = true;
         _localization.PropertyChanged -= OnLocalizationChanged;
         _capture.ItemCaptured -= OnItemCaptured;
+        _capture.MediaCaptured -= OnMediaCaptured;
         _capture.StatusChanged -= OnCaptureStatusChanged;
         _session.Changed -= OnSessionChanged;
         _retryRegistry.Unregister(ErrorCodes.WeChatVideoCaptureStartFailed);
@@ -443,6 +451,54 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
             _logger.Warning(exception, "Adding a captured WeChat video failed");
         }
 #pragma warning restore CA1031
+    }
+
+    private void OnMediaCaptured(object? sender, WeChatMediaCapture media)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+#pragma warning disable CA1031 // A media callback must not take down the proxy.
+        try
+        {
+            WeChatPreloadSeed? seed = _seedLookup.Find(media.TotalBytes, media.CapturedAt);
+            if (seed is null)
+            {
+                _logger.Debug(
+                    "Captured a {Length}-byte WeChat media response without a matching preload seed",
+                    media.TotalBytes);
+                return;
+            }
+
+            _uiThreadDispatcher.Post(() => AddMediaCapture(media, seed));
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "Matching a captured WeChat media response failed");
+        }
+#pragma warning restore CA1031
+    }
+
+    private void AddMediaCapture(WeChatMediaCapture media, WeChatPreloadSeed seed)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var capture = new WeChatVideoCaptureItem
+        {
+            Url = media.Url.AbsoluteUri,
+            PageUrl = "https://channels.weixin.qq.com/",
+            DecodeKey = seed.Seed.ToString(CultureInfo.InvariantCulture),
+            Oid = seed.FeedId,
+            Nid = "preload-seed",
+            Description = _localization.Format("Tool.WeChatVideo.MediaItem", seed.FeedId),
+            ReportedFileSize = media.TotalBytes,
+        };
+        _session.AddOrUpdate(capture);
     }
 
     private void OnSessionChanged(object? sender, WeChatVideoSessionChangedEventArgs e)

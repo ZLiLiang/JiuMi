@@ -10,9 +10,9 @@ public sealed class WeChatPacScriptTests
         string script = WeChatPacScript.Build(1, "127.0.0.1:7897", 51234);
 
         Assert.Contains("host === 'channels.weixin.qq.com'", script, StringComparison.Ordinal);
+        Assert.Contains("shExpMatch(host, '*.video.qq.com')", script, StringComparison.Ordinal);
         Assert.Contains("PROXY 127.0.0.1:51234", script, StringComparison.Ordinal);
         Assert.Contains("PROXY 127.0.0.1:7897", script, StringComparison.Ordinal);
-        Assert.DoesNotContain("finder.video.qq.com", script, StringComparison.Ordinal);
     }
 
     [Theory]
