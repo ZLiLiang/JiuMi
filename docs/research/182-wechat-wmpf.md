@@ -156,6 +156,13 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
 
 自动抓原文件在本版本 no-go；下面是改变产品前提的兜底，尚未实现。
 
+### 预下载缓存直接解密（仅在网络 URL 不可用时）
+
+- 思路：不下载媒体 URL，直接读取 `finder_videoCache_*` 预下载文件，用 IndexedDB 的 `seed` 解前 131072 字节。
+- 实测：完整缓存 370,351 字节可解为 HEVC 720×1280 / AAC / 7.52 秒，`ffmpeg` 完整解码；但本机 21 个缓存只有开头（512 KiB–1 MiB），无法得到完整长视频。
+- 适用条件：只有短到能被 LiteApp 完整预下载的视频；长视频需要完整媒体 URL 补齐。v260614 的实验实现（Draft PR #185）已验证解码链路，但不作为主路径。
+- 结论：保留为网络下载不可用时的兜底；主路径仍是完整 `20302/stodownload` URL + 对应 seed。
+
 ### 屏幕录制（已实机验证，需用桌面复制）
 
 - 窗口：`WeChatAppEx.exe` / `Chrome_WidgetWin_0`，子窗口为 `Chrome_RenderWidgetHostHWND` 与 `Intermediate D3D Window`。
