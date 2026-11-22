@@ -7,15 +7,28 @@
 
 ## 结论摘要
 
-**当前边界内 no-go。** 4.2.0.53 本机上的视频号首页/详情不再由 `channels.weixin.qq.com` 的远程 HTML 承载，而是 WMPF 里的 **LiteApp**（本地签名包 + 原生桥）。因此：
+**页面注入 no-go；预下载缓存 + seed 条件可行（见下方追加实测）。** 4.2.0.53 本机上的视频号首页/详情不再由 `channels.weixin.qq.com` 的远程 HTML 承载，而是 WMPF 里的 **LiteApp**（本地签名包 + 原生桥）。因此：
 
 - 没有可用的 DevTools/CDP 入口（无需注入的前提下）；
 - 没有用户可达的开关把 LiteApp 强制切回远程页面；
-- feed 元数据只出现在 LiteApp 页面 JS 内存与原生 `H5ExtTransfer` 响应里，MITM、日志、磁盘都拿不到；
-- 媒体请求可在主机级观察，但 `decode_key` 不在媒体 URL/请求里，无法从可观察网络面恢复；
+- feed 元数据不落普通网络/日志；但 LiteApp 预下载时会把 `seed` 写入 IndexedDB，完整预下载缓存可直接解密；
+- 媒体 URL 可从 xweb 缓存恢复；`decode_key` 不在 URL/请求头里，但预下载记录里有 `seed`；
 - 视频号 PC 端没有原生「保存视频」入口；「复制链接」只给 H5 分享页地址。
 
 唯一公开可见的注入面见 [参考](#参考) 中的 PR：MITM `res.wx.qq.com` 的 SDK、运行时改写 LiteApp 模块、并搬走微信的 LiteApp SDK 缓存。它需要新增解密域名并操作微信数据文件，违反本研究边界，且该 PR 未合并、未验证，不作为 go。
+
+## 2026-11-22 追加实测：seed 可从预下载缓存获得（条件可行）
+
+上面的 no-go 针对“页面注入 + 桥取 key”。继续按旧版文章的“从解密过程反推 key”做静态分析后，发现 LiteApp 自己把 key 落盘了：
+
+- LiteApp 解密代码确认 `seed = objectDesc.media[0].decodeKey`；`store-common.js` 在预下载视频时把 `seed`、`videoKey`、`preDownloadedContentLen`、`videoContentLen` 写入 `video_cache_info`。
+- 本机 `radium/web/profiles/multitab_*/IndexedDB/weixin_xworker_0.indexeddb.leveldb/000003.log` 中可直接读到明文 JSON 记录（字段 `feedId`、`videoKey`、`preDownloadedContentLen`、`videoContentLen`、`seed`）。
+- 预下载文件 `xworker/liteapp/local/assets/tmp/.../finder/finder_videoCache_*` 是加密视频前缀；用该记录里的 `seed` 生成 Isaac64 流，XOR 前 131072 字节即可。
+- 端到端验证：
+  - 完整缓存（`preDownloadedContentLen == videoContentLen`，370,351 字节）解密后 `ffprobe` 为 HEVC 720×1280 / AAC / 7.52 秒，`ffmpeg -f null` 无解码错误。
+  - 部分缓存（571,092 字节，记录总长 1,027,964）解密后 MP4 头正常，但在 `0x8be76` 处截断，说明长视频仍需补齐缓存之后的字节。
+- 因此原文件路径改为 **条件可行**：完整预下载缓存可直接解密为原文件；长视频需要同时拿到完整媒体 URL（xweb 缓存命中或媒体域名代理捕获），再按内容长度/spec 与 seed 记录配对。尚未完成长视频 URL + seed 的端到端验证。
+- 限制：依赖 LiteApp 预下载缓存的文件布局与 IndexedDB 明文 `seed`；版本升级必须复验。未解密额外域名、未注入、未改微信文件。
 
 ## 问题
 
@@ -86,12 +99,13 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
 
 ### 3. feed 元数据能否在 worker/IPC、日志或可观察网络响应中拿到？
 
-**只在 LiteApp 页面 JS 内存与原生桥响应里；网络、日志、磁盘都拿不到（本机实测 + 公开资料，可信度高）。**
+**普通网络/日志不落；但 LiteApp 预下载记录会把 `seed` 写到 IndexedDB（2026-11-22 追加实测，修正了“磁盘拿不到”）。**
 
 - 元数据结构与 #171 相同：`objectDesc.media[0]` 含 `url`、`urlToken`、`decodeKey`、`videoPlayLen`、`thumbUrl`；由 `H5ExtTransfer` 的 `jsapi_resp` 返回给 LiteApp。
 - WMPF 侧保留的 finder xworker（`xworker/finder/28/worker`）只包含旧 `channels.weixin.qq.com/web/pages/*` 的 URL 常量；4.2.0.53 的 LiteApp 页面逻辑在 LiteApp 包内，不经过这个 worker。
 - 4.2.0.53 的可观察网络里没有 `/cgi-bin/micromsg-bin/pc_finder*`，只有页面自己的 `POST /web/report-perf`（LiteApp 代码里是 `${U}/web/report-perf?pf=lite`，JiuMi 侧看到的正是这条）。
-- 微信日志是 xlog 二进制（非 zlib、非明文），全量搜索 `channels.weixin`、`report-perf`、`finder`、`devtools` 均为 0 命中；xweb profile 的 Cache/Local Storage/IndexedDB 中没有含 `decodeKey` 的 feed 数据（只有 LiteApp 代码与少量静态资源）；磁盘上也没有发现视频缓存文件。
+- 微信日志是 xlog 二进制（非 zlib、非明文），全量搜索 `channels.weixin`、`report-perf`、`finder`、`devtools` 均为 0 命中；xweb Cache/Local Storage 没有 feed 数据。
+- **修正**：`radium/web/profiles/multitab_*/IndexedDB/weixin_xworker_0.indexeddb.leveldb` 的 `video_cache_info` 记录含明文 `seed`；`xworker/liteapp/local/assets/tmp/.../finder/finder_videoCache_*` 是预下载视频前缀，可用该 `seed` 解密（见追加实测）。
 - 公开：同类工具 [wx_channels_download](https://github.com/ltaoo/wx_channels_download) 的 issue 也确认「原生 LiteApp 视频页」无法建立页面注入连接。
 
 ### 4. 媒体请求是否可观察；`decode_key` 有网络/服务端来源，还是只在原生内存/IPC？
@@ -100,10 +114,10 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
 
 - LiteApp 的 `videoUrl` getter 是 `media.url + media.urlToken`，并把 `wxapp.tc.qq.com` 重写为 `finder.video.qq.com`；播放器在页面内用 WASM worker（源码日志 `[decryptWorker-pool]`）按 `decodeKey` 解密首段。
 - `decodeKey` 只来自 `objectDesc.media[0]`，即 `H5ExtTransfer` 响应；它不出现在媒体 URL、`urlToken` 或请求头里，无法从 URL 推导。
-- 因此：能看到「请求了 `finder.video.qq.com`」（主机/连接级），但拿不到 `decode_key`；ADR-0013 已实测媒体响应 `X-encflag: 1`、`X-enclen: 131072`，只解首 128 KB，没有 key 就无法还原。
+- 因此：能看到「请求了 `finder.video.qq.com`」（主机/连接级），URL 里没有 `decode_key`；ADR-0013 已实测媒体响应 `X-encflag: 1`、`X-enclen: 131072`，只解首 128 KB。
 - 限制：本次没有重新抓包（避免扩大解密面）；媒体侧结论沿用 ADR-0013 的实测与本次代码证据。
 - 2026-11-22 追加实测：播放后，xweb `Cache/Cache_Data/data_1|data_2` 中可检索到完整的 `20302/stodownload` URL（参数含 `encfilekey`、`token`、`sign`、`exportkey`、`pass_ticket` 等，不含 `decode_key`）。用该 URL 做 `Range: 0-0` 与 `0-131071` 请求均返回 `206 video/mp4`，总长 236,107 字节，`X-encflag: 1`、`X-enclen: 131072`；测试时 URL 仍有效。
-- 因此“加载视频的请求”可以抓到（xweb 缓存，或把媒体域名送进代理），但抓到的只有 URL、令牌和加密标记，没有 `decode_key`；加密视频仍无法仅凭请求下载播放。未加密视频（无 `X-encflag`）可能可以直接下载，但需逐条验证。
+- **修正**：URL 本身不含 key，但 LiteApp 的预下载记录在 IndexedDB 里有 `seed`；完整预下载缓存已验证可解密，长视频需要把完整 URL 与 seed 记录按长度/spec 配对（未完成端到端验证）。
 
 ### 5. 是否有可驱动的原生保存/分享/复制链接入口？
 
@@ -111,17 +125,17 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
 
 - LiteApp 页面菜单只有 `copy_feed_link`：点击后调用 `finderGetFeedH5Url({objectId})`（cmdid 22299，仍走 `H5ExtTransfer`），把返回的 `feedH5Url` 写入剪贴板；这是 H5 分享页地址，不是媒体地址，也不含 `decode_key`。是否可用还受 `pcCopyH5Url` 实验位控制。
 - 没有 `保存`/`保存视频` 文案；`XPlayer.bin`、`Weixin.dll` 中 `保存视频` 均 0 命中；`Weixin.dll` 里的 `复制链接`/`另存为` 无法归因到视频号播放器菜单。
-- 磁盘侧没有可监听的落盘文件：LiteApp 临时目录为空，微信数据目录里没有发现 mp4 之类的大文件；至少没有留下「播放后可直接导入」的完整文件。
+- 磁盘侧没有「保存视频」按钮，但预下载缓存留下了 `finder_videoCache_*` 视频前缀和 IndexedDB 里的 `seed`；完整预下载缓存可直接解密为 MP4（见追加实测），部分缓存需补齐剩余字节。
 - 公开：同类工具是在页面里**自建**下载按钮（README），侧面说明微信 PC 端没有原生保存入口。
 
 ## 最终结论
 
-**no-go（当前边界内）。**
+**页面注入：no-go；预下载缓存 + seed：条件 go（见上方 2026-11-22 追加实测）。**
 
 理由按重要性排序：
 
 1. 视频号页面已变为 WMPF LiteApp（本地签名包），没有可注入的远程 HTML/JS；MITM `channels.weixin.qq.com` 只剩 telemetry。
-2. feed 元数据只走 `H5ExtTransfer` 原生桥；`decode_key` 无法从网络、日志或磁盘获得。
+2. feed 元数据不落普通网络；但 LiteApp 预下载时会把 `seed` 写入 IndexedDB，完整预下载缓存可直接解密（条件 go）；长视频还需完整 URL 配对。
 3. DevTools 入口需要 Frida/内存注入（越界）；配置/实验开关不可达，篡改 LiteApp 缓存也不是「支持的配置」。
 4. 原生保存/复制链接不能替代：复制链接只给 H5 分享页，且没有 `decode_key`。
 
@@ -170,11 +184,9 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
    - 最新是 `channels.weixin.qq.com/web/pages/*` → 远程页面回来了，重跑 #171/#177 的注入链路；
    - 最新是 `liteapp.weixin.qq.com/a/finder/*` → 仍是 LiteApp，维持 no-go。
 5. **LiteApp 版本**：`xworker\liteapp\resources\wxalite*\*\main` 是否存在；解包 `pkg/app.json` 看 `app_version`、`pages/lite/*`。
-6. **桥形态**：在解包出的 `pkg/chunks-common.js` 搜 `jsapi.invoke("H5ExtTransfer"` 与 `FinderPcFlow`：
-   - 仍在 → 数据仍走原生桥，MITM 拿不到；
-   - 改成页面 `fetch`/`XHR` → 重新评估注入。
+6. **桥与缓存**：在解包出的 `pkg/chunks-common.js` 搜 `jsapi.invoke("H5ExtTransfer"` 与 `FinderPcFlow`；同时检查 `IndexedDB/weixin_xworker_0.indexeddb.leveldb` 是否仍有 `seed` 和 `finder_videoCache_*`。有 → 预下载缓存路线可继续；没有 → 记录新形态。
 7. **网络对照**：只代理 `channels.weixin.qq.com` 时，若仍只有 `/web/report-perf?pf=lite`、无 HTML/JS，则确认页面不在该域。
-8. **决策**：只有第 4 步回到远程页面，才重新评估 go；否则不因客户端小版本变化重开。
+8. **决策**：第 4 步回到远程页面 → 重新评估注入；否则先检查预下载缓存 + `seed` 是否仍可用（#182 追加实测）；两者都不可用才维持 no-go。
 
 ## 未验证与限制
 
