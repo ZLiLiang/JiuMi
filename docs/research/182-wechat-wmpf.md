@@ -147,9 +147,15 @@ LiteApp 在 `FinderInit` 响应里取 `exptInfo`（源码里有 `[实验]useSvrE
 - 代价：录的是屏幕像素，不是原文件；分辨率受窗口大小限制并需重编码；会录进播放器 UI/弹幕/鼠标（可裁切、关鼠标）；Windows 10 的 WGC 可能显示黄色捕获边框；音频需另走 WASAPI 回环；拿不到时长与播放状态，需要用户手动开始/停止。
 - 结论：技术可行，可作为“录制当前视频”的兜底；需在登录后的微信视频上验证黑屏、UI、音频与可接受画质。
 
-### 官方网页版（兜底）
+### 官方网页版 / H5 分享页（兜底）
 
-`channels.weixin.qq.com/web/pages/*` 的远程页面代码路径仍在。待验证普通浏览器扫码登录后是否仍能加载该页面；若能，现有代理 + 注入链路可复用，但观看入口从微信变为浏览器。未验证，不作为当前方案。
+`channels.weixin.qq.com/web/pages/*` 的远程页面代码路径仍在，但普通浏览器是否可用未证实。
+
+2026-11-22 用公开短链 `https://weixin.qq.com/sph/…` 复验：
+
+- 短链 301 到 `channels.weixin.qq.com/finder-preview/pages/sph?id=…`；Edge 渲染后只显示二维码与「可扫码前往微信观看此内容」，不是可播放的网页。
+- 页面会匿名调用 `POST /finder-preview/api/feed/get_feed_info`（`shortUri` + 空 `generalToken`），只返回作者、描述、封面、互动数和 `dynamicExportId`，**没有视频地址**；前端包里的 `h264VideoInfo.videoUrl` 需要登录态/微信环境才会出现。
+- 因此普通浏览器分享页不能替代注入；要拿到原文件仍需要微信登录态、原生桥或注入/逆向，未作为当前方案。
 
 ## 版本复验清单（10 分钟内跑完）
 
