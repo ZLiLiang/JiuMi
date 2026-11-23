@@ -247,6 +247,21 @@ function Resolve-OtherChannelEntry {
     return $null
 }
 
+function Invoke-GiteeArrayGet {
+    param(
+        [string]$Uri,
+        [int]$TimeoutSec = 60
+    )
+    $response = Invoke-RestMethod -Method Get -TimeoutSec $TimeoutSec -Uri $Uri
+    if ($null -eq $response) {
+        return ,@()
+    }
+    if ($response -is [System.Array]) {
+        return ,$response
+    }
+    return ,@($response)
+}
+
 function Set-GiteeReleaseAttachment {
     param(
         [string]$ApiBase,
@@ -256,9 +271,9 @@ function Set-GiteeReleaseAttachment {
         [string]$FileName,
         [int]$UploadTimeoutSec = 300
     )
-    $existingFiles = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$ApiBase/releases/$ReleaseId/attach_files?access_token=$Token")
+    $existingFiles = Invoke-GiteeArrayGet -Uri "$ApiBase/releases/$ReleaseId/attach_files?access_token=$Token"
     foreach ($file in $existingFiles) {
-        if ([string]$file.name -eq $FileName) {
+        if ($file.PSObject.Properties['name'] -and [string]$file.name -eq $FileName) {
             Invoke-RestMethod -Method Delete -TimeoutSec 60 -Uri "$ApiBase/releases/$ReleaseId/attach_files/$($file.id)?access_token=$Token" | Out-Null
         }
     }
@@ -430,9 +445,9 @@ try {
             }
 
             Write-Host "Querying Gitee releases (target branch: $giteeTargetCommitish)..."
-            $giteeReleases = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100&direction=desc")
+            $giteeReleases = Invoke-GiteeArrayGet -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100&direction=desc"
 
-            $giteeRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $effectiveTag } | Select-Object -First 1
+            $giteeRelease = $giteeReleases | Where-Object { $_.PSObject.Properties['tag_name'] -and [string]$_.tag_name -eq $effectiveTag } | Select-Object -First 1
             if ($null -eq $giteeRelease) {
                 Write-Host "Creating Gitee release $effectiveTag..."
                 $createBody = @{
@@ -463,10 +478,10 @@ try {
             Write-Host 'Checking Gitee release attachment quota...'
             $totalAttachmentBytes = 0L
             foreach ($rel in $giteeReleases) {
-                if ($null -eq $rel.id) {
+                if ($null -eq $rel -or -not $rel.PSObject.Properties['id'] -or $null -eq $rel.id) {
                     continue
                 }
-                $relFiles = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase/releases/$($rel.id)/attach_files?access_token=$giteeToken")
+                $relFiles = Invoke-GiteeArrayGet -Uri "$giteeApiBase/releases/$($rel.id)/attach_files?access_token=$giteeToken"
                 foreach ($file in $relFiles) {
                     if ($file.PSObject.Properties['size'] -and $null -ne $file.size) {
                         $totalAttachmentBytes += [long]$file.size
@@ -481,7 +496,7 @@ try {
             }
 
             # Ensure app-update release exists on Gitee.
-            $giteeUpdateRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $UpdateTag } | Select-Object -First 1
+            $giteeUpdateRelease = $giteeReleases | Where-Object { $_.PSObject.Properties['tag_name'] -and [string]$_.tag_name -eq $UpdateTag } | Select-Object -First 1
             if ($null -eq $giteeUpdateRelease) {
                 Write-Host "Creating Gitee release $UpdateTag..."
                 $createUpdateBody = @{
