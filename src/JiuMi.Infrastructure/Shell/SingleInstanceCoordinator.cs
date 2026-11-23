@@ -152,7 +152,7 @@ public sealed class SingleInstanceCoordinator : ISingleInstanceCoordinator
     }
 
     private static string ResolveExecutablePath() =>
-        Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "JiuMi.Desktop.exe");
+        Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "JiuMi.exe");
 
     private NamedPipeServerStream CreateServer() =>
         new(_name, PipeDirection.In, maxNumberOfServerInstances: 1, PipeTransmissionMode.Byte, PipeOptions.None);
