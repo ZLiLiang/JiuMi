@@ -323,6 +323,10 @@ public sealed class WorldClockCatalogUpdaterTests : IDisposable
         public string Version => "1.0.0";
 
         public string RepositoryUrl => "https://github.com/ZLiLiang/JiuMi";
+
+        public string GiteeRepositoryUrl => "https://gitee.com/ZLiLiang/JiuMi";
+
+        public IReadOnlyList<JiuMi.Application.Updates.AppUpdateSource> UpdateSources => [];
     }
 
     private sealed class TestSettingsStore : ISettingsStore

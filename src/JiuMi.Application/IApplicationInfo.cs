@@ -1,4 +1,6 @@
-﻿namespace JiuMi.Application;
+﻿using JiuMi.Application.Updates;
+
+namespace JiuMi.Application;
 
 /// <summary>
 /// Describes the running application for display in the shell.
@@ -22,9 +24,25 @@ public interface IApplicationInfo
     }
 
     /// <summary>
-    /// Gets the absolute URL of the public source repository.
+    /// Gets the absolute URL of the public GitHub source repository.
     /// </summary>
     string RepositoryUrl
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the absolute URL of the public Gitee mirror repository.
+    /// </summary>
+    string GiteeRepositoryUrl
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the ordered release manifest sources checked for application updates (Gitee first, then GitHub).
+    /// </summary>
+    IReadOnlyList<AppUpdateSource> UpdateSources
     {
         get;
     }

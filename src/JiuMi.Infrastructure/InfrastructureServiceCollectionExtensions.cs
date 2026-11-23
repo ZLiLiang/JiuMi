@@ -10,6 +10,7 @@ using JiuMi.Application.Logging;
 using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.Updates;
 using JiuMi.Application.WeChatVideo;
 using JiuMi.Application.WorldClock;
 using JiuMi.Infrastructure.Diagnostics;
@@ -21,6 +22,7 @@ using JiuMi.Infrastructure.Logging;
 using JiuMi.Infrastructure.Notifications;
 using JiuMi.Infrastructure.Settings;
 using JiuMi.Infrastructure.Shell;
+using JiuMi.Infrastructure.Updates;
 using JiuMi.Infrastructure.WeChatVideo;
 using JiuMi.Infrastructure.WorldClock;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +75,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IWorldClockCatalogUpdater>(provider => new WorldClockCatalogUpdater(
             provider.GetRequiredService<ISettingsStore>(),
             provider.GetRequiredService<WorldClockCatalogCache>(),
+            provider.GetRequiredService<IApplicationInfo>(),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton(provider => new AppUpdateStateStore(
+            provider.GetRequiredService<ISettingsStore>().Location.DirectoryPath,
+            provider.GetRequiredService<Serilog.ILogger>()));
+        services.AddSingleton<IAppUpdateChecker>(provider => new AppUpdateChecker(
+            provider.GetRequiredService<ISettingsStore>(),
+            provider.GetRequiredService<AppUpdateStateStore>(),
             provider.GetRequiredService<IApplicationInfo>(),
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<Serilog.ILogger>()));

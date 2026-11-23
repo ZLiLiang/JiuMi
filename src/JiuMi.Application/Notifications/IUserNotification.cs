@@ -1,11 +1,12 @@
 ﻿namespace JiuMi.Application.Notifications;
 
 /// <summary>
-/// Delivers a short system notification that is only used when no window is visible.
+/// Delivers a short system notification via the notification area.
 /// </summary>
 /// <remarks>
-/// The Windows implementation lives in the infrastructure layer; other platforms accept the call and
-/// do nothing.
+/// Used for background error alerts when no window is visible and for background application update
+/// notifications (which are shown even while the main window is visible). The Windows implementation
+/// lives in the infrastructure layer; other platforms accept the call and do nothing.
 /// </remarks>
 public interface IUserNotification
 {

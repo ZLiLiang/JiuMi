@@ -1,6 +1,6 @@
 # ADR-0017 应用更新检查：双源 Release 清单、通道跟随与只提示策略
 
-- 状态：草案
+- 状态：已接受
 - 日期：2026-11-22
 - 来源：设计讨论定稿；实现票 [#181](https://github.com/ZLiLiang/JiuMi/issues/181)；与世界时钟在线更新同一模式（[ADR-0008](./0008-world-clock-catalog.md)）
 
@@ -25,7 +25,7 @@ JiuMi 以自包含 win-x64 ZIP 分发，Release 手工创建，版本号唯一�
 9. **通知**：发现新版本弹一次托盘气泡，复用 `IUserNotification`（`WindowsTrayIcon` 的 NIIF_INFO 实现），点击打开 Release 页面；同一版本只弹一次，手动检查不弹气泡。主窗口可见时也照弹，并同步更新 `IUserNotification` 的注释。
 10. **网络与容错**：10 秒超时、两次尝试、跟随系统代理、固定 UA；任何失败都只影响本次检查。请求只走 HTTPS，不携带凭据。
 11. **发版流程**：`verify.ps1` 先行；断言 tag 名等于 `<Version>`、HEAD 就是该 tag、工作区干净；GitHub 用 `gh` 创建 Release 并上传 ZIP，Gitee 用令牌认证的地址推送 tag ref 后调 API 创建 Release 并上传 ZIP；各 host 的清单最后生成并上传。流程幂等（同一 tag 重跑只补齐缺失资产）。CI 主责：推送 `v*` tag 触发独立 release workflow 调用同一脚本；本地脚本只作补救，不负责建 tag。
-12. **凭据与配额**：Gitee 私人令牌最小权限，只存在 Actions secret `GITEE_TOKEN` 或本地环境变量，日志掩码，绝不入库；Gitee 单附件 100MB、仓库附件总量 1GB，文档写明，脚本超过 80% 告警，不自动删除（不可逆，交由 owner 决定）。Gitee 仓库固定为公开的 `ZLiLiang/JiuMi`，需完成实名与公开仓库审核。
+12. **凭据与配额**：Gitee 私人令牌最小权限，只存在 Actions secret `GITEE_TOKEN` 或本地环境变量，日志掩码，绝不入库；Gitee 单附件 100MB、仓库附件总量 1GB，文档写明，脚本超过 80% 告警，不自动删除（不可逆，交由 owner 决定）。Gitee 仓库固定为公开的 `love-you-every-day/jiu-mi`，需完成实名与公开仓库审核。
 13. **信任模型**：清单只来自两个 HTTPS host，v1 无签名。最坏情况是把用户引到钓鱼页，而 v1 只做页面跳转、不静默执行，因此接受该风险。自动更新落地前必须引入独立于清单的完整性来源（代码签名 + 独立哈希），并在届时的 ADR 中重新评估。
 
 ## 为什么
