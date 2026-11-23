@@ -20,7 +20,11 @@ C# code follows `docs/coding-guidelines/csharp.md`. Mechanical rules live in `.e
 
 ### Build and verification
 
-Run `pwsh ./verify.ps1` before considering a code change done. It is the only supported gate: Release build with warnings as errors, tests when test projects exist, and `dotnet format --verify-no-changes`. CI, when present, must run the same script. See `docs/agents/build-and-verification.md`; do not introduce a second build command. The Windows publish flow is documented there too; publishing is not a gate.
+Run `pwsh ./verify.ps1` before considering a code change done. It is the only supported gate: Release build with warnings as errors, tests when test projects exist, and `dotnet format --verify-no-changes`. CI, when present, must run the same script. See `docs/agents/build-and-verification.md`; do not introduce a second build command. The Windows publish and release flow is documented there too; publishing is not a gate.
+
+### Release Gitee mirror sync
+
+When cutting or completing a release after `.github/workflows/release.yml` publishes `v<version>` to GitHub, **the agent** runs `pwsh ./tools/publish-release.ps1 -SyncGiteeFromGitHub -Tag v<version>` locally (using the owner's `GITEE_TOKEN` user environment variable) to mirror the exact SHA-256-verified ZIP and `app-update/update.json` to Gitee, rather than asking the user to run it manually. See `docs/agents/build-and-verification.md`.
 
 ## Git commits
 
