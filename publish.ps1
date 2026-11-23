@@ -16,13 +16,19 @@ if (Test-Path $publishDir) {
     Remove-Item $publishDir -Recurse -Force
 }
 
-Write-Host "Publishing JiuMi $version (win-x64, Release)..."
-dotnet publish $project -c Release -r win-x64 --self-contained true --nologo -o $publishDir -p:DebugType=None -p:DebugSymbols=false
+Write-Host "Publishing JiuMi $version (win-x64, Release, single-file)..."
+dotnet publish $project -c Release -r win-x64 --self-contained true --nologo -o $publishDir -p:DebugType=None -p:DebugSymbols=false -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-$exe = Join-Path $publishDir 'JiuMi.Desktop.exe'
+$publishedExe = Join-Path $publishDir 'JiuMi.Desktop.exe'
+$exe = Join-Path $publishDir 'JiuMi.exe'
+if (-not (Test-Path $publishedExe)) {
+    throw "Published output is missing '$publishedExe'."
+}
+
+Move-Item -Path $publishedExe -Destination $exe -Force
 if (-not (Test-Path $exe)) {
     throw "Published output is missing '$exe'."
 }
