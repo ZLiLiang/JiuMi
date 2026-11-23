@@ -9,6 +9,7 @@ using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Logging;
 using JiuMi.Application.Settings;
+using JiuMi.Application.Updates;
 using JiuMi.Application.WorldClock;
 using JiuMi.Diagnostics;
 using JiuMi.Threading;
@@ -21,6 +22,7 @@ namespace JiuMi.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly IApplicationInfo _applicationInfo;
+    private readonly IAppUpdateChecker _appUpdateChecker;
     private readonly IWorldClockCatalogUpdater _catalogUpdater;
     private readonly IDiagnosticsExporter _diagnosticsExporter;
     private readonly IErrorReporter _errorReporter;
@@ -51,6 +53,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="exportController">Runs the export and reports its failures.</param>
     /// <param name="loggingStatus">Reports whether file logging is working.</param>
     /// <param name="catalogUpdater">Checks the published world clock catalog and reports its state.</param>
+    /// <param name="appUpdateChecker">Checks for newer application releases and reports update status.</param>
     /// <param name="logger">Receives settings saves from this page.</param>
     public SettingsViewModel(
         IApplicationInfo applicationInfo,
@@ -65,6 +68,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         DiagnosticsExportController exportController,
         ILoggingStatus loggingStatus,
         IWorldClockCatalogUpdater catalogUpdater,
+        IAppUpdateChecker appUpdateChecker,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(applicationInfo);
@@ -79,9 +83,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(exportController);
         ArgumentNullException.ThrowIfNull(loggingStatus);
         ArgumentNullException.ThrowIfNull(catalogUpdater);
+        ArgumentNullException.ThrowIfNull(appUpdateChecker);
         ArgumentNullException.ThrowIfNull(logger);
 
         _applicationInfo = applicationInfo;
+        _appUpdateChecker = appUpdateChecker;
         _catalogUpdater = catalogUpdater;
         _diagnosticsExporter = diagnosticsExporter;
         _errorReporter = errorReporter;
@@ -105,11 +111,14 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         SelectThemeCommand = new RelayCommand<AppTheme>(SelectTheme);
         SelectCloseActionCommand = new RelayCommand<CloseAction>(SelectCloseAction);
         CheckCatalogCommand = new AsyncRelayCommand(CheckCatalogAsync, () => CanCheckCatalog);
+        CheckUpdateCommand = new AsyncRelayCommand(CheckUpdateAsync, () => CanCheckUpdate);
+        UpdateActionCommand = new AsyncRelayCommand(ExecuteUpdateActionAsync, () => CanCheckUpdate);
         _localization.PropertyChanged += OnLocalizationChanged;
         _themeService.PropertyChanged += OnThemeServiceChanged;
         _loggingStatus.PropertyChanged += OnLoggingStatusChanged;
         _exportController.ExportingChanged += OnExportingChanged;
         _catalogUpdater.StatusChanged += OnCatalogStatusChanged;
+        _appUpdateChecker.StatusChanged += OnAppUpdateStatusChanged;
     }
 
     /// <summary>
@@ -132,6 +141,82 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// Gets the version line of the about section.
     /// </summary>
     public string VersionText => _localization.Format("Settings.About.Version", _applicationInfo.Version);
+
+    /// <summary>
+    /// Gets a value indicating whether an update status line should be shown below the version.
+    /// </summary>
+    public bool HasUpdateStatus => _appUpdateChecker.Status.State != AppUpdateCheckState.Idle;
+
+    /// <summary>
+    /// Gets a value indicating whether an application update check is currently running.
+    /// </summary>
+    public bool IsCheckingUpdate => _appUpdateChecker.Status.IsChecking;
+
+    /// <summary>
+    /// Gets a value indicating whether a newer application version is available for download.
+    /// </summary>
+    public bool HasAvailableUpdate =>
+        _appUpdateChecker.Status is { State: AppUpdateCheckState.UpdateAvailable, AvailableUpdate: not null };
+
+    /// <summary>
+    /// Gets a value indicating whether the last manual update check failed.
+    /// </summary>
+    public bool IsUpdateCheckFailed => _appUpdateChecker.Status.State == AppUpdateCheckState.Failed;
+
+    /// <summary>
+    /// Gets a value indicating whether the update button can be invoked.
+    /// </summary>
+    public bool CanCheckUpdate => !IsCheckingUpdate;
+
+    /// <summary>
+    /// Gets the status line shown below the version in the about card.
+    /// </summary>
+    public string UpdateStatusText
+    {
+        get
+        {
+            AppUpdateStatus status = _appUpdateChecker.Status;
+            return status.State switch
+            {
+                AppUpdateCheckState.Checking => _localization["Settings.About.Update.Checking"],
+                AppUpdateCheckState.UpdateAvailable when status.AvailableUpdate is { } update =>
+                    update.Release.IsPrerelease
+                        ? _localization.Format(
+                            "Settings.About.Update.PreviewAvailable",
+                            update.Release.Version.ToString())
+                        : _localization.Format(
+                            "Settings.About.Update.StableAvailable",
+                            update.Release.Version.ToString()),
+                AppUpdateCheckState.UpToDate when status.LastCheckedAt is { } lastCheckedAt =>
+                    _localization.Format("Settings.About.Update.UpToDate", FormatInstant(lastCheckedAt)),
+                AppUpdateCheckState.Failed => _localization["Settings.About.Update.Failed"],
+                _ => string.Empty,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Gets the label for the update action button ("Check for updates" or "Download").
+    /// </summary>
+    public string UpdateActionText => HasAvailableUpdate
+        ? _localization["Settings.About.Update.Download"]
+        : _localization["Settings.About.Update.Check"];
+
+    /// <summary>
+    /// Gets the command that runs a manual update check.
+    /// </summary>
+    public IAsyncRelayCommand CheckUpdateCommand
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the command that checks for updates or opens the release page when an update is available.
+    /// </summary>
+    public IAsyncRelayCommand UpdateActionCommand
+    {
+        get;
+    }
 
     /// <summary>
     /// Gets the effective settings file path shown in the about section.
@@ -368,6 +453,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _loggingStatus.PropertyChanged -= OnLoggingStatusChanged;
         _exportController.ExportingChanged -= OnExportingChanged;
         _catalogUpdater.StatusChanged -= OnCatalogStatusChanged;
+        _appUpdateChecker.StatusChanged -= OnAppUpdateStatusChanged;
     }
 
     private void SelectTheme(AppTheme theme)
@@ -487,6 +573,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
 
         OnPropertyChanged(nameof(VersionText));
+        OnPropertyChanged(nameof(UpdateStatusText));
+        OnPropertyChanged(nameof(UpdateActionText));
         OnPropertyChanged(nameof(CatalogStatusText));
         OnPropertyChanged(nameof(CatalogVersionText));
 
@@ -532,6 +620,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private void OnCatalogStatusChanged(object? sender, EventArgs e) =>
         _uiThreadDispatcher.Post(NotifyCatalogStateChanged);
 
+    private void OnAppUpdateStatusChanged(object? sender, EventArgs e) =>
+        _uiThreadDispatcher.Post(NotifyAppUpdateStateChanged);
+
     private void NotifyCatalogStateChanged()
     {
         OnPropertyChanged(nameof(IsCheckingCatalog));
@@ -539,6 +630,42 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CatalogStatusText));
         OnPropertyChanged(nameof(CatalogVersionText));
         CheckCatalogCommand.NotifyCanExecuteChanged();
+    }
+
+    private void NotifyAppUpdateStateChanged()
+    {
+        OnPropertyChanged(nameof(HasUpdateStatus));
+        OnPropertyChanged(nameof(IsCheckingUpdate));
+        OnPropertyChanged(nameof(HasAvailableUpdate));
+        OnPropertyChanged(nameof(IsUpdateCheckFailed));
+        OnPropertyChanged(nameof(CanCheckUpdate));
+        OnPropertyChanged(nameof(UpdateStatusText));
+        OnPropertyChanged(nameof(UpdateActionText));
+        CheckUpdateCommand.NotifyCanExecuteChanged();
+        UpdateActionCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task CheckUpdateAsync()
+    {
+        try
+        {
+            await _appUpdateChecker.CheckAsync(isManual: true);
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "Manual app update check failed");
+        }
+    }
+
+    private Task ExecuteUpdateActionAsync()
+    {
+        if (_appUpdateChecker.Status is { State: AppUpdateCheckState.UpdateAvailable, AvailableUpdate: { } update })
+        {
+            _systemLauncher.OpenUri(update.Release.PageUrl);
+            return Task.CompletedTask;
+        }
+
+        return CheckUpdateAsync();
     }
 
     private async Task CheckCatalogAsync()

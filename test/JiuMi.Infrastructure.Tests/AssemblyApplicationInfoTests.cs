@@ -33,6 +33,24 @@ public sealed class AssemblyApplicationInfoTests
         Assert.Equal("0.0.0", info.Version);
     }
 
+    [Fact]
+    public void UpdateSources_GivenDefaultMetadata_ListsGiteeBeforeGitHub()
+    {
+        Assembly assembly = CreateAssembly("JiuMi Test", "1.4.1");
+        var info = new AssemblyApplicationInfo(assembly);
+
+        Assert.Equal("https://gitee.com/ZLiLiang/JiuMi", info.GiteeRepositoryUrl);
+        Assert.Equal(2, info.UpdateSources.Count);
+        Assert.Equal("Gitee", info.UpdateSources[0].Name);
+        Assert.Equal(
+            "https://gitee.com/ZLiLiang/JiuMi/releases/download/app-update/update.json",
+            info.UpdateSources[0].ManifestUri.AbsoluteUri);
+        Assert.Equal("GitHub", info.UpdateSources[1].Name);
+        Assert.Equal(
+            "https://github.com/ZLiLiang/JiuMi/releases/download/app-update/update.json",
+            info.UpdateSources[1].ManifestUri.AbsoluteUri);
+    }
+
     private static AssemblyBuilder CreateAssembly(string product, string? informationalVersion)
     {
         AssemblyBuilder builder = AssemblyBuilder.DefineDynamicAssembly(

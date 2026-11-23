@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using JiuMi.Application;
+using JiuMi.Application.Updates;
 
 namespace JiuMi.Infrastructure;
 
@@ -9,6 +10,20 @@ namespace JiuMi.Infrastructure;
 public sealed class AssemblyApplicationInfo : IApplicationInfo
 {
     private const string DefaultRepositoryUrl = "https://github.com/ZLiLiang/JiuMi";
+    private const string DefaultGiteeRepositoryUrl = "https://gitee.com/ZLiLiang/JiuMi";
+    private const string UpdateManifestPath = "/releases/download/app-update/update.json";
+
+    private static readonly IReadOnlyList<AppUpdateSource> _defaultUpdateSources =
+    [
+        new AppUpdateSource(
+            "Gitee",
+            DefaultGiteeRepositoryUrl,
+            new Uri(DefaultGiteeRepositoryUrl + UpdateManifestPath)),
+        new AppUpdateSource(
+            "GitHub",
+            DefaultRepositoryUrl,
+            new Uri(DefaultRepositoryUrl + UpdateManifestPath)),
+    ];
 
     private readonly Assembly _assembly;
 
@@ -35,4 +50,10 @@ public sealed class AssemblyApplicationInfo : IApplicationInfo
 
     /// <inheritdoc />
     public string RepositoryUrl => DefaultRepositoryUrl;
+
+    /// <inheritdoc />
+    public string GiteeRepositoryUrl => DefaultGiteeRepositoryUrl;
+
+    /// <inheritdoc />
+    public IReadOnlyList<AppUpdateSource> UpdateSources => _defaultUpdateSources;
 }

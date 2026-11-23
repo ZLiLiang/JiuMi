@@ -9,6 +9,7 @@ using JiuMi.Application.Localization;
 using JiuMi.Application.Notifications;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.Updates;
 using JiuMi.MyJiuMi;
 using JiuMi.ViewModels;
 using JiuMi.Views;
@@ -35,6 +36,7 @@ public sealed class ShellLifecycle
     private readonly ISettingsStore _settingsStore;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly MyJiuMiSession _myJiuMi;
+    private readonly AppUpdateScheduler _updateScheduler;
     private readonly Serilog.ILogger _logger;
     private readonly object _pendingSync = new();
     private readonly HashSet<string> _notifiedCodes = new(StringComparer.Ordinal);
@@ -63,6 +65,7 @@ public sealed class ShellLifecycle
     /// <param name="settingsStore">Supplies and stores the close behavior.</param>
     /// <param name="recordFactory">Creates the records for a failed close-behavior save.</param>
     /// <param name="myJiuMi">Coordinates the desktop handoff before the window hides or minimizes.</param>
+    /// <param name="updateScheduler">Schedules background update checks once the shell is visible.</param>
     /// <param name="logger">Receives the lifecycle decisions.</param>
     public ShellLifecycle(
         ISingleInstanceCoordinator singleInstance,
@@ -73,6 +76,7 @@ public sealed class ShellLifecycle
         ISettingsStore settingsStore,
         ErrorRecordFactory recordFactory,
         MyJiuMiSession myJiuMi,
+        AppUpdateScheduler updateScheduler,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(singleInstance);
@@ -83,6 +87,7 @@ public sealed class ShellLifecycle
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(myJiuMi);
+        ArgumentNullException.ThrowIfNull(updateScheduler);
         ArgumentNullException.ThrowIfNull(logger);
 
         _singleInstance = singleInstance;
@@ -93,6 +98,7 @@ public sealed class ShellLifecycle
         _settingsStore = settingsStore;
         _recordFactory = recordFactory;
         _myJiuMi = myJiuMi;
+        _updateScheduler = updateScheduler;
         _logger = logger;
 
         _singleInstance.ActivationRequested += OnActivationRequested;
@@ -156,6 +162,7 @@ public sealed class ShellLifecycle
         if (_localization is not null)
         {
             _localization.PropertyChanged += OnLocalizationChanged;
+            _updateScheduler.Start(_localization, action => Dispatcher.UIThread.Post(action));
         }
 
         shell.PropertyChanged += OnShellPropertyChanged;
@@ -302,6 +309,7 @@ public sealed class ShellLifecycle
         }
 
         _myJiuMi.OpenHomeRequested -= OnDesktopOpenRequested;
+        _updateScheduler.Stop();
     }
 
     private void HideToTray(MainWindow shell)

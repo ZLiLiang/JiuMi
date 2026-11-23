@@ -1,6 +1,6 @@
 # ADR-0017 应用更新检查：双源 Release 清单、通道跟随与只提示策略
 
-- 状态：草案
+- 状态：已接受
 - 日期：2026-11-22
 - 来源：设计讨论定稿；实现票 [#181](https://github.com/ZLiLiang/JiuMi/issues/181)；与世界时钟在线更新同一模式（[ADR-0008](./0008-world-clock-catalog.md)）
 

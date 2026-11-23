@@ -7,6 +7,7 @@ using JiuMi.Application.ImageConversion;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Application.Shell;
+using JiuMi.Application.Updates;
 using JiuMi.Diagnostics;
 using JiuMi.Errors;
 using JiuMi.Infrastructure;
@@ -172,6 +173,7 @@ internal static class Program
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ErrorWindowCoordinator>();
+        services.AddSingleton<AppUpdateScheduler>();
         services.AddSingleton<ShellLifecycle>();
         services.AddSingleton<IErrorWindowPresenter>(provider => new ErrorWindowPresenter(
             provider.GetRequiredService<IErrorReporter>(),

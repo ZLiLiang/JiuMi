@@ -51,6 +51,10 @@ public sealed class ErrorRecordFactoryTests
         public string Version => "1.0.0";
 
         public string RepositoryUrl => "https://example.test/JiuMi";
+
+        public string GiteeRepositoryUrl => "https://gitee.test/JiuMi";
+
+        public IReadOnlyList<JiuMi.Application.Updates.AppUpdateSource> UpdateSources => [];
     }
 
     private sealed class StubSettingsStore : ISettingsStore
