@@ -420,13 +420,16 @@ try {
             }
 
             Write-Host "Publishing to Gitee ($GiteeRepository)..."
-            $giteeUser = ($GiteeRepository -split '/')[0]
-            $giteePushUrl = "https://${giteeUser}:${giteeToken}@gitee.com/$GiteeRepository.git"
-            Write-Host "Pushing tag $effectiveTag to Gitee..."
-            [void](Invoke-GitChecked -Arguments @('push', $giteePushUrl, "refs/tags/${effectiveTag}:refs/tags/${effectiveTag}") -SecretToMask $giteeToken)
-
             $giteeApiBase = "https://gitee.com/api/v5/repos/$GiteeRepository"
-            Write-Host 'Querying Gitee releases...'
+            $giteeRepoInfo = Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase?access_token=$giteeToken"
+            $giteeTargetCommitish = if ($giteeRepoInfo.PSObject.Properties['default_branch'] -and -not [string]::IsNullOrWhiteSpace([string]$giteeRepoInfo.default_branch)) {
+                [string]$giteeRepoInfo.default_branch
+            }
+            else {
+                'master'
+            }
+
+            Write-Host "Querying Gitee releases (target branch: $giteeTargetCommitish)..."
             $giteeReleases = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100&direction=desc")
 
             $giteeRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $effectiveTag } | Select-Object -First 1
@@ -435,7 +438,7 @@ try {
                 $createBody = @{
                     access_token     = $giteeToken
                     tag_name         = $effectiveTag
-                    target_commitish = $headCommit
+                    target_commitish = $giteeTargetCommitish
                     name             = "JiuMi $version"
                     body             = "JiuMi $version"
                     prerelease       = $isPrerelease
@@ -484,7 +487,7 @@ try {
                 $createUpdateBody = @{
                     access_token     = $giteeToken
                     tag_name         = $UpdateTag
-                    target_commitish = $headCommit
+                    target_commitish = $giteeTargetCommitish
                     name             = 'Application update manifest'
                     body             = 'Machine-readable update.json manifest published by tools/publish-release.ps1.'
                     prerelease       = $false
