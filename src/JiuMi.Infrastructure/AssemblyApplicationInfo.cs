@@ -10,7 +10,7 @@ namespace JiuMi.Infrastructure;
 public sealed class AssemblyApplicationInfo : IApplicationInfo
 {
     private const string DefaultRepositoryUrl = "https://github.com/ZLiLiang/JiuMi";
-    private const string DefaultGiteeRepositoryUrl = "https://gitee.com/ZLiLiang/JiuMi";
+    private const string DefaultGiteeRepositoryUrl = "https://gitee.com/love-you-every-day/jiu-mi";
     private const string UpdateManifestPath = "/releases/download/app-update/update.json";
 
     private static readonly IReadOnlyList<AppUpdateSource> _defaultUpdateSources =

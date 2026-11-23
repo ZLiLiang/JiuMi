@@ -13,7 +13,7 @@ param(
     [switch]$SkipVerify,
     [switch]$SkipGitee,
     [string]$GitHubRepository = 'ZLiLiang/JiuMi',
-    [string]$GiteeRepository = 'ZLiLiang/JiuMi',
+    [string]$GiteeRepository = 'love-you-every-day/jiu-mi',
     [string]$UpdateTag = 'app-update',
     [string]$Gh = 'gh',
     [string]$Git = 'git'

@@ -39,11 +39,11 @@ public sealed class AssemblyApplicationInfoTests
         Assembly assembly = CreateAssembly("JiuMi Test", "1.4.1");
         var info = new AssemblyApplicationInfo(assembly);
 
-        Assert.Equal("https://gitee.com/ZLiLiang/JiuMi", info.GiteeRepositoryUrl);
+        Assert.Equal("https://gitee.com/love-you-every-day/jiu-mi", info.GiteeRepositoryUrl);
         Assert.Equal(2, info.UpdateSources.Count);
         Assert.Equal("Gitee", info.UpdateSources[0].Name);
         Assert.Equal(
-            "https://gitee.com/ZLiLiang/JiuMi/releases/download/app-update/update.json",
+            "https://gitee.com/love-you-every-day/jiu-mi/releases/download/app-update/update.json",
             info.UpdateSources[0].ManifestUri.AbsoluteUri);
         Assert.Equal("GitHub", info.UpdateSources[1].Name);
         Assert.Equal(
