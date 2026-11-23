@@ -51,8 +51,7 @@ jobs:
       - name: Package win-x64 ZIP
         run: pwsh ./publish.ps1
 
-      - name: Publish to GitHub and Gitee
+      - name: Publish to GitHub
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: pwsh ./tools/publish-release.ps1 -SkipVerify -Tag "${{ github.ref_name }}"
+        run: pwsh ./tools/publish-release.ps1 -SkipVerify -SkipGitee -Tag "${{ github.ref_name }}"

@@ -1,17 +1,20 @@
 # Publishes a tagged JiuMi release ZIP and updates the app-update/update.json manifests on GitHub and Gitee.
 #
 # Idempotent: rerunning for the same tag replaces existing assets in place without creating duplicates.
-# Does not create git tags. In CI, triggered by pushing a v* tag; locally, used for reruns/recovery.
+# Does not create git tags. In CI, triggered by pushing a v* tag (with -SkipGitee for fast GitHub publishing).
+# From China, run -SyncGiteeFromGitHub -Tag v<version> to download the exact GitHub release ZIP, verify its
+# SHA-256 against GitHub's update.json, and mirror it to Gitee in seconds.
 #
 #   pwsh ./tools/publish-release.ps1
 #   pwsh ./tools/publish-release.ps1 -SkipGitee
-#   pwsh ./tools/publish-release.ps1 -SkipVerify
+#   pwsh ./tools/publish-release.ps1 -SyncGiteeFromGitHub -Tag v1.4.1
 
 [CmdletBinding()]
 param(
     [string]$Tag = '',
     [switch]$SkipVerify,
     [switch]$SkipGitee,
+    [switch]$SyncGiteeFromGitHub,
     [string]$GitHubRepository = 'ZLiLiang/JiuMi',
     [string]$GiteeRepository = 'love-you-every-day/jiu-mi',
     [string]$UpdateTag = 'app-update',
@@ -289,52 +292,7 @@ function Set-GiteeReleaseAttachment {
     Write-Host "Gitee upload $FileName complete: $summaryLine"
 }
 
-# 1. Run verification gate unless explicitly skipped (CI runs verify.ps1 in an earlier job).
-if (-not $SkipVerify) {
-    Write-Host 'Running verification gate (verify.ps1)...'
-    & pwsh (Join-Path $repoRoot 'verify.ps1')
-    if ($LASTEXITCODE -ne 0) {
-        throw "verify.ps1 failed with exit code $LASTEXITCODE."
-    }
-}
-
-# 2. Read <Version> from Directory.Build.props and assert git / artifact consistency before any remote call.
-$version = (dotnet msbuild $desktopProject -nologo -getProperty:Version).Trim()
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($version)) {
-    throw 'Could not read <Version>; set it in Directory.Build.props.'
-}
-
-$expectedTag = "v$version"
-$effectiveTag = if ([string]::IsNullOrWhiteSpace($Tag)) { $expectedTag } else { $Tag.Trim() }
-$normalizedTag = if ($effectiveTag.StartsWith('v', [StringComparison]::Ordinal)) { $effectiveTag.Substring(1) } else { $effectiveTag }
-if ($normalizedTag -ne $version) {
-    throw "Tag '$effectiveTag' does not match <Version> '$version' in Directory.Build.props."
-}
-
-$statusOutput = Invoke-GitChecked -Arguments @('status', '--porcelain')
-if (-not [string]::IsNullOrWhiteSpace($statusOutput)) {
-    throw "Working tree is dirty. Commit or stash changes before publishing a release.`n$statusOutput"
-}
-
-$headCommit = Invoke-GitChecked -Arguments @('rev-parse', 'HEAD')
-$headTags = @(Invoke-GitChecked -Arguments @('tag', '--points-at', 'HEAD') -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-if ($headTags -notcontains $effectiveTag) {
-    throw "HEAD ($headCommit) is not tagged with '$effectiveTag'. Found tags on HEAD: $($headTags -join ', ')."
-}
-
-$zipName = "JiuMi-$version-win-x64.zip"
-$zipPath = Join-Path $artifactsDir $zipName
-if (-not (Test-Path -LiteralPath $zipPath)) {
-    throw "Missing release artifact '$zipPath'. Run 'pwsh ./publish.ps1' first."
-}
-
-$assetSha256 = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
-$assetSize = (Get-Item -LiteralPath $zipPath).Length
-$isPrerelease = $version -match '-'
 $nowIso = [DateTimeOffset]::UtcNow.ToString('O')
-
-Write-Host "Publishing JiuMi $version (tag: $effectiveTag, prerelease: $isPrerelease, size: $assetSize bytes, sha256: $assetSha256)..."
-
 $githubError = $null
 $giteeError = $null
 $githubOtherChannelEntry = $null
@@ -342,7 +300,111 @@ $tempDir = Join-Path ([IO.Path]::GetTempPath()) ('jiumi-release-' + [guid]::NewG
 New-Item -ItemType Directory -Path $tempDir | Out-Null
 
 try {
+    if ($SyncGiteeFromGitHub) {
+        if ($SkipGitee) {
+            throw '-SyncGiteeFromGitHub cannot be combined with -SkipGitee.'
+        }
+        if ([string]::IsNullOrWhiteSpace($Tag)) {
+            throw '-SyncGiteeFromGitHub requires -Tag (for example: -Tag v1.4.1).'
+        }
+
+        $effectiveTag = $Tag.Trim()
+        $version = if ($effectiveTag.StartsWith('v', [StringComparison]::Ordinal)) { $effectiveTag.Substring(1) } else { $effectiveTag }
+        if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            throw "Tag '$effectiveTag' is not a valid SemVer release tag."
+        }
+
+        $isPrerelease = $version -match '-'
+        $zipName = "JiuMi-$version-win-x64.zip"
+        $zipPath = Join-Path $tempDir $zipName
+
+        Write-Host "Downloading $zipName from GitHub release $effectiveTag ($GitHubRepository)..."
+        & $Gh release download $effectiveTag --repo $GitHubRepository --pattern $zipName --dir $tempDir --clobber
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $zipPath)) {
+            throw "Failed to download $zipName from GitHub release $effectiveTag."
+        }
+
+        $assetSha256 = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $assetSize = (Get-Item -LiteralPath $zipPath).Length
+
+        # Verify against GitHub's published app-update/update.json when available, and grab other-channel backfill.
+        $ghSyncDir = Join-Path $tempDir 'gh-sync'
+        New-Item -ItemType Directory -Path $ghSyncDir | Out-Null
+        & $Gh release download $UpdateTag --repo $GitHubRepository --pattern 'update.json' --dir $ghSyncDir --clobber 2>$null
+        $ghSyncManifestPath = Join-Path $ghSyncDir 'update.json'
+        if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $ghSyncManifestPath)) {
+            $ghSyncManifest = Get-Content -LiteralPath $ghSyncManifestPath -Raw | ConvertFrom-Json
+            $channelName = if ($isPrerelease) { 'preview' } else { 'stable' }
+            $otherChannelName = if ($isPrerelease) { 'stable' } else { 'preview' }
+            if ($ghSyncManifest.PSObject.Properties[$channelName] -and $null -ne $ghSyncManifest.$channelName) {
+                $publishedEntry = $ghSyncManifest.$channelName
+                if ([string]$publishedEntry.version -eq $version -and $publishedEntry.PSObject.Properties['assetSha256'] -and -not [string]::IsNullOrWhiteSpace([string]$publishedEntry.assetSha256)) {
+                    $expectedSha = ([string]$publishedEntry.assetSha256).ToLowerInvariant()
+                    if ($assetSha256 -ne $expectedSha) {
+                        throw "Downloaded ZIP SHA-256 ($assetSha256) does not match GitHub update.json ($expectedSha)."
+                    }
+                    Write-Host "Verified SHA-256 matches GitHub update.json: $assetSha256"
+                }
+            }
+            $githubOtherChannelEntry = Resolve-OtherChannelEntry `
+                -ExistingManifest $ghSyncManifest `
+                -Releases @() `
+                -OtherChannelName $otherChannelName `
+                -HostKind 'GitHub' `
+                -Repository $GitHubRepository
+        }
+
+        Write-Host "Mirroring JiuMi $version to Gitee (tag: $effectiveTag, size: $assetSize bytes, sha256: $assetSha256)..."
+    }
+    else {
+        # 1. Run verification gate unless explicitly skipped (CI runs verify.ps1 in an earlier job).
+        if (-not $SkipVerify) {
+            Write-Host 'Running verification gate (verify.ps1)...'
+            & pwsh (Join-Path $repoRoot 'verify.ps1')
+            if ($LASTEXITCODE -ne 0) {
+                throw "verify.ps1 failed with exit code $LASTEXITCODE."
+            }
+        }
+
+        # 2. Read <Version> from Directory.Build.props and assert git / artifact consistency before any remote call.
+        $version = (dotnet msbuild $desktopProject -nologo -getProperty:Version).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($version)) {
+            throw 'Could not read <Version>; set it in Directory.Build.props.'
+        }
+
+        $expectedTag = "v$version"
+        $effectiveTag = if ([string]::IsNullOrWhiteSpace($Tag)) { $expectedTag } else { $Tag.Trim() }
+        $normalizedTag = if ($effectiveTag.StartsWith('v', [StringComparison]::Ordinal)) { $effectiveTag.Substring(1) } else { $effectiveTag }
+        if ($normalizedTag -ne $version) {
+            throw "Tag '$effectiveTag' does not match <Version> '$version' in Directory.Build.props."
+        }
+
+        $statusOutput = Invoke-GitChecked -Arguments @('status', '--porcelain')
+        if (-not [string]::IsNullOrWhiteSpace($statusOutput)) {
+            throw "Working tree is dirty. Commit or stash changes before publishing a release.`n$statusOutput"
+        }
+
+        $headCommit = Invoke-GitChecked -Arguments @('rev-parse', 'HEAD')
+        $headTags = @(Invoke-GitChecked -Arguments @('tag', '--points-at', 'HEAD') -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($headTags -notcontains $effectiveTag) {
+            throw "HEAD ($headCommit) is not tagged with '$effectiveTag'. Found tags on HEAD: $($headTags -join ', ')."
+        }
+
+        $zipName = "JiuMi-$version-win-x64.zip"
+        $zipPath = Join-Path $artifactsDir $zipName
+        if (-not (Test-Path -LiteralPath $zipPath)) {
+            throw "Missing release artifact '$zipPath'. Run 'pwsh ./publish.ps1' first."
+        }
+
+        $assetSha256 = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $assetSize = (Get-Item -LiteralPath $zipPath).Length
+        $isPrerelease = $version -match '-'
+
+        Write-Host "Publishing JiuMi $version (tag: $effectiveTag, prerelease: $isPrerelease, size: $assetSize bytes, sha256: $assetSha256)..."
+    }
+
     # 3. GitHub release + update.json (uploaded last).
+    if (-not $SyncGiteeFromGitHub) {
     try {
         Write-Host "Publishing to GitHub ($GitHubRepository)..."
         & $Gh release view $effectiveTag --repo $GitHubRepository 2>$null | Out-Null
@@ -429,6 +491,7 @@ try {
     catch {
         $githubError = $_.Exception.Message
         Write-Error "GitHub publishing failed: $githubError" -ErrorAction Continue
+    }
     }
 
     # 4. Gitee release + quota check + update.json (uploaded last).
