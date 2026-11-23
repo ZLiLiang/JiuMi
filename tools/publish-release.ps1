@@ -421,7 +421,7 @@ try {
 
             Write-Host "Publishing to Gitee ($GiteeRepository)..."
             $giteeApiBase = "https://gitee.com/api/v5/repos/$GiteeRepository"
-            $giteeRepoInfo = Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase?access_token=$giteeToken"
+            $giteeRepoInfo = Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "${giteeApiBase}?access_token=$giteeToken"
             $giteeTargetCommitish = if ($giteeRepoInfo.PSObject.Properties['default_branch'] -and -not [string]::IsNullOrWhiteSpace([string]$giteeRepoInfo.default_branch)) {
                 [string]$giteeRepoInfo.default_branch
             }
