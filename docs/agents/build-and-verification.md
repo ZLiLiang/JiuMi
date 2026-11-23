@@ -19,7 +19,7 @@ This file is the single source of truth for how JiuMi is built and gated. Do not
 
 ## Publishing
 
-- `pwsh ./publish.ps1` publishes `src/JiuMi.Desktop` as a self-contained `win-x64` build and writes `artifacts/JiuMi-<version>-win-x64.zip`; the ZIP contains `JiuMi.Desktop.exe` at its root. The build copies Magick.NET's `Notice.txt` next to it as `THIRD-PARTY-NOTICES.txt` (Apache-2.0 and ImageMagick License texts); do not remove it from the package.
+- `pwsh ./publish.ps1` publishes `src/JiuMi.Desktop` as a self-contained single-file `win-x64` build (`-p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`, keeping native libraries external without `IncludeNativeLibrariesForSelfExtract` so nothing extracts to `%TEMP%\.net\`), renames the apphost from `JiuMi.Desktop.exe` to `JiuMi.exe`, and writes `artifacts/JiuMi-<version>-win-x64.zip`; the ZIP contains `JiuMi.exe` at its root. The build copies Magick.NET's `Notice.txt` next to it as `THIRD-PARTY-NOTICES.txt` (Apache-2.0 and ImageMagick License texts); do not remove it from the package.
 - Publishing passes `-p:DebugType=None -p:DebugSymbols=false`. `JiuMi.Desktop.csproj` also removes every `*.pdb` from `ResolvedFileToPublish`, because SkiaSharp and HarfBuzzSharp ship native symbol files that the compiler switches do not filter. `publish.ps1` fails when the publish directory or the ZIP still contains a `*.pdb`.
 - `publish.ps1` is packaging, not a gate. `verify.ps1` still decides whether a change is done; publishing must not re-implement the build or test commands.
 - The semantic version comes from `<Version>` in `Directory.Build.props`. Bump it there when cutting a release. The SDK appends the source revision to the informational version (`<version>+<commit>`), while the application's version helper strips that metadata before Settings → About displays it.
@@ -36,6 +36,15 @@ Baseline measured on 2026-10-29 (version 1.0.0, win-x64, Magick.NET included):
 | `*.pdb` inside it | 6 | 100.3 MB |
 | Publish directory without `*.pdb` | 243 | 135.6 MB |
 | ZIP without `*.pdb` | 243 | 59.7 MB |
+
+Single-file baseline measured on 2026-11-23 (version 1.4.0, win-x64, `PublishSingleFile=true` + `EnableCompressionInSingleFile=true`, native libraries external):
+
+| Artifact | Files | Size |
+| --- | ---: | ---: |
+| Publish directory without `*.pdb` | 12 | 93.4 MB |
+| ZIP without `*.pdb` | 12 | 63.4 MB |
+
+The root directory contains `JiuMi.exe` (51.2 MB), four native libraries (`Magick.Native-Q16-x64.dll` 23.6 MB, `libSkiaSharp.dll` 11.1 MB, `av_libglesv2.dll` 5.1 MB, `libHarfBuzzSharp.dll` 1.7 MB), `THIRD-PARTY-NOTICES.txt` (0.4 MB) and `Assets/` (6 JSON files). Because managed assemblies are already compressed inside `JiuMi.exe`, the ZIP archive is slightly larger than the pre-single-file ZIP while the extracted directory drops from 243 files (135.6 MB) to 12 files (93.4 MB) with zero `%TEMP%\.net\` extraction at launch.
 
 `libSkiaSharp.pdb` (80.1 MB) and `libHarfBuzzSharp.pdb` (19.9 MB) make up almost all of the symbol weight; the four application `.pdb` files are under 0.3 MB in total. After removing symbols, the largest entries are `Magick.Native-Q16-x64.dll` (23.6 MB), `System.Private.CoreLib.dll` (15.3 MB), `libSkiaSharp.dll` (11.1 MB), `System.Private.Xml.dll` (7.4 MB), `av_libglesv2.dll` (5.1 MB), `coreclr.dll` (4.4 MB), `FluentAvalonia.dll` (3.5 MB) and `System.Linq.Expressions.dll` (3.5 MB).
 

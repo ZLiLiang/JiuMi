@@ -7,9 +7,9 @@ public sealed class SingleInstanceCoordinatorTests
     [Fact]
     public void CreateName_GivenSamePath_IsStableAndNamespaced()
     {
-        string name = SingleInstanceCoordinator.CreateName(@"C:\Apps\JiuMi\JiuMi.Desktop.exe");
-        string same = SingleInstanceCoordinator.CreateName(@"C:\Apps\JiuMi\JiuMi.Desktop.exe");
-        string other = SingleInstanceCoordinator.CreateName(@"C:\Other\JiuMi.Desktop.exe");
+        string name = SingleInstanceCoordinator.CreateName(@"C:\Apps\JiuMi\JiuMi.exe");
+        string same = SingleInstanceCoordinator.CreateName(@"C:\Apps\JiuMi\JiuMi.exe");
+        string other = SingleInstanceCoordinator.CreateName(@"C:\Other\JiuMi.exe");
 
         Assert.StartsWith("JiuMi.", name, StringComparison.Ordinal);
         Assert.Matches("^JiuMi\\.[0-9A-F]{32}$", name);
