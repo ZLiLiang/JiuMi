@@ -279,12 +279,14 @@ function Set-GiteeReleaseAttachment {
     }
 
     $uploadUri = "$ApiBase/releases/$ReleaseId/attach_files"
-    $curlOutput = & curl.exe --fail-with-body --silent --show-error --http1.1 --connect-timeout 30 --max-time $UploadTimeoutSec -X POST $uploadUri -F "access_token=$Token" -F "file=@$FilePath;filename=$FileName" 2>&1
+    $curlOutput = & curl.exe --fail-with-body --silent --show-error --http1.1 -H "Expect:" --connect-timeout 30 --speed-limit 10240 --speed-time 60 --max-time $UploadTimeoutSec -w "`nHTTP %{http_code} uploaded %{size_upload} bytes in %{time_total}s (%{speed_upload} B/s)" -X POST $uploadUri -F "access_token=$Token" -F "file=@$FilePath;filename=$FileName" 2>&1
     $curlExit = $LASTEXITCODE
+    $safeOut = Mask-Secret -Text (($curlOutput | Out-String).Trim()) -Secret $Token
     if ($curlExit -ne 0) {
-        $safeOut = Mask-Secret -Text (($curlOutput | Out-String).Trim()) -Secret $Token
         throw "Uploading $FileName to Gitee failed (curl exit $curlExit): $safeOut"
     }
+    $summaryLine = ($safeOut -split "`r?`n") | Select-Object -Last 1
+    Write-Host "Gitee upload $FileName complete: $summaryLine"
 }
 
 # 1. Run verification gate unless explicitly skipped (CI runs verify.ps1 in an earlier job).
