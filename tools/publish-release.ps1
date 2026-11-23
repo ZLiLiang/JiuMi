@@ -47,14 +47,53 @@ function Emit-WarningMessage {
 
 function Invoke-GitChecked {
     param([string[]]$Arguments, [string]$SecretToMask = '')
-    $output = & $Git -C $repoRoot @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $prevTerminalPrompt = $env:GIT_TERMINAL_PROMPT
+    $prevGcmInteractive = $env:GCM_INTERACTIVE
+    $env:GIT_TERMINAL_PROMPT = '0'
+    $env:GCM_INTERACTIVE = 'never'
+    try {
+        $output = & $Git -c credential.helper= -C $repoRoot @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $env:GIT_TERMINAL_PROMPT = $prevTerminalPrompt
+        $env:GCM_INTERACTIVE = $prevGcmInteractive
+    }
     $text = ($output | Out-String).Trim()
     if ($exitCode -ne 0) {
         $safeText = Mask-Secret -Text $text -Secret $SecretToMask
         throw "git failed with exit code ${exitCode}: $safeText"
     }
     return $text
+}
+
+function Format-IsoUtc {
+    param([object]$Value, [string]$Fallback)
+    if ($null -eq $Value) {
+        return $Fallback
+    }
+    if ($Value -is [DateTimeOffset]) {
+        return $Value.ToUniversalTime().ToString('O')
+    }
+    if ($Value -is [DateTime]) {
+        $utc = if ($Value.Kind -eq [DateTimeKind]::Unspecified) {
+            [DateTime]::SpecifyKind($Value, [DateTimeKind]::Utc)
+        }
+        else {
+            $Value.ToUniversalTime()
+        }
+        return ([DateTimeOffset]$utc).ToString('O')
+    }
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $Fallback
+    }
+    $parsed = [DateTimeOffset]::MinValue
+    $styles = [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
+    if ([DateTimeOffset]::TryParse($text, [System.Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$parsed)) {
+        return $parsed.ToString('O')
+    }
+    return $Fallback
 }
 
 function Get-ManifestChannelEntry {
@@ -108,14 +147,15 @@ function ConvertFrom-ReleaseHistoryEntry {
         }
     }
 
-    $publishedAt = if ($Release.PSObject.Properties['published_at'] -and -not [string]::IsNullOrWhiteSpace([string]$Release.published_at)) {
-        [string]$Release.published_at
+    $fallbackIso = [DateTimeOffset]::UtcNow.ToString('O')
+    $publishedAt = if ($Release.PSObject.Properties['published_at'] -and $null -ne $Release.published_at) {
+        Format-IsoUtc -Value $Release.published_at -Fallback $fallbackIso
     }
-    elseif ($Release.PSObject.Properties['created_at'] -and -not [string]::IsNullOrWhiteSpace([string]$Release.created_at)) {
-        [string]$Release.created_at
+    elseif ($Release.PSObject.Properties['created_at'] -and $null -ne $Release.created_at) {
+        Format-IsoUtc -Value $Release.created_at -Fallback $fallbackIso
     }
     else {
-        [DateTimeOffset]::UtcNow.ToString('O')
+        $fallbackIso
     }
 
     $pageUrl = if ($HostKind -eq 'Gitee') {
@@ -173,7 +213,21 @@ function Resolve-OtherChannelEntry {
         [string]$Repository
     )
     if ($null -ne $ExistingManifest -and $ExistingManifest.PSObject.Properties[$OtherChannelName] -and $null -ne $ExistingManifest.$OtherChannelName) {
-        return $ExistingManifest.$OtherChannelName
+        $existing = $ExistingManifest.$OtherChannelName
+        $existingPublishedAt = if ($existing.PSObject.Properties['publishedAt']) {
+            Format-IsoUtc -Value $existing.publishedAt -Fallback ([DateTimeOffset]::UtcNow.ToString('O'))
+        }
+        else {
+            [DateTimeOffset]::UtcNow.ToString('O')
+        }
+        return Get-ManifestChannelEntry `
+            -Version ([string]$existing.version) `
+            -IsPrerelease ([bool]$existing.prerelease) `
+            -PublishedAt $existingPublishedAt `
+            -PageUrl ([string]$existing.pageUrl) `
+            -AssetUrl $(if ($existing.PSObject.Properties['assetUrl'] -and -not [string]::IsNullOrWhiteSpace([string]$existing.assetUrl)) { [string]$existing.assetUrl } else { $null }) `
+            -AssetSha256 $(if ($existing.PSObject.Properties['assetSha256'] -and -not [string]::IsNullOrWhiteSpace([string]$existing.assetSha256)) { [string]$existing.assetSha256 } else { $null }) `
+            -AssetSize $(if ($existing.PSObject.Properties['assetSize'] -and $null -ne $existing.assetSize) { [long]$existing.assetSize } else { 0L })
     }
 
     foreach ($rel in @($Releases)) {
@@ -199,16 +253,17 @@ function Set-GiteeReleaseAttachment {
         [string]$Token,
         [object]$ReleaseId,
         [string]$FilePath,
-        [string]$FileName
+        [string]$FileName,
+        [int]$UploadTimeoutSec = 300
     )
-    $existingFiles = @(Invoke-RestMethod -Method Get -Uri "$ApiBase/releases/$ReleaseId/attach_files?access_token=$Token")
+    $existingFiles = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$ApiBase/releases/$ReleaseId/attach_files?access_token=$Token")
     foreach ($file in $existingFiles) {
         if ([string]$file.name -eq $FileName) {
-            Invoke-RestMethod -Method Delete -Uri "$ApiBase/releases/$ReleaseId/attach_files/$($file.id)?access_token=$Token" | Out-Null
+            Invoke-RestMethod -Method Delete -TimeoutSec 60 -Uri "$ApiBase/releases/$ReleaseId/attach_files/$($file.id)?access_token=$Token" | Out-Null
         }
     }
 
-    Invoke-RestMethod -Method Post -Uri "$ApiBase/releases/$ReleaseId/attach_files" -Form @{
+    Invoke-RestMethod -Method Post -TimeoutSec $UploadTimeoutSec -Uri "$ApiBase/releases/$ReleaseId/attach_files" -Form @{
         access_token = $Token
         file         = Get-Item -LiteralPath $FilePath
     } | Out-Null
@@ -291,7 +346,7 @@ try {
         }
 
         $ghReleaseInfo = (& $Gh release view $effectiveTag --repo $GitHubRepository --json publishedAt,url | ConvertFrom-Json)
-        $ghPublishedAt = if (-not [string]::IsNullOrWhiteSpace([string]$ghReleaseInfo.publishedAt)) { [string]$ghReleaseInfo.publishedAt } else { $nowIso }
+        $ghPublishedAt = Format-IsoUtc -Value $ghReleaseInfo.publishedAt -Fallback $nowIso
         $ghPageUrl = if (-not [string]::IsNullOrWhiteSpace([string]$ghReleaseInfo.url)) { [string]$ghReleaseInfo.url } else { "https://github.com/$GitHubRepository/releases/tag/$effectiveTag" }
         $ghAssetUrl = "https://github.com/$GitHubRepository/releases/download/$effectiveTag/$zipName"
 
@@ -365,14 +420,18 @@ try {
             }
 
             Write-Host "Publishing to Gitee ($GiteeRepository)..."
-            $giteePushUrl = "https://oauth2:$giteeToken@gitee.com/$GiteeRepository.git"
+            $giteeUser = ($GiteeRepository -split '/')[0]
+            $giteePushUrl = "https://${giteeUser}:${giteeToken}@gitee.com/$GiteeRepository.git"
+            Write-Host "Pushing tag $effectiveTag to Gitee..."
             [void](Invoke-GitChecked -Arguments @('push', $giteePushUrl, "refs/tags/${effectiveTag}:refs/tags/${effectiveTag}") -SecretToMask $giteeToken)
 
             $giteeApiBase = "https://gitee.com/api/v5/repos/$GiteeRepository"
-            $giteeReleases = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100&direction=desc")
+            Write-Host 'Querying Gitee releases...'
+            $giteeReleases = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100&direction=desc")
 
             $giteeRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $effectiveTag } | Select-Object -First 1
             if ($null -eq $giteeRelease) {
+                Write-Host "Creating Gitee release $effectiveTag..."
                 $createBody = @{
                     access_token     = $giteeToken
                     tag_name         = $effectiveTag
@@ -381,7 +440,7 @@ try {
                     body             = "JiuMi $version"
                     prerelease       = $isPrerelease
                 } | ConvertTo-Json
-                $giteeRelease = Invoke-RestMethod -Method Post -Uri "$giteeApiBase/releases" -ContentType 'application/json' -Body $createBody
+                $giteeRelease = Invoke-RestMethod -Method Post -TimeoutSec 60 -Uri "$giteeApiBase/releases" -ContentType 'application/json' -Body $createBody
                 $giteeReleases = @($giteeRelease) + $giteeReleases
             }
             else {
@@ -389,6 +448,7 @@ try {
             }
 
             $giteeReleaseId = $giteeRelease.id
+            Write-Host "Uploading $zipName to Gitee release $effectiveTag..."
             Set-GiteeReleaseAttachment `
                 -ApiBase $giteeApiBase `
                 -Token $giteeToken `
@@ -397,12 +457,13 @@ try {
                 -FileName $zipName
 
             # Quota check after uploading the current ZIP: sum actual attach_files sizes across all releases.
+            Write-Host 'Checking Gitee release attachment quota...'
             $totalAttachmentBytes = 0L
             foreach ($rel in $giteeReleases) {
                 if ($null -eq $rel.id) {
                     continue
                 }
-                $relFiles = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases/$($rel.id)/attach_files?access_token=$giteeToken")
+                $relFiles = @(Invoke-RestMethod -Method Get -TimeoutSec 60 -Uri "$giteeApiBase/releases/$($rel.id)/attach_files?access_token=$giteeToken")
                 foreach ($file in $relFiles) {
                     if ($file.PSObject.Properties['size'] -and $null -ne $file.size) {
                         $totalAttachmentBytes += [long]$file.size
@@ -419,6 +480,7 @@ try {
             # Ensure app-update release exists on Gitee.
             $giteeUpdateRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $UpdateTag } | Select-Object -First 1
             if ($null -eq $giteeUpdateRelease) {
+                Write-Host "Creating Gitee release $UpdateTag..."
                 $createUpdateBody = @{
                     access_token     = $giteeToken
                     tag_name         = $UpdateTag
@@ -427,12 +489,12 @@ try {
                     body             = 'Machine-readable update.json manifest published by tools/publish-release.ps1.'
                     prerelease       = $false
                 } | ConvertTo-Json
-                $giteeUpdateRelease = Invoke-RestMethod -Method Post -Uri "$giteeApiBase/releases" -ContentType 'application/json' -Body $createUpdateBody
+                $giteeUpdateRelease = Invoke-RestMethod -Method Post -TimeoutSec 60 -Uri "$giteeApiBase/releases" -ContentType 'application/json' -Body $createUpdateBody
             }
 
             $giteeExistingManifest = $null
             try {
-                $giteeExistingManifest = Invoke-RestMethod -Method Get -Uri "https://gitee.com/$GiteeRepository/releases/download/$UpdateTag/update.json"
+                $giteeExistingManifest = Invoke-RestMethod -Method Get -TimeoutSec 30 -Uri "https://gitee.com/$GiteeRepository/releases/download/$UpdateTag/update.json"
             }
             catch {
                 $giteeExistingManifest = $null
@@ -451,8 +513,8 @@ try {
                 $giteeOther = $githubOtherChannelEntry
             }
 
-            $giteePublishedAt = if ($giteeRelease.PSObject.Properties['created_at'] -and -not [string]::IsNullOrWhiteSpace([string]$giteeRelease.created_at)) {
-                [string]$giteeRelease.created_at
+            $giteePublishedAt = if ($giteeRelease.PSObject.Properties['created_at'] -and $null -ne $giteeRelease.created_at) {
+                Format-IsoUtc -Value $giteeRelease.created_at -Fallback $nowIso
             }
             else {
                 $nowIso
