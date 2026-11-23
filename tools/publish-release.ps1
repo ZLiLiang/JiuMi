@@ -434,7 +434,7 @@ try {
 
         & $Gh release view $UpdateTag --repo $GitHubRepository 2>$null | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            & $Gh release create $UpdateTag --repo $GitHubRepository --title 'Application update manifest' --notes 'Machine-readable update.json manifest published by tools/publish-release.ps1.'
+            & $Gh release create $UpdateTag --repo $GitHubRepository --latest=false --title 'Application update manifest' --notes 'Machine-readable update.json manifest published by tools/publish-release.ps1.'
             if ($LASTEXITCODE -ne 0) {
                 throw "gh release create $UpdateTag failed with exit code $LASTEXITCODE."
             }
