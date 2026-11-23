@@ -164,6 +164,56 @@ function Write-ManifestFile {
     [System.IO.File]::WriteAllText($Path, $json + "`n", [System.Text.UTF8Encoding]::new($false))
 }
 
+function Resolve-OtherChannelEntry {
+    param(
+        [object]$ExistingManifest,
+        [object[]]$Releases,
+        [string]$OtherChannelName,
+        [string]$HostKind,
+        [string]$Repository
+    )
+    if ($null -ne $ExistingManifest -and $ExistingManifest.PSObject.Properties[$OtherChannelName] -and $null -ne $ExistingManifest.$OtherChannelName) {
+        return $ExistingManifest.$OtherChannelName
+    }
+
+    foreach ($rel in @($Releases)) {
+        if (($rel.PSObject.Properties['draft'] -and [bool]$rel.draft) -or [string]$rel.tag_name -eq $UpdateTag) {
+            continue
+        }
+
+        $relIsPre = [bool]$rel.prerelease -or ([string]$rel.tag_name -match '-')
+        if (($OtherChannelName -eq 'preview' -and $relIsPre) -or ($OtherChannelName -eq 'stable' -and -not $relIsPre)) {
+            $candidate = ConvertFrom-ReleaseHistoryEntry -Release $rel -HostKind $HostKind -Repository $Repository
+            if ($null -ne $candidate) {
+                return $candidate
+            }
+        }
+    }
+
+    return $null
+}
+
+function Set-GiteeReleaseAttachment {
+    param(
+        [string]$ApiBase,
+        [string]$Token,
+        [object]$ReleaseId,
+        [string]$FilePath,
+        [string]$FileName
+    )
+    $existingFiles = @(Invoke-RestMethod -Method Get -Uri "$ApiBase/releases/$ReleaseId/attach_files?access_token=$Token")
+    foreach ($file in $existingFiles) {
+        if ([string]$file.name -eq $FileName) {
+            Invoke-RestMethod -Method Delete -Uri "$ApiBase/releases/$ReleaseId/attach_files/$($file.id)?access_token=$Token" | Out-Null
+        }
+    }
+
+    Invoke-RestMethod -Method Post -Uri "$ApiBase/releases/$ReleaseId/attach_files" -Form @{
+        access_token = $Token
+        file         = Get-Item -LiteralPath $FilePath
+    } | Out-Null
+}
+
 # 1. Run verification gate unless explicitly skipped (CI runs verify.ps1 in an earlier job).
 if (-not $SkipVerify) {
     Write-Host 'Running verification gate (verify.ps1)...'
@@ -263,29 +313,18 @@ try {
         }
 
         $otherChannelName = if ($isPrerelease) { 'stable' } else { 'preview' }
-        $ghOther = if ($null -ne $ghExistingManifest -and $ghExistingManifest.PSObject.Properties[$otherChannelName]) {
-            $ghExistingManifest.$otherChannelName
+        $ghReleases = if ($null -eq $ghExistingManifest -or -not $ghExistingManifest.PSObject.Properties[$otherChannelName] -or $null -eq $ghExistingManifest.$otherChannelName) {
+            @(& $Gh api "repos/$GitHubRepository/releases?per_page=30" | ConvertFrom-Json)
         }
         else {
-            $null
+            @()
         }
-
-        if ($null -eq $ghOther) {
-            $ghReleases = & $Gh api "repos/$GitHubRepository/releases?per_page=30" | ConvertFrom-Json
-            foreach ($rel in @($ghReleases)) {
-                if ([bool]$rel.draft -or [string]$rel.tag_name -eq $UpdateTag) {
-                    continue
-                }
-                $relIsPre = [bool]$rel.prerelease -or ([string]$rel.tag_name -match '-')
-                if (($otherChannelName -eq 'preview' -and $relIsPre) -or ($otherChannelName -eq 'stable' -and -not $relIsPre)) {
-                    $candidate = ConvertFrom-ReleaseHistoryEntry -Release $rel -HostKind 'GitHub' -Repository $GitHubRepository
-                    if ($null -ne $candidate) {
-                        $ghOther = $candidate
-                        break
-                    }
-                }
-            }
-        }
+        $ghOther = Resolve-OtherChannelEntry `
+            -ExistingManifest $ghExistingManifest `
+            -Releases $ghReleases `
+            -OtherChannelName $otherChannelName `
+            -HostKind 'GitHub' `
+            -Repository $GitHubRepository
 
         $githubOtherChannelEntry = $ghOther
         $ghCurrentEntry = Get-ManifestChannelEntry `
@@ -330,25 +369,7 @@ try {
             [void](Invoke-GitChecked -Arguments @('push', $giteePushUrl, "refs/tags/${effectiveTag}:refs/tags/${effectiveTag}") -SecretToMask $giteeToken)
 
             $giteeApiBase = "https://gitee.com/api/v5/repos/$GiteeRepository"
-            $giteeReleases = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100")
-
-            # Quota check: warn above 80% of 1 GiB without deleting anything.
-            $totalAttachmentBytes = 0L
-            foreach ($rel in $giteeReleases) {
-                if ($null -ne $rel.assets) {
-                    foreach ($asset in $rel.assets) {
-                        if ($asset.PSObject.Properties['size'] -and $null -ne $asset.size) {
-                            $totalAttachmentBytes += [long]$asset.size
-                        }
-                    }
-                }
-            }
-
-            if ($totalAttachmentBytes -ge $giteeWarnThresholdBytes) {
-                $usedMb = [math]::Round($totalAttachmentBytes / 1MB, 1)
-                $pct = [math]::Round(($totalAttachmentBytes / [double]$giteeQuotaBytes) * 100, 1)
-                Emit-WarningMessage "Gitee release attachment usage is ${usedMb} MB (${pct}% of 1 GiB quota). Consider manually pruning old release attachments."
-            }
+            $giteeReleases = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases?access_token=$giteeToken&per_page=100&direction=desc")
 
             $giteeRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $effectiveTag } | Select-Object -First 1
             if ($null -eq $giteeRelease) {
@@ -361,23 +382,39 @@ try {
                     prerelease       = $isPrerelease
                 } | ConvertTo-Json
                 $giteeRelease = Invoke-RestMethod -Method Post -Uri "$giteeApiBase/releases" -ContentType 'application/json' -Body $createBody
+                $giteeReleases = @($giteeRelease) + $giteeReleases
             }
             else {
                 Write-Host "Gitee release $effectiveTag already exists (id: $($giteeRelease.id)); replacing ZIP if present."
             }
 
             $giteeReleaseId = $giteeRelease.id
-            $existingAttachFiles = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases/$giteeReleaseId/attach_files?access_token=$giteeToken")
-            foreach ($file in $existingAttachFiles) {
-                if ([string]$file.name -eq $zipName) {
-                    Invoke-RestMethod -Method Delete -Uri "$giteeApiBase/releases/$giteeReleaseId/attach_files/$($file.id)?access_token=$giteeToken" | Out-Null
+            Set-GiteeReleaseAttachment `
+                -ApiBase $giteeApiBase `
+                -Token $giteeToken `
+                -ReleaseId $giteeReleaseId `
+                -FilePath $zipPath `
+                -FileName $zipName
+
+            # Quota check after uploading the current ZIP: sum actual attach_files sizes across all releases.
+            $totalAttachmentBytes = 0L
+            foreach ($rel in $giteeReleases) {
+                if ($null -eq $rel.id) {
+                    continue
+                }
+                $relFiles = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases/$($rel.id)/attach_files?access_token=$giteeToken")
+                foreach ($file in $relFiles) {
+                    if ($file.PSObject.Properties['size'] -and $null -ne $file.size) {
+                        $totalAttachmentBytes += [long]$file.size
+                    }
                 }
             }
 
-            Invoke-RestMethod -Method Post -Uri "$giteeApiBase/releases/$giteeReleaseId/attach_files" -Form @{
-                access_token = $giteeToken
-                file         = Get-Item -LiteralPath $zipPath
-            } | Out-Null
+            if ($totalAttachmentBytes -ge $giteeWarnThresholdBytes) {
+                $usedMb = [math]::Round($totalAttachmentBytes / 1MB, 1)
+                $pct = [math]::Round(($totalAttachmentBytes / [double]$giteeQuotaBytes) * 100, 1)
+                Emit-WarningMessage "Gitee release attachment usage is ${usedMb} MB (${pct}% of 1 GiB quota). Consider manually pruning old release attachments."
+            }
 
             # Ensure app-update release exists on Gitee.
             $giteeUpdateRelease = $giteeReleases | Where-Object { [string]$_.tag_name -eq $UpdateTag } | Select-Object -First 1
@@ -402,28 +439,12 @@ try {
             }
 
             $otherChannelName = if ($isPrerelease) { 'stable' } else { 'preview' }
-            $giteeOther = if ($null -ne $giteeExistingManifest -and $giteeExistingManifest.PSObject.Properties[$otherChannelName]) {
-                $giteeExistingManifest.$otherChannelName
-            }
-            else {
-                $null
-            }
-
-            if ($null -eq $giteeOther) {
-                foreach ($rel in $giteeReleases) {
-                    if ([string]$rel.tag_name -eq $UpdateTag) {
-                        continue
-                    }
-                    $relIsPre = [bool]$rel.prerelease -or ([string]$rel.tag_name -match '-')
-                    if (($otherChannelName -eq 'preview' -and $relIsPre) -or ($otherChannelName -eq 'stable' -and -not $relIsPre)) {
-                        $candidate = ConvertFrom-ReleaseHistoryEntry -Release $rel -HostKind 'Gitee' -Repository $GiteeRepository
-                        if ($null -ne $candidate) {
-                            $giteeOther = $candidate
-                            break
-                        }
-                    }
-                }
-            }
+            $giteeOther = Resolve-OtherChannelEntry `
+                -ExistingManifest $giteeExistingManifest `
+                -Releases $giteeReleases `
+                -OtherChannelName $otherChannelName `
+                -HostKind 'Gitee' `
+                -Repository $GiteeRepository
 
             # First Gitee upload falls back to GitHub history for the other channel.
             if ($null -eq $giteeOther -and $null -ne $githubOtherChannelEntry) {
@@ -452,18 +473,12 @@ try {
             $giteeManifestPath = Join-Path $tempDir 'update.json'
             Write-ManifestFile -Path $giteeManifestPath -StableEntry $giteeStable -PreviewEntry $giteePreview
 
-            $giteeUpdateReleaseId = $giteeUpdateRelease.id
-            $existingUpdateFiles = @(Invoke-RestMethod -Method Get -Uri "$giteeApiBase/releases/$giteeUpdateReleaseId/attach_files?access_token=$giteeToken")
-            foreach ($file in $existingUpdateFiles) {
-                if ([string]$file.name -eq 'update.json') {
-                    Invoke-RestMethod -Method Delete -Uri "$giteeApiBase/releases/$giteeUpdateReleaseId/attach_files/$($file.id)?access_token=$giteeToken" | Out-Null
-                }
-            }
-
-            Invoke-RestMethod -Method Post -Uri "$giteeApiBase/releases/$giteeUpdateReleaseId/attach_files" -Form @{
-                access_token = $giteeToken
-                file         = Get-Item -LiteralPath $giteeManifestPath
-            } | Out-Null
+            Set-GiteeReleaseAttachment `
+                -ApiBase $giteeApiBase `
+                -Token $giteeToken `
+                -ReleaseId $giteeUpdateRelease.id `
+                -FilePath $giteeManifestPath `
+                -FileName 'update.json'
 
             Write-Host "Gitee release $effectiveTag and $UpdateTag/update.json updated."
         }

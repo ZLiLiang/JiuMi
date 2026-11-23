@@ -19,7 +19,7 @@ public static class AppUpdateSelector
     /// <returns>The best update candidate, or <see langword="null"/> when already up to date.</returns>
     public static AppUpdateCandidate? SelectBest(
         SemanticVersion installedVersion,
-        IReadOnlyList<AppUpdateSourceManifest> manifests)
+        IEnumerable<AppUpdateSourceManifest> manifests)
     {
         ArgumentNullException.ThrowIfNull(installedVersion);
         ArgumentNullException.ThrowIfNull(manifests);

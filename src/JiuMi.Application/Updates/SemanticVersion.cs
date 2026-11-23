@@ -240,17 +240,9 @@ public sealed class SemanticVersion : IComparable<SemanticVersion>, IEquatable<S
     private static bool TryParseCoreComponent(string text, out int value)
     {
         value = 0;
-        if (text.Length == 0 || (text.Length > 1 && text[0] == '0'))
+        if (!IsNumericIdentifier(text) || (text.Length > 1 && text[0] == '0'))
         {
             return false;
-        }
-
-        foreach (char character in text)
-        {
-            if (character is < '0' or > '9')
-            {
-                return false;
-            }
         }
 
         return int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);
@@ -261,19 +253,13 @@ public sealed class SemanticVersion : IComparable<SemanticVersion>, IEquatable<S
         [NotNullWhen(true)] out IReadOnlyList<string>? identifiers)
     {
         identifiers = null;
-        if (text.Length == 0)
+        if (!TrySplitAsciiIdentifiers(text, out string[]? parts))
         {
             return false;
         }
 
-        string[] parts = text.Split('.');
         foreach (string part in parts)
         {
-            if (part.Length == 0 || !IsAsciiIdentifier(part))
-            {
-                return false;
-            }
-
             if (IsNumericIdentifier(part) && part.Length > 1 && part[0] == '0')
             {
                 return false;
@@ -284,15 +270,18 @@ public sealed class SemanticVersion : IComparable<SemanticVersion>, IEquatable<S
         return true;
     }
 
-    private static bool IsValidBuildMetadata(string text)
+    private static bool IsValidBuildMetadata(string text) => TrySplitAsciiIdentifiers(text, out _);
+
+    private static bool TrySplitAsciiIdentifiers(string text, [NotNullWhen(true)] out string[]? parts)
     {
+        parts = null;
         if (text.Length == 0)
         {
             return false;
         }
 
-        string[] parts = text.Split('.');
-        foreach (string part in parts)
+        string[] split = text.Split('.');
+        foreach (string part in split)
         {
             if (part.Length == 0 || !IsAsciiIdentifier(part))
             {
@@ -300,6 +289,7 @@ public sealed class SemanticVersion : IComparable<SemanticVersion>, IEquatable<S
             }
         }
 
+        parts = split;
         return true;
     }
 

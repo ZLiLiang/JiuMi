@@ -19,6 +19,7 @@ public sealed class AppUpdateScheduler : IDisposable
     private readonly CancellationTokenSource _cancellation = new();
     private readonly object _sync = new();
 
+    private Task? _loopTask;
     private bool _started;
     private bool _disposed;
 
@@ -55,6 +56,20 @@ public sealed class AppUpdateScheduler : IDisposable
     }
 
     /// <summary>
+    /// Gets the running background schedule task, or a completed task if not started.
+    /// </summary>
+    public Task Completion
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _loopTask ?? Task.CompletedTask;
+            }
+        }
+    }
+
+    /// <summary>
     /// Starts the background update schedule once the shell is visible. Subsequent calls are ignored.
     /// </summary>
     /// <param name="localization">Provides localized notification strings.</param>
@@ -72,9 +87,8 @@ public sealed class AppUpdateScheduler : IDisposable
             }
 
             _started = true;
+            _loopTask = RunLoopAsync(localization, postToUi, _cancellation.Token);
         }
-
-        _ = RunLoopAsync(localization, postToUi, _cancellation.Token);
     }
 
     /// <summary>
@@ -131,9 +145,9 @@ public sealed class AppUpdateScheduler : IDisposable
             {
                 return;
             }
-        }
 
-        _cancellation.Cancel();
+            _cancellation.Cancel();
+        }
     }
 
     /// <inheritdoc />
@@ -147,10 +161,9 @@ public sealed class AppUpdateScheduler : IDisposable
             }
 
             _disposed = true;
+            _cancellation.Cancel();
+            _cancellation.Dispose();
         }
-
-        _cancellation.Cancel();
-        _cancellation.Dispose();
     }
 
     [SuppressMessage(

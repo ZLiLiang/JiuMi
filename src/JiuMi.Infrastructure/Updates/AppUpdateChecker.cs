@@ -57,7 +57,7 @@ internal sealed class AppUpdateChecker : IAppUpdateChecker, IDisposable
         _logger = logger;
         _client = handler is null
             ? new HttpClient()
-            : new HttpClient(handler, disposeHandler: true);
+            : new HttpClient(handler, disposeHandler: false);
         _client.Timeout = TimeSpan.FromSeconds(10);
         _client.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("JiuMi", ToProductVersion(applicationInfo.Version)));
@@ -106,7 +106,10 @@ internal sealed class AppUpdateChecker : IAppUpdateChecker, IDisposable
         {
             AppUpdateState state = _stateStore.Read();
             DateTimeOffset checkedAt = _timeProvider.GetUtcNow();
-            if (!isManual && !AppUpdateCheckPolicy.IsDue(state.LastCheckedAt, checkedAt))
+            bool hasPendingKnownUpdate = HasPendingKnownUpdate(state) && previousStatus.AvailableUpdate is null;
+            if (!isManual &&
+                !hasPendingKnownUpdate &&
+                !AppUpdateCheckPolicy.IsDue(state.LastCheckedAt, checkedAt))
             {
                 return new AppUpdateCheckResult(
                     AppUpdateCheckStatus.Skipped,
@@ -314,10 +317,18 @@ internal sealed class AppUpdateChecker : IAppUpdateChecker, IDisposable
     private AppUpdateStatus ReadInitialStatus()
     {
         AppUpdateState state = _stateStore.Read();
-        return state.LastCheckedAt is { } lastCheckedAt
-            ? new AppUpdateStatus(AppUpdateCheckState.UpToDate, lastCheckedAt, AvailableUpdate: null)
-            : new AppUpdateStatus(AppUpdateCheckState.Idle, LastCheckedAt: null, AvailableUpdate: null);
+        if (state.LastCheckedAt is not { } lastCheckedAt || HasPendingKnownUpdate(state))
+        {
+            return new AppUpdateStatus(AppUpdateCheckState.Idle, state.LastCheckedAt, AvailableUpdate: null);
+        }
+
+        return new AppUpdateStatus(AppUpdateCheckState.UpToDate, lastCheckedAt, AvailableUpdate: null);
     }
+
+    private bool HasPendingKnownUpdate(AppUpdateState state) =>
+        SemanticVersion.TryParse(state.LastNotifiedVersion, out SemanticVersion? notifiedVersion) &&
+        SemanticVersion.TryParse(_applicationInfo.Version, out SemanticVersion? installedVersion) &&
+        notifiedVersion > installedVersion;
 
     private void Publish(AppUpdateStatus status)
     {

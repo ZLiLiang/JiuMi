@@ -185,6 +185,30 @@ public sealed class AppUpdateCheckerTests : IDisposable
     }
 
     [Fact]
+    public async Task Status_GivenRestartWithin24HoursAfterNotifiedUpdate_DoesNotReportUpToDate()
+    {
+        using var handler = new RoutingHandler(_ =>
+            JsonResponse(ManifestJson(
+                stableVersion: "1.5.0",
+                stablePageUrl: "https://gitee.test/ZLiLiang/JiuMi/releases/tag/v1.5.0")));
+        using var firstChecker = CreateChecker("1.4.1", handler);
+
+        AppUpdateCheckResult first = await firstChecker.CheckAsync(isManual: false);
+        Assert.True(first.ShouldNotify);
+
+        // Simulate app restart 1 hour later: initial status must not lie "UpToDate",
+        // and the startup check refreshes AvailableUpdate without re-notifying.
+        _timeProvider.Advance(TimeSpan.FromHours(1));
+        using var restarted = CreateChecker("1.4.1", handler);
+        Assert.Equal(AppUpdateCheckState.Idle, restarted.Status.State);
+
+        AppUpdateCheckResult refreshed = await restarted.CheckAsync(isManual: false);
+        Assert.Equal(AppUpdateCheckStatus.UpdateAvailable, refreshed.Status);
+        Assert.False(refreshed.ShouldNotify);
+        Assert.Equal(AppUpdateCheckState.UpdateAvailable, restarted.Status.State);
+    }
+
+    [Fact]
     public async Task CheckAsync_GivenPreviewInstalled_SeesNewerStableAndPreview()
     {
         using var handler = new RoutingHandler(_ =>
