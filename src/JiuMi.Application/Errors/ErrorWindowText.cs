@@ -50,10 +50,6 @@ public static class ErrorWindowText
         "无法打开主窗口",
         "主窗口没有成功打开，应用无法继续。可以复制详情反馈给开发者，然后退出。");
 
-    private static readonly ErrorWindowMessage _proxyRestoreFailed = new(
-        "系统代理未能还原",
-        "系统代理没有恢复成功。请打开「设置 → 网络和 Internet → 代理」，关闭手动代理或恢复原来的地址，然后重新打开 JiuMi。");
-
     /// <summary>
     /// Gets the headline and explanation for a failure.
     /// </summary>
@@ -67,7 +63,6 @@ public static class ErrorWindowText
         ErrorCodes.StartupFaulted when canContinue => _startupFaultedContinuing,
         ErrorCodes.StartupFaulted => _startupFaulted,
         ErrorCodes.ShellMainWindowFailed => _mainWindowFailed,
-        ErrorCodes.WeChatVideoProxyRestoreFailed => _proxyRestoreFailed,
         _ => _default,
     };
 }

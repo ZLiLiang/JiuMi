@@ -11,9 +11,7 @@ using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
 using JiuMi.Application.WeChatVideo;
-using JiuMi.Errors;
 using JiuMi.Threading;
-using JiuMi.WeChatVideo;
 
 namespace JiuMi.ViewModels;
 
@@ -28,13 +26,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly IWeChatVideoThumbnailFetcher _thumbnailFetcher;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localization;
-    private readonly InfoBarViewModel _infoBar;
-    private readonly IWeChatVideoCertificatePrompt _certificatePrompt;
-    private readonly IErrorWindowPresenter _errorWindowPresenter;
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
     private readonly ErrorRetryRegistry _retryRegistry;
-    private readonly WeChatVideoStartupNotice _startupNotice;
     private readonly IUiThreadDispatcher _uiThreadDispatcher;
     private readonly Serilog.ILogger _logger;
     private readonly SemaphoreSlim _listenGate = new(1, 1);
@@ -42,7 +36,6 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly Dictionary<string, ThumbnailRequest> _thumbnailRequests = new(StringComparer.Ordinal);
     private string? _downloadDirectory;
     private bool _isDirectoryMissing;
-    private bool _startupNoticeShown;
     private bool _disposed;
 
     /// <summary>
@@ -54,13 +47,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// <param name="thumbnailFetcher">Fetches the covers into memory.</param>
     /// <param name="settingsStore">Supplies and stores the download directory.</param>
     /// <param name="localization">Supplies the interface text.</param>
-    /// <param name="infoBar">Shows the residual-proxy notice.</param>
-    /// <param name="certificatePrompt">Asks for certificate trust before the first start.</param>
-    /// <param name="errorWindowPresenter">Shows the manual proxy recovery failure.</param>
     /// <param name="errorReporter">Receives start and settings failures.</param>
     /// <param name="recordFactory">Creates the records reported by this page.</param>
     /// <param name="retryRegistry">Supplies the in-place retry action for a failed start.</param>
-    /// <param name="startupNotice">Carries the residual result from the startup sequence.</param>
     /// <param name="uiThreadDispatcher">Marshals session and capture events to the interface thread.</param>
     /// <param name="logger">Receives capture, cover and download diagnostics.</param>
     public WeChatVideoViewModel(
@@ -70,13 +59,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         IWeChatVideoThumbnailFetcher thumbnailFetcher,
         ISettingsStore settingsStore,
         ILocalizationService localization,
-        InfoBarViewModel infoBar,
-        IWeChatVideoCertificatePrompt certificatePrompt,
-        IErrorWindowPresenter errorWindowPresenter,
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
         ErrorRetryRegistry retryRegistry,
-        WeChatVideoStartupNotice startupNotice,
         IUiThreadDispatcher uiThreadDispatcher,
         Serilog.ILogger logger)
     {
@@ -86,13 +71,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(thumbnailFetcher);
         ArgumentNullException.ThrowIfNull(settingsStore);
         ArgumentNullException.ThrowIfNull(localization);
-        ArgumentNullException.ThrowIfNull(infoBar);
-        ArgumentNullException.ThrowIfNull(certificatePrompt);
-        ArgumentNullException.ThrowIfNull(errorWindowPresenter);
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
         ArgumentNullException.ThrowIfNull(retryRegistry);
-        ArgumentNullException.ThrowIfNull(startupNotice);
         ArgumentNullException.ThrowIfNull(uiThreadDispatcher);
         ArgumentNullException.ThrowIfNull(logger);
 
@@ -102,13 +83,9 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         _thumbnailFetcher = thumbnailFetcher;
         _settingsStore = settingsStore;
         _localization = localization;
-        _infoBar = infoBar;
-        _certificatePrompt = certificatePrompt;
-        _errorWindowPresenter = errorWindowPresenter;
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
         _retryRegistry = retryRegistry;
-        _startupNotice = startupNotice;
         _uiThreadDispatcher = uiThreadDispatcher;
         _logger = logger;
         _downloadDirectory = settingsStore.Current.WeChatVideo.DownloadDirectory;
@@ -257,47 +234,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Shows the residual-proxy outcome once, after the main window is ready.
-    /// </summary>
-    public void ShowStartupNoticeOnce()
-    {
-        if (_startupNoticeShown || _disposed)
-        {
-            return;
-        }
-
-        _startupNoticeShown = true;
-        WeChatVideoResidualRestoreResult? result = _startupNotice.Take();
-        if (result is null)
-        {
-            return;
-        }
-
-        if (result.Status == WeChatVideoResidualRestoreStatus.Restored)
-        {
-            _infoBar.ShowSummary(new InfoBarSummary(
-                _localization["Tool.WeChatVideo.Residual.Restored"],
-                IsWarning: true,
-                FolderPath: null));
-            return;
-        }
-
-        if (result.Status == WeChatVideoResidualRestoreStatus.Failed)
-        {
-            Exception failure = result.Error ?? new InvalidOperationException(
-                "The system proxy left by an interrupted WeChat video capture could not be restored.");
-            _logger.Error(
-                failure,
-                "The system proxy left by an interrupted WeChat video capture could not be restored");
-            _errorWindowPresenter.PresentFailure(
-                ErrorCodes.WeChatVideoProxyRestoreFailed,
-                "WeChatVideo.RestoreResidual",
-                failure);
-        }
-    }
-
-    /// <summary>
-    /// Starts or stops the listener. Starting may ask for certificate trust first.
+    /// Starts or stops the listener.
     /// </summary>
     /// <param name="listen">Whether the listener should run.</param>
     /// <returns>A task that completes when the requested state settled.</returns>
@@ -781,12 +718,6 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
 #pragma warning disable CA1031 // The InfoBar is the user-facing outcome of a failed start.
         try
         {
-            if (!_capture.IsCertificateInstalled &&
-                !await _certificatePrompt.ConfirmInstallAsync())
-            {
-                return false;
-            }
-
             await _capture.StartAsync();
             return true;
         }
@@ -809,18 +740,14 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
             return;
         }
 
-#pragma warning disable CA1031 // The error window is the user-facing outcome of a failed restore.
+#pragma warning disable CA1031 // Stopping background capture loops must not crash the UI toggle.
         try
         {
             await _capture.StopAsync();
         }
         catch (Exception exception)
         {
-            _logger.Error(exception, "Stopping the WeChat video listener failed");
-            _errorWindowPresenter.PresentFailure(
-                ErrorCodes.WeChatVideoProxyRestoreFailed,
-                "WeChatVideo.Stop",
-                exception);
+            _logger.Warning(exception, "Stopping the WeChat video listener failed");
         }
 #pragma warning restore CA1031
     }

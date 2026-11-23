@@ -33,8 +33,6 @@ public sealed class ErrorPresentationCatalogTests
 
     [Theory]
     [InlineData("WeChatVideo.CaptureStartFailed", ErrorCarrier.InfoBar, ErrorNoticeAction.Retry)]
-    [InlineData("WeChatVideo.CertificateUninstallFailed", ErrorCarrier.InfoBar, ErrorNoticeAction.Retry)]
-    [InlineData("WeChatVideo.ProxyRestoreFailed", ErrorCarrier.ErrorWindow, ErrorNoticeAction.None)]
     public void Find_GivenWeChatVideoCode_ReturnsTheRegisteredPresentation(
         string code,
         ErrorCarrier carrier,

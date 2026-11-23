@@ -79,8 +79,8 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 
 | 术语 | 代码名 | 定义 |
 | --- | --- | --- |
-| 注入回调 | `InjectionScript.js` | 注入视频号页面、包装 `WeixinJSBridge.invoke` 的回调；只在 `H5ExtTransfer:ok` 时从 `object.object_desc.media[0]` 取媒体信息，并 POST 到本机 listener。 |
+| 静默元数据索引 | `WeChatMetadataCache` | 后台低频只读扫描微信进程内存得到的有界 `encfilekey` 元数据缓存（含直链、`decode_key`、作者、标题、封面与 `spec`）；不直接展示在界面，只在播放触发时供反查（[ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md)）。 |
+| 播放触发 | `WeChatPlaybackCorrelator` | 高频只读扫描微信进程内存中的 `videoPlayStart` 事件（按 `play_id` 去重）与 `feed_id → encfilekey` 映射，仅在视频真正开始播放时才从静默元数据索引取出条目推入会话列表，过滤预加载与预缓冲噪音（[ADR-0018](./docs/adr/0018-wechat-video-download-memory-capture.md)）。 |
 | 密钥流 | `Isaac64KeyStream` | 以媒体信息里的 `decode_key` 为种子生成的 ISAAC64 字节流；只覆盖文件开头 `X-enclen` 指定的字节数，与本次媒体 URL 绑定。 |
 | 过期链接 | `WeChatVideoDownloadState.Expired` | 媒体链接随会话失效后的下载结果：服务端返回 403/404/410 或 Range 不符；该行不复用旧链接重试，只能回微信重新打开视频。 |
-| 监听状态文件 | `WeChatCaptureStateStore`（`cache\wechat\state.json`） | 抓包启动时写下的代理快照与端口；干净停止即删除，异常退出后由下次启动的残留恢复读取并还原系统代理。 |
 
