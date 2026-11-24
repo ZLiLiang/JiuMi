@@ -471,7 +471,12 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
             candidate => string.Equals(candidate.Key, item.Key, StringComparison.Ordinal));
         if (row is null)
         {
-            row = new WeChatVideoRowViewModel(item, _localization, CanDownload, HandlePrimaryAction);
+            row = new WeChatVideoRowViewModel(
+                item,
+                _localization,
+                CanDownload,
+                HandlePrimaryAction,
+                HandleQualitySelected);
             Rows.Insert(0, row);
         }
         else
@@ -607,6 +612,16 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         {
             request.Source.Cancel();
         }
+    }
+
+    private void HandleQualitySelected(WeChatVideoRowViewModel row, string? fileFormat)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _session.TrySelectFileFormat(row.Key, fileFormat, out _);
     }
 
     private void HandlePrimaryAction(WeChatVideoRowViewModel row)

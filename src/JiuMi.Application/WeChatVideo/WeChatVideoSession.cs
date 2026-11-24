@@ -112,6 +112,60 @@ public sealed class WeChatVideoSession
     }
 
     /// <summary>
+    /// Updates the user-selected quality variant (<c>file_format</c>) for an item when its download
+    /// state allows changing selection (<see cref="WeChatVideoDownloadState.Idle"/>,
+    /// <see cref="WeChatVideoDownloadState.Failed"/>, or <see cref="WeChatVideoDownloadState.Canceled"/>).
+    /// Passing <see langword="null"/> or whitespace resets to the default stream.
+    /// </summary>
+    /// <param name="key">The de-duplication key.</param>
+    /// <param name="fileFormat">The target <c>file_format</c>, or <see langword="null"/> for default.</param>
+    /// <param name="updated">The resulting item when the selection succeeded.</param>
+    /// <returns><see langword="true"/> when the item existed and allowed selection.</returns>
+    public bool TrySelectFileFormat(
+        string key,
+        string? fileFormat,
+        out WeChatVideoItem? updated)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        string? normalized = string.IsNullOrWhiteSpace(fileFormat) ? null : fileFormat.Trim();
+        bool changed = false;
+        updated = null;
+        lock (_gate)
+        {
+            if (!_byKey.TryGetValue(key, out WeChatVideoItem? existing))
+            {
+                return false;
+            }
+
+            if (!existing.CanSelectQuality)
+            {
+                return false;
+            }
+
+            if (string.Equals(existing.SelectedFileFormat, normalized, StringComparison.Ordinal))
+            {
+                updated = existing;
+                return true;
+            }
+
+            updated = existing with
+            {
+                SelectedFileFormat = normalized,
+            };
+            Replace(key, updated);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            RaiseChanged(WeChatVideoSessionChange.Updated, updated);
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Replaces an item with the result of <paramref name="update"/>.
     /// </summary>
     /// <param name="key">The de-duplication key.</param>

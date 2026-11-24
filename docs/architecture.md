@@ -924,6 +924,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 下载与解密
 
 - 下载串行排队（FIFO），每行独立取消；总大小取 HEAD 的 `Content-Length`，不用 `file_size`。进度按已写字节 / 总长展示。
+- 清晰度档位选择：每行默认遵循视频号返回的默认流（`SelectedFileFormat = null`，不拼 `X-snsvideoflag`）；当 `media.spec[]` 存在不少于 2 个可区分档位时，行内展示精简下拉框供用户显式切换（按分辨率降序、码率降序去重，如 `1080p · H.265`、`720p · H.264`）。仅在 `Idle` / `Failed` / `Canceled` 状态允许切换，下载时对媒体 URL 追加 `X-snsvideoflag=<file_format>`，仍共用同一 `decode_key` 与分段解密链路；不预探测各档位大小、不持久化档位偏好。
 - 按 262144 字节分段请求 Range；每个分块最多重试 2 次（共 3 次）。`Content-Range` 的起止与总长必须与请求一致。
 - 服务端返回 403 / 404 / 410 或 Range 不符即判为链接过期（`Expired`），不重试，提示回微信重新打开该视频。
 - 首块响应带 `X-encflag: 1` 时读 `X-enclen`（上限 16 MB），用 `decode_key` 生成 ISAAC64 密钥流，只 XOR 文件开头 `min(X-enclen, 文件长)` 字节，其余原样写入；`decode_key` 与 URL 绑定。
@@ -940,7 +941,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 测试缝
 
-1. `JiuMi.Application` 纯函数：`WeChatMediaJsonExtractor`（普通 JSON、双重转义 JSON、跨对象边界、多 CDN 子域校验、无加密定向提取、`NetworkService` `encfilekey` 扫描）、`WeChatMetadataCache`（LRU 淘汰与完整度合并）、`WeChatPlaybackCorrelator`（基线过滤、预加载去噪与去重）、`WeChatVideoUrl`（`encfilekey` 去重、`*.video.qq.com` 校验与去 token）、文件名清洗与冲突、时长 / 大小格式、会话去重与状态保留、串行队列与取消。
+1. `JiuMi.Application` 纯函数：`WeChatMediaJsonExtractor`（普通 JSON、双重转义 JSON、跨对象边界、多 CDN 子域校验、无加密定向提取、`NetworkService` `encfilekey` 扫描、`spec[]` 编码与码率提取）、`WeChatMetadataCache`（LRU 淘汰与完整度合并，含 `Specs` 权重）、`WeChatPlaybackCorrelator`（基线过滤、预加载去噪与去重）、`WeChatVideoUrl`（`encfilekey` 去重、`*.video.qq.com` 校验、去 token 与 `X-snsvideoflag` 拼接/替换）、`WeChatVideoSpecSelector`（默认项前置、排序、去重与标签格式化）、文件名清洗与冲突、时长 / 大小格式、会话去重与档位状态锁定、串行队列与取消。
 2. `JiuMi.Infrastructure`：`MemoryWeChatVideoCapture`（通过模拟 `IWeChatProcessLocator` 与 `IWeChatProcessMemoryReader` 覆盖微信未运行、权限不足、基线过滤、预加载去噪、定向补扫重试、`NetworkService` 子进程重启重定位）、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取。
 3. UI 的开关、列表与进度不设自动化测试。
 

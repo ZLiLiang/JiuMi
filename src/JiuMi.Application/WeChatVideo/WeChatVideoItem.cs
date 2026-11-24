@@ -76,4 +76,22 @@ public sealed record WeChatVideoItem
         get;
         init;
     }
+
+    /// <summary>
+    /// Gets the user-selected <c>file_format</c> quality variant, or <see langword="null"/> to
+    /// download the default stream returned by WeChat.
+    /// </summary>
+    public string? SelectedFileFormat
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the quality variant may be changed in the current download state.
+    /// </summary>
+    public bool CanSelectQuality =>
+        State is WeChatVideoDownloadState.Idle
+            or WeChatVideoDownloadState.Failed
+            or WeChatVideoDownloadState.Canceled;
 }

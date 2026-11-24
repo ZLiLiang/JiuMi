@@ -156,10 +156,64 @@ public static class WeChatVideoUrl
         return new UriBuilder(parsed) { Query = string.Join('&', kept) }.Uri.AbsoluteUri;
     }
 
-    private static bool IsTokenPair(string pair)
+    /// <summary>
+    /// Appends or replaces the <c>X-snsvideoflag</c> query parameter to request a specific quality
+    /// variant from the WeChat CDN. When <paramref name="fileFormat"/> is <see langword="null"/> or
+    /// whitespace, the original URL is returned unchanged.
+    /// </summary>
+    /// <param name="url">The media URL.</param>
+    /// <param name="fileFormat">The target <c>file_format</c> identifier, or <see langword="null"/> for the default stream.</param>
+    /// <returns>The media URL targeting the requested variant, or the original URL when no format is specified.</returns>
+    public static string AppendVideoFlag(string url, string? fileFormat)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(url);
+
+        if (string.IsNullOrWhiteSpace(fileFormat))
+        {
+            return url;
+        }
+
+        string escaped = Uri.EscapeDataString(fileFormat.Trim());
+        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? parsed))
+        {
+            return url + (url.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "X-snsvideoflag=" + escaped;
+        }
+
+        if (string.IsNullOrEmpty(parsed.Query))
+        {
+            return url + "?X-snsvideoflag=" + escaped;
+        }
+
+        string[] pairs = parsed.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+        bool hasExisting = Array.Exists(pairs, IsVideoFlagPair);
+        if (!hasExisting)
+        {
+            return url + "&X-snsvideoflag=" + escaped;
+        }
+
+        var updated = new List<string>(pairs.Length);
+        foreach (string pair in pairs)
+        {
+            if (!IsVideoFlagPair(pair))
+            {
+                updated.Add(pair);
+            }
+        }
+
+        updated.Add("X-snsvideoflag=" + escaped);
+        return new UriBuilder(parsed) { Query = string.Join('&', updated) }.Uri.AbsoluteUri;
+    }
+
+    private static bool IsTokenPair(string pair) =>
+        HasQueryKey(pair, "token", StringComparison.Ordinal);
+
+    private static bool IsVideoFlagPair(string pair) =>
+        HasQueryKey(pair, "X-snsvideoflag", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasQueryKey(string pair, string expectedKey, StringComparison comparison)
     {
         int separator = pair.IndexOf('=', StringComparison.Ordinal);
         string key = separator < 0 ? pair : pair[..separator];
-        return string.Equals(key, "token", StringComparison.Ordinal);
+        return string.Equals(key, expectedKey, comparison);
     }
 }

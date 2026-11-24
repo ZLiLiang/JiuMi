@@ -95,6 +95,8 @@
   "Tool.WeChatVideo.Failure.Protocol": "The server response was not understood",
   "Tool.WeChatVideo.Failure.FileWrite": "The file could not be written",
   "Tool.WeChatVideo.Expired.Hint": "The link expired. Open the video in WeChat again.",
+  "Tool.WeChatVideo.Quality.Default": "Default",
+  "Tool.WeChatVideo.Quality.Label": "Quality",
   "Tool.MyJiuMi.Name": "My JiuMi",
   "MyJiuMi.Title": "My JiuMi",
   "MyJiuMi.Subtitle": "The cat lives here, taking naps and stretching now and then.",

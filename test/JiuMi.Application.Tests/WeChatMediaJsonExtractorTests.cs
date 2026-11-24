@@ -286,4 +286,42 @@ public sealed class WeChatMediaJsonExtractorTests
         Assert.Equal("15053834436594306599", pair.Key);
         Assert.Equal(EncKeyA[..32], pair.Value);
     }
+
+    [Fact]
+    public void ExtractByDecodeKey_GivenSpecCodingAndBitrateFields_ParsesSnakeCaseAndCamelCase()
+    {
+        string payload =
+            $$$"""
+            {"url":"https://finder.video.qq.com/251/20302/stodownload?encfilekey={{{EncKeyA}}}&token=tok1","decode_key":"123456","spec":[
+                {"file_format":"xWT101","coding_format":"h265","width":1080,"height":1920,"bit_rate":2200,"video_bitrate":2050,"audio_bitrate":128,"vfps":30.0,"file_size":0},
+                {"fileFormat":"xWT111","codingFormat":"h264","width":720,"height":1280,"bitRate":1500,"videoBitRate":1380,"audioBitRate":96,"vfps":29.97}
+            ]}
+            """;
+
+        IReadOnlyList<WeChatVideoCaptureItem> items = WeChatMediaJsonExtractor.ExtractByDecodeKey(
+            Encoding.UTF8.GetBytes(payload));
+
+        WeChatVideoCaptureItem item = Assert.Single(items);
+        Assert.Equal(2, item.Specs.Count);
+
+        WeChatVideoSpec first = item.Specs[0];
+        Assert.Equal("xWT101", first.FileFormat);
+        Assert.Equal("h265", first.CodingFormat);
+        Assert.Equal(1080, first.Width);
+        Assert.Equal(1920, first.Height);
+        Assert.Equal(2200, first.BitRate);
+        Assert.Equal(2050, first.VideoBitRate);
+        Assert.Equal(128, first.AudioBitRate);
+        Assert.Equal(30.0, first.Vfps);
+
+        WeChatVideoSpec second = item.Specs[1];
+        Assert.Equal("xWT111", second.FileFormat);
+        Assert.Equal("h264", second.CodingFormat);
+        Assert.Equal(720, second.Width);
+        Assert.Equal(1280, second.Height);
+        Assert.Equal(1500, second.BitRate);
+        Assert.Equal(1380, second.VideoBitRate);
+        Assert.Equal(96, second.AudioBitRate);
+        Assert.Equal(29.97, second.Vfps);
+    }
 }

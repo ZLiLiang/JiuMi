@@ -766,6 +766,28 @@ public static partial class WeChatMediaJsonExtractor
         return null;
     }
 
+    private static double? GetDoubleProperty(JsonElement obj, params string[] names)
+    {
+        foreach (string name in names)
+        {
+            if (obj.TryGetProperty(name, out JsonElement prop))
+            {
+                if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDouble(out double value))
+                {
+                    return value;
+                }
+
+                if (prop.ValueKind == JsonValueKind.String &&
+                    double.TryParse(prop.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    return parsed;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static List<WeChatVideoSpec> ExtractSpecs(JsonElement obj)
     {
         if (!obj.TryGetProperty("spec", out JsonElement specElement) ||
@@ -783,19 +805,27 @@ public static partial class WeChatMediaJsonExtractor
             }
 
             string? format = GetStringProperty(item, "file_format", "fileFormat");
+            string? codingFormat = GetStringProperty(item, "coding_format", "codingFormat");
             int? width = GetInt32Property(item, "width");
             int? height = GetInt32Property(item, "height");
             int? bitRate = GetInt32Property(item, "bit_rate", "bitRate");
+            int? videoBitRate = GetInt32Property(item, "video_bitrate", "videoBitRate", "videoBitrate");
+            int? audioBitRate = GetInt32Property(item, "audio_bitrate", "audioBitRate", "audioBitrate");
+            double? vfps = GetDoubleProperty(item, "vfps");
             long? fileSize = GetInt64Property(item, "file_size", "fileSize");
 
-            if (format is not null || width is not null || height is not null || bitRate is not null)
+            if (format is not null || width is not null || height is not null || bitRate is not null || videoBitRate is not null)
             {
                 specs.Add(new WeChatVideoSpec
                 {
                     FileFormat = format,
+                    CodingFormat = codingFormat,
                     Width = width,
                     Height = height,
                     BitRate = bitRate,
+                    VideoBitRate = videoBitRate,
+                    AudioBitRate = audioBitRate,
+                    Vfps = vfps,
                     FileSize = fileSize,
                 });
             }

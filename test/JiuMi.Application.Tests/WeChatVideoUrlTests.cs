@@ -144,6 +144,47 @@ public sealed class WeChatVideoUrlTests
         Assert.Equal(encKey[..32], prefix);
     }
 
+    [Fact]
+    public void AppendVideoFlag_GivenNullOrWhitespaceFormat_ReturnsOriginalUrl()
+    {
+        const string url = "https://finder.video.qq.com/251/20302/stodownload?encfilekey=abc&token=tok1";
+
+        Assert.Equal(url, WeChatVideoUrl.AppendVideoFlag(url, null));
+        Assert.Equal(url, WeChatVideoUrl.AppendVideoFlag(url, "   "));
+    }
+
+    [Fact]
+    public void AppendVideoFlag_GivenQueryAndNoExistingFlag_AppendsParameter()
+    {
+        const string url = "https://finder.video.qq.com/251/20302/stodownload?encfilekey=abc&token=tok1";
+
+        string result = WeChatVideoUrl.AppendVideoFlag(url, "xWT101");
+
+        Assert.Equal(url + "&X-snsvideoflag=xWT101", result);
+    }
+
+    [Fact]
+    public void AppendVideoFlag_GivenNoQuery_AppendsQuestionMarkParameter()
+    {
+        const string url = "https://finder.video.qq.com/251/20302/stodownload";
+
+        string result = WeChatVideoUrl.AppendVideoFlag(url, "xWT111");
+
+        Assert.Equal(url + "?X-snsvideoflag=xWT111", result);
+    }
+
+    [Fact]
+    public void AppendVideoFlag_GivenExistingFlag_ReplacesItCaseInsensitively()
+    {
+        const string url = "https://finder.video.qq.com/251/20302/stodownload?encfilekey=abc&x-snsvideoflag=xWT113&token=tok1";
+
+        string result = WeChatVideoUrl.AppendVideoFlag(url, " xWT101 ");
+
+        Assert.Equal(
+            "https://finder.video.qq.com/251/20302/stodownload?encfilekey=abc&token=tok1&X-snsvideoflag=xWT101",
+            result);
+    }
+
     private static WeChatVideoCaptureItem Capture(
         string url,
         string? oid = null,

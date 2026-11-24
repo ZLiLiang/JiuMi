@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
@@ -16,7 +18,11 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
 {
     private readonly ILocalizationService _localization;
     private readonly Action<WeChatVideoRowViewModel> _primaryAction;
+    private readonly Action<WeChatVideoRowViewModel, string?> _selectQualityAction;
     private WeChatVideoItem _item;
+    private IReadOnlyList<WeChatVideoSpecOption> _qualityOptions = [];
+    private WeChatVideoSpecOption? _selectedQualityOption;
+    private bool _syncingQualitySelection;
     private bool _canDownload;
     private bool _isLast;
     private bool _isDisposed;
@@ -30,21 +36,26 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// <param name="localization">Supplies the row text.</param>
     /// <param name="canDownload">Whether the download folder is usable.</param>
     /// <param name="primaryAction">Runs the action of the row's state button.</param>
+    /// <param name="selectQualityAction">Records the user's quality variant selection for this row.</param>
     public WeChatVideoRowViewModel(
         WeChatVideoItem item,
         ILocalizationService localization,
         bool canDownload,
-        Action<WeChatVideoRowViewModel> primaryAction)
+        Action<WeChatVideoRowViewModel> primaryAction,
+        Action<WeChatVideoRowViewModel, string?> selectQualityAction)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(primaryAction);
+        ArgumentNullException.ThrowIfNull(selectQualityAction);
 
         _item = item;
         _localization = localization;
         _canDownload = canDownload;
         _primaryAction = primaryAction;
+        _selectQualityAction = selectQualityAction;
         PrimaryCommand = new RelayCommand(RunPrimaryAction, () => CanPrimaryAction);
+        RefreshQualityOptions(forceRebuild: true);
     }
 
     /// <summary>
@@ -240,6 +251,52 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets the selectable quality options, always starting with the default WeChat stream.
+    /// </summary>
+    public IReadOnlyList<WeChatVideoSpecOption> QualityOptions => _qualityOptions;
+
+    /// <summary>
+    /// Gets or sets the currently selected quality option.
+    /// </summary>
+    public WeChatVideoSpecOption? SelectedQualityOption
+    {
+        get => _selectedQualityOption;
+        set
+        {
+            if (_syncingQualitySelection || _isDisposed || Equals(_selectedQualityOption, value))
+            {
+                return;
+            }
+
+            if (!CanSelectQuality || value is null)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _selectedQualityOption = value;
+            OnPropertyChanged();
+            _selectQualityAction(this, value.FileFormat);
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the quality selector should be shown (when at least two
+    /// distinct quality variants exist in addition to the default option).
+    /// </summary>
+    public bool ShowQualitySelector => _qualityOptions.Count >= 3;
+
+    /// <summary>
+    /// Gets a value indicating whether the user may change the quality selection in the current state.
+    /// </summary>
+    public bool CanSelectQuality => _item.CanSelectQuality;
+
+    /// <summary>
+    /// Gets the localized tooltip for the quality selector.
+    /// </summary>
+    public string QualityToolTip => _localization["Tool.WeChatVideo.Quality.Label"];
+
+    /// <summary>
     /// Takes over a newer session snapshot of the same video.
     /// </summary>
     /// <param name="item">The item after the change.</param>
@@ -315,6 +372,7 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void RefreshText()
     {
+        RefreshQualityOptions(forceRebuild: true);
         OnPropertyChanged(nameof(Description));
         OnPropertyChanged(nameof(MetaText));
         OnPropertyChanged(nameof(HasMeta));
@@ -323,6 +381,7 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(FailureText));
         OnPropertyChanged(nameof(ShowFailure));
         OnPropertyChanged(nameof(ExpiredHint));
+        OnPropertyChanged(nameof(QualityToolTip));
     }
 
     /// <inheritdoc />
@@ -339,6 +398,7 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
 
     private void RefreshAll()
     {
+        RefreshQualityOptions(forceRebuild: false);
         OnPropertyChanged(nameof(Item));
         OnPropertyChanged(nameof(Key));
         OnPropertyChanged(nameof(ThumbnailUrl));
@@ -353,6 +413,7 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsPrimaryAccent));
         OnPropertyChanged(nameof(PrimaryActionText));
         OnPropertyChanged(nameof(CanPrimaryAction));
+        OnPropertyChanged(nameof(CanSelectQuality));
         OnPropertyChanged(nameof(FailureText));
         OnPropertyChanged(nameof(ShowFailure));
         OnPropertyChanged(nameof(ShowExpiredHint));
@@ -363,6 +424,39 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasThumbnail));
         OnPropertyChanged(nameof(CoverOpacity));
         PrimaryCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RefreshQualityOptions(bool forceRebuild)
+    {
+        IReadOnlyList<WeChatVideoSpecOption> nextOptions = WeChatVideoSpecSelector.BuildOptions(
+            _item.Capture.Specs,
+            _localization["Tool.WeChatVideo.Quality.Default"]);
+
+        bool optionsChanged = forceRebuild || !_qualityOptions.SequenceEqual(nextOptions);
+        if (optionsChanged)
+        {
+            _qualityOptions = nextOptions;
+            OnPropertyChanged(nameof(QualityOptions));
+            OnPropertyChanged(nameof(ShowQualitySelector));
+        }
+
+        WeChatVideoSpecOption matched = _qualityOptions.FirstOrDefault(
+            option => string.Equals(option.FileFormat, _item.SelectedFileFormat, StringComparison.Ordinal))
+            ?? _qualityOptions[0];
+
+        if (optionsChanged || !Equals(_selectedQualityOption, matched))
+        {
+            _syncingQualitySelection = true;
+            try
+            {
+                _selectedQualityOption = matched;
+                OnPropertyChanged(nameof(SelectedQualityOption));
+            }
+            finally
+            {
+                _syncingQualitySelection = false;
+            }
+        }
     }
 
     private void ClearThumbnail()

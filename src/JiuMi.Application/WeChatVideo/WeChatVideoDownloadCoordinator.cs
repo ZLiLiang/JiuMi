@@ -49,14 +49,19 @@ public sealed class WeChatVideoDownloadCoordinator
                 Failure = WeChatVideoDownloadFailure.None,
                 SavedPath = null,
             },
-            out _);
+            out WeChatVideoItem? queuedItem);
+
+        WeChatVideoItem effectiveItem = queuedItem ?? item;
+        string targetUrl = WeChatVideoUrl.AppendVideoFlag(
+            effectiveItem.Capture.Url,
+            effectiveItem.SelectedFileFormat);
 
         var request = new WeChatVideoDownloadRequest
         {
-            MediaUrl = new Uri(item.Capture.Url),
+            MediaUrl = new Uri(targetUrl),
             OutputDirectory = outputDirectory,
-            FileStem = WeChatVideoFileName.CreateStem(item.Capture.Description, item.CapturedAt),
-            DecodeKey = item.Capture.DecodeKey,
+            FileStem = WeChatVideoFileName.CreateStem(effectiveItem.Capture.Description, effectiveItem.CapturedAt),
+            DecodeKey = effectiveItem.Capture.DecodeKey,
         };
         var forwarding = new ForwardingProgress(
             progress,

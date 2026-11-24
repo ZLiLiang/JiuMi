@@ -221,6 +221,8 @@
   "Tool.WeChatVideo.Failure.Protocol": "服务器响应异常",
   "Tool.WeChatVideo.Failure.FileWrite": "文件写入失败",
   "Tool.WeChatVideo.Expired.Hint": "链接已过期，请在微信中重新打开该视频",
+  "Tool.WeChatVideo.Quality.Default": "默认",
+  "Tool.WeChatVideo.Quality.Label": "清晰度",
   "Tool.ImageConvert.Name": "图片格式转换",
   "Tool.ImageConvert.Description": "把 PSD 批量转成 PNG，或在 PNG、JPG、WebP 之间互转。",
   "Tool.ImageConvert.Subtitle": "把 PSD 或图片转成 PNG、JPEG 或 WebP。",

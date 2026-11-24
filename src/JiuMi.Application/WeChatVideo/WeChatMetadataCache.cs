@@ -171,6 +171,11 @@ public sealed class WeChatMetadataCache
             score += 1;
         }
 
+        if (item.Specs.Count > 0)
+        {
+            score += 1;
+        }
+
         return score;
     }
 
