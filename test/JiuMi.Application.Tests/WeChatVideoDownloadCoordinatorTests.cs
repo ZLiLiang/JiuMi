@@ -171,6 +171,103 @@ public sealed class WeChatVideoDownloadCoordinatorTests
             downloader.LastRequest.MediaUrl.AbsoluteUri);
     }
 
+    [Fact]
+    public async Task StartAsync_GivenCompletedItemWithNewQuality_RedownloadsAndUpdatesSavedPath()
+    {
+        var downloader = new StubDownloader
+        {
+            Handler = (_, _) => Task.FromResult(
+                WeChatVideoDownloadResult.Success(@"C:\out\video-1.mp4", 400, 400)),
+        };
+        await using var queue = new WeChatVideoDownloadQueue(downloader);
+        var coordinator = new WeChatVideoDownloadCoordinator(_session, queue);
+        WeChatVideoItem item = AddItem("描述", decodeKey: "42");
+        _session.TryUpdate(
+            item.Key,
+            current => current with
+            {
+                State = WeChatVideoDownloadState.Completed,
+                DownloadedBytes = 200,
+                TotalBytes = 200,
+                SavedPath = @"C:\out\video.mp4",
+            },
+            out _);
+        Assert.True(_session.TrySelectFileFormat(item.Key, "xWT200", out WeChatVideoItem? withNewQuality));
+        Assert.NotNull(withNewQuality);
+
+        WeChatVideoDownloadResult result = await coordinator.StartAsync(withNewQuality, Path.GetTempPath());
+
+        Assert.Equal(WeChatVideoDownloadStatus.Completed, result.Status);
+        WeChatVideoItem updated = Assert.Single(_session.Items);
+        Assert.Equal(WeChatVideoDownloadState.Completed, updated.State);
+        Assert.Equal(@"C:\out\video-1.mp4", updated.SavedPath);
+        Assert.Equal(400, updated.DownloadedBytes);
+        Assert.False(updated.IsLocalFileMissing);
+        Assert.NotNull(downloader.LastRequest);
+        Assert.Equal(
+            "https://finder.video.qq.com/media?token=abc&X-snsvideoflag=xWT200",
+            downloader.LastRequest.MediaUrl.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task StartAsync_GivenLocalFileMissingItem_ClearsMissingFlagOnRedownload()
+    {
+        var downloader = new StubDownloader
+        {
+            Handler = (_, _) => Task.FromResult(
+                WeChatVideoDownloadResult.Success(@"C:\out\video.mp4", 200, 200)),
+        };
+        await using var queue = new WeChatVideoDownloadQueue(downloader);
+        var coordinator = new WeChatVideoDownloadCoordinator(_session, queue);
+        WeChatVideoItem item = AddItem("描述");
+        _session.TryUpdate(
+            item.Key,
+            current => current with
+            {
+                State = WeChatVideoDownloadState.Completed,
+                SavedPath = @"C:\out\video.mp4",
+            },
+            out _);
+        Assert.True(_session.TryMarkLocalFileMissing(item.Key, out WeChatVideoItem? missingItem));
+        Assert.NotNull(missingItem);
+
+        await coordinator.StartAsync(missingItem, Path.GetTempPath());
+
+        WeChatVideoItem updated = Assert.Single(_session.Items);
+        Assert.Equal(WeChatVideoDownloadState.Completed, updated.State);
+        Assert.False(updated.IsLocalFileMissing);
+        Assert.Equal(@"C:\out\video.mp4", updated.SavedPath);
+    }
+
+    [Fact]
+    public async Task StartAsync_GivenCompletedItemWithExpiredLink_TransitionsToExpired()
+    {
+        var downloader = new StubDownloader
+        {
+            Handler = (_, _) => Task.FromResult(WeChatVideoDownloadResult.Expired(0, 200)),
+        };
+        await using var queue = new WeChatVideoDownloadQueue(downloader);
+        var coordinator = new WeChatVideoDownloadCoordinator(_session, queue);
+        WeChatVideoItem item = AddItem("描述");
+        Assert.True(_session.TryUpdate(
+            item.Key,
+            current => current with
+            {
+                State = WeChatVideoDownloadState.Completed,
+                SavedPath = @"C:\out\video.mp4",
+            },
+            out WeChatVideoItem? completed));
+        Assert.NotNull(completed);
+
+        WeChatVideoDownloadResult result = await coordinator.StartAsync(completed, Path.GetTempPath());
+
+        Assert.Equal(WeChatVideoDownloadStatus.Expired, result.Status);
+        WeChatVideoItem updated = Assert.Single(_session.Items);
+        Assert.Equal(WeChatVideoDownloadState.Expired, updated.State);
+        Assert.Null(updated.SavedPath);
+        Assert.False(updated.CanSelectQuality);
+    }
+
     private WeChatVideoItem AddItem(string? description, string? decodeKey = null)
     {
         return _session.AddOrUpdate(new WeChatVideoCaptureItem

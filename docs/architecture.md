@@ -925,7 +925,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 下载与解密
 
 - 下载串行排队（FIFO），每行独立取消；总大小取 HEAD 的 `Content-Length`，不用 `file_size`。进度按已写字节 / 总长展示。
-- 清晰度档位选择：每行默认遵循视频号返回的默认流（`SelectedFileFormat = null`，不拼 `X-snsvideoflag`）；当 `media.spec[]` 存在不少于 2 个可区分档位时，行内展示精简下拉框供用户显式切换（按分辨率降序、码率降序去重，如 `1080p · H.265`、`720p · H.264`）。仅在 `Idle` / `Failed` / `Canceled` 状态允许切换，下载时对媒体 URL 追加 `X-snsvideoflag=<file_format>`，仍共用同一 `decode_key` 与分段解密链路；不预探测各档位大小、不持久化档位偏好。
+- 清晰度档位选择：每行默认遵循视频号返回的默认流（`SelectedFileFormat = null`，不拼 `X-snsvideoflag`）；当 `media.spec[]` 存在不少于 2 个可区分档位时，行内展示精简下拉框供用户显式切换（按分辨率降序、码率降序去重，如 `1080p · H.265`、`720p · H.264`）。在 `Idle` / `Completed` / `Failed` / `Canceled` 状态允许切换，下载时对媒体 URL 追加 `X-snsvideoflag=<file_format>`，仍共用同一 `decode_key` 与分段解密链路；不预探测各档位大小、不持久化档位偏好。
 - 按 262144 字节分段请求 Range；每个分块最多重试 2 次（共 3 次）。`Content-Range` 的起止与总长必须与请求一致。
 - 服务端返回 403 / 404 / 410 或 Range 不符即判为链接过期（`Expired`），不重试，提示回微信重新打开该视频。
 - 首块响应带 `X-encflag: 1` 时读 `X-enclen`（上限 16 MB），用 `decode_key` 生成 ISAAC64 密钥流，只 XOR 文件开头 `min(X-enclen, 文件长)` 字节，其余原样写入；`decode_key` 与 URL 绑定。
@@ -936,7 +936,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 ### 状态与呈现
 
 - 唯一持久化字段是 `weChatVideo.downloadDirectory`；列表、进度、监听状态与下载结果都只在会话内。
-- 行状态 `WeChatVideoDownloadState`：`Idle` / `Queued` / `Downloading` / `Completed` / `Failed` / `Expired` / `Canceled`。按钮随状态变化：空闲、失败、取消可下载或重试；排队、下载中可取消；完成、过期只能移除。
+- 行状态 `WeChatVideoDownloadState`：`Idle` / `Queued` / `Downloading` / `Completed` / `Failed` / `Expired` / `Canceled`。按钮随状态变化：空闲、失败、取消可下载或重试；排队、下载中可取消；过期只能移除；完成状态右侧提供 4 个紧凑图标按钮（打开视频、在文件夹中显示、重新下载、从列表移除），其中打开与定位通过 `ISystemLauncher.OpenFile` / `RevealInFolder`（Windows 使用 `explorer.exe /select,"<path>"`，非 Windows 回退打开父目录）执行并在点击时按需校验 `SavedPath` 是否存在，若本地文件已不存在则行内温和提示并经 `WeChatVideoSession.TryMarkLocalFileMissing` 切回可重新下载态（高亮重新下载主按钮并保留从列表移除），系统启动器异常则记录日志并在行内反馈；「移除」仅移除列表项、不删除本地文件。
 - 失败原因取 `DirectoryMissing` / `Network` / `Protocol` / `FileWrite` 之一；行内给出原因，不弹全局错误窗。
 - 登记错误码：`WeChatVideo.CaptureStartFailed` 走 InfoBar + 重试。
 

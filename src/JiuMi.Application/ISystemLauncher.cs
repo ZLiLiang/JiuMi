@@ -16,4 +16,17 @@ public interface ISystemLauncher
     /// </summary>
     /// <param name="uri">The absolute URI to open.</param>
     void OpenUri(Uri uri);
+
+    /// <summary>
+    /// Opens <paramref name="path"/> with the system's default application for that file type.
+    /// </summary>
+    /// <param name="path">The local file path to open.</param>
+    void OpenFile(string path);
+
+    /// <summary>
+    /// Opens the system file manager and highlights <paramref name="filePath"/> when supported
+    /// by the platform, falling back to opening its parent folder otherwise.
+    /// </summary>
+    /// <param name="filePath">The local file path to reveal.</param>
+    void RevealInFolder(string filePath);
 }

@@ -114,6 +114,7 @@ public sealed class WeChatVideoSession
     /// <summary>
     /// Updates the user-selected quality variant (<c>file_format</c>) for an item when its download
     /// state allows changing selection (<see cref="WeChatVideoDownloadState.Idle"/>,
+    /// <see cref="WeChatVideoDownloadState.Completed"/>,
     /// <see cref="WeChatVideoDownloadState.Failed"/>, or <see cref="WeChatVideoDownloadState.Canceled"/>).
     /// Passing <see langword="null"/> or whitespace resets to the default stream.
     /// </summary>
@@ -162,6 +163,40 @@ public sealed class WeChatVideoSession
             RaiseChanged(WeChatVideoSessionChange.Updated, updated);
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// Marks a completed item's local file as missing, clearing its saved path and returning it to
+    /// <see cref="WeChatVideoDownloadState.Idle"/> with <see cref="WeChatVideoItem.IsLocalFileMissing"/>
+    /// set so the user can re-download it.
+    /// </summary>
+    /// <param name="key">The de-duplication key.</param>
+    /// <param name="updated">The resulting item when the transition succeeded.</param>
+    /// <returns><see langword="true"/> when the item existed in <see cref="WeChatVideoDownloadState.Completed"/>.</returns>
+    public bool TryMarkLocalFileMissing(string key, out WeChatVideoItem? updated)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        updated = null;
+        lock (_gate)
+        {
+            if (!_byKey.TryGetValue(key, out WeChatVideoItem? existing) ||
+                existing.State != WeChatVideoDownloadState.Completed)
+            {
+                return false;
+            }
+
+            updated = existing with
+            {
+                State = WeChatVideoDownloadState.Idle,
+                SavedPath = null,
+                IsLocalFileMissing = true,
+            };
+            Replace(key, updated);
+        }
+
+        RaiseChanged(WeChatVideoSessionChange.Updated, updated);
         return true;
     }
 

@@ -150,6 +150,7 @@ public sealed class WeChatVideoSessionTests
 
     [Theory]
     [InlineData(WeChatVideoDownloadState.Idle)]
+    [InlineData(WeChatVideoDownloadState.Completed)]
     [InlineData(WeChatVideoDownloadState.Failed)]
     [InlineData(WeChatVideoDownloadState.Canceled)]
     public void TrySelectFileFormat_GivenAllowedState_UpdatesAndPreservesAcrossCaptureRefresh(
@@ -181,7 +182,6 @@ public sealed class WeChatVideoSessionTests
     [Theory]
     [InlineData(WeChatVideoDownloadState.Queued)]
     [InlineData(WeChatVideoDownloadState.Downloading)]
-    [InlineData(WeChatVideoDownloadState.Completed)]
     [InlineData(WeChatVideoDownloadState.Expired)]
     public void TrySelectFileFormat_GivenLockedState_RejectsSelectionChange(WeChatVideoDownloadState lockedState)
     {
@@ -197,6 +197,75 @@ public sealed class WeChatVideoSessionTests
         Assert.Null(updated);
         Assert.False(raised);
         Assert.Null(Assert.Single(_session.Items).SelectedFileFormat);
+    }
+
+    [Fact]
+    public void TryMarkLocalFileMissing_GivenCompletedItem_TransitionsToIdleAndClearsSavedPath()
+    {
+        WeChatVideoItem item = _session.AddOrUpdate(
+            Capture("https://finder.video.qq.com/a?token=1", "oid-1", "nid-1"));
+        _session.TryUpdate(
+            item.Key,
+            current => current with
+            {
+                State = WeChatVideoDownloadState.Completed,
+                SavedPath = @"C:\out\video.mp4",
+            },
+            out _);
+        WeChatVideoSessionChangedEventArgs? changed = null;
+        _session.Changed += (_, args) => changed = args;
+
+        bool result = _session.TryMarkLocalFileMissing(item.Key, out WeChatVideoItem? updated);
+
+        Assert.True(result);
+        Assert.NotNull(updated);
+        Assert.Equal(WeChatVideoDownloadState.Idle, updated.State);
+        Assert.Null(updated.SavedPath);
+        Assert.True(updated.IsLocalFileMissing);
+        Assert.True(updated.CanSelectQuality);
+        Assert.NotNull(changed);
+        Assert.Equal(WeChatVideoSessionChange.Updated, changed.Change);
+    }
+
+    [Theory]
+    [InlineData(WeChatVideoDownloadState.Idle)]
+    [InlineData(WeChatVideoDownloadState.Queued)]
+    [InlineData(WeChatVideoDownloadState.Downloading)]
+    [InlineData(WeChatVideoDownloadState.Failed)]
+    [InlineData(WeChatVideoDownloadState.Canceled)]
+    [InlineData(WeChatVideoDownloadState.Expired)]
+    public void TryMarkLocalFileMissing_GivenNonCompletedState_ReturnsFalseWithoutRaising(
+        WeChatVideoDownloadState state)
+    {
+        WeChatVideoItem item = _session.AddOrUpdate(
+            Capture("https://finder.video.qq.com/a?token=1", "oid-1", "nid-1"));
+        if (state != WeChatVideoDownloadState.Idle)
+        {
+            _session.TryUpdate(item.Key, current => current with { State = state }, out _);
+        }
+
+        bool raised = false;
+        _session.Changed += (_, _) => raised = true;
+
+        bool result = _session.TryMarkLocalFileMissing(item.Key, out WeChatVideoItem? updated);
+
+        Assert.False(result);
+        Assert.Null(updated);
+        Assert.False(raised);
+        Assert.False(Assert.Single(_session.Items).IsLocalFileMissing);
+    }
+
+    [Fact]
+    public void TryMarkLocalFileMissing_GivenMissingKey_ReturnsFalseWithoutRaising()
+    {
+        bool raised = false;
+        _session.Changed += (_, _) => raised = true;
+
+        bool result = _session.TryMarkLocalFileMissing("missing", out WeChatVideoItem? updated);
+
+        Assert.False(result);
+        Assert.Null(updated);
+        Assert.False(raised);
     }
 
     private static WeChatVideoCaptureItem Capture(string url, string? oid = null, string? nid = null) => new()
