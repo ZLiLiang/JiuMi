@@ -18,10 +18,15 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
 {
     private readonly ILocalizationService _localization;
     private readonly Action<WeChatVideoRowViewModel> _primaryAction;
+    private readonly Action<WeChatVideoRowViewModel> _openVideoAction;
+    private readonly Action<WeChatVideoRowViewModel> _revealInFolderAction;
+    private readonly Action<WeChatVideoRowViewModel> _redownloadAction;
+    private readonly Action<WeChatVideoRowViewModel> _removeAction;
     private readonly Action<WeChatVideoRowViewModel, string?> _selectQualityAction;
     private WeChatVideoItem _item;
     private IReadOnlyList<WeChatVideoSpecOption> _qualityOptions = [];
     private WeChatVideoSpecOption? _selectedQualityOption;
+    private string? _actionErrorKey;
     private bool _syncingQualitySelection;
     private bool _canDownload;
     private bool _isLast;
@@ -36,25 +41,45 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// <param name="localization">Supplies the row text.</param>
     /// <param name="canDownload">Whether the download folder is usable.</param>
     /// <param name="primaryAction">Runs the action of the row's state button.</param>
+    /// <param name="openVideoAction">Opens the downloaded video in the system default player.</param>
+    /// <param name="revealInFolderAction">Reveals the downloaded video in the system file manager.</param>
+    /// <param name="redownloadAction">Re-downloads a completed or missing-file video.</param>
+    /// <param name="removeAction">Removes the video from the session list without deleting local files.</param>
     /// <param name="selectQualityAction">Records the user's quality variant selection for this row.</param>
     public WeChatVideoRowViewModel(
         WeChatVideoItem item,
         ILocalizationService localization,
         bool canDownload,
         Action<WeChatVideoRowViewModel> primaryAction,
+        Action<WeChatVideoRowViewModel> openVideoAction,
+        Action<WeChatVideoRowViewModel> revealInFolderAction,
+        Action<WeChatVideoRowViewModel> redownloadAction,
+        Action<WeChatVideoRowViewModel> removeAction,
         Action<WeChatVideoRowViewModel, string?> selectQualityAction)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(primaryAction);
+        ArgumentNullException.ThrowIfNull(openVideoAction);
+        ArgumentNullException.ThrowIfNull(revealInFolderAction);
+        ArgumentNullException.ThrowIfNull(redownloadAction);
+        ArgumentNullException.ThrowIfNull(removeAction);
         ArgumentNullException.ThrowIfNull(selectQualityAction);
 
         _item = item;
         _localization = localization;
         _canDownload = canDownload;
         _primaryAction = primaryAction;
+        _openVideoAction = openVideoAction;
+        _revealInFolderAction = revealInFolderAction;
+        _redownloadAction = redownloadAction;
+        _removeAction = removeAction;
         _selectQualityAction = selectQualityAction;
         PrimaryCommand = new RelayCommand(RunPrimaryAction, () => CanPrimaryAction);
+        OpenVideoCommand = new RelayCommand(RunOpenVideo, () => CanOpenOrReveal);
+        RevealInFolderCommand = new RelayCommand(RunRevealInFolder, () => CanOpenOrReveal);
+        RedownloadCommand = new RelayCommand(RunRedownload, () => CanRedownload);
+        RemoveCommand = new RelayCommand(RunRemove, () => !_isDisposed);
         RefreshQualityOptions(forceRebuild: true);
     }
 
@@ -109,6 +134,11 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
                 return _localization.Format("Tool.WeChatVideo.Status.DownloadingPercent", percent);
             }
 
+            if (_item.IsLocalFileMissing)
+            {
+                return _localization["Tool.WeChatVideo.Status.FileMissing"];
+            }
+
             return _localization[_item.State switch
             {
                 WeChatVideoDownloadState.Queued => "Tool.WeChatVideo.Status.Queued",
@@ -131,6 +161,37 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// Gets a value indicating whether the video was downloaded.
     /// </summary>
     public bool IsCompleted => _item.State == WeChatVideoDownloadState.Completed;
+
+    /// <summary>
+    /// Gets a value indicating whether the previously downloaded local file was detected missing.
+    /// </summary>
+    public bool IsLocalFileMissing => _item.IsLocalFileMissing;
+
+    /// <summary>
+    /// Gets a value indicating whether the row should render the four compact completed-state icon buttons.
+    /// </summary>
+    public bool ShowCompletedActions => IsCompleted;
+
+    /// <summary>
+    /// Gets a value indicating whether the row should render the re-download and remove buttons
+    /// after a missing local file was detected.
+    /// </summary>
+    public bool ShowFileMissingActions => !IsCompleted && IsLocalFileMissing;
+
+    /// <summary>
+    /// Gets a value indicating whether the row should render the default single state button.
+    /// </summary>
+    public bool ShowDefaultPrimaryAction => !IsCompleted && !IsLocalFileMissing;
+
+    /// <summary>
+    /// Gets a value indicating whether opening or revealing the local video file is currently allowed.
+    /// </summary>
+    public bool CanOpenOrReveal => IsCompleted && !string.IsNullOrWhiteSpace(_item.SavedPath);
+
+    /// <summary>
+    /// Gets a value indicating whether re-downloading the video is currently allowed.
+    /// </summary>
+    public bool CanRedownload => _canDownload && (IsCompleted || IsLocalFileMissing);
 
     /// <summary>
     /// Gets a value indicating whether the last download failed.
@@ -204,6 +265,53 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     public bool ShowExpiredHint => IsExpired;
 
     /// <summary>
+    /// Gets the gentle hint shown when the downloaded local file no longer exists.
+    /// </summary>
+    public string LocalFileMissingHint => _localization["Tool.WeChatVideo.FileMissing.Hint"];
+
+    /// <summary>
+    /// Gets a value indicating whether the missing-file hint is shown.
+    /// </summary>
+    public bool ShowLocalFileMissingHint => IsLocalFileMissing;
+
+    /// <summary>
+    /// Gets the inline feedback shown when opening or revealing a downloaded file fails.
+    /// </summary>
+    public string ActionErrorText => _actionErrorKey is null
+        ? string.Empty
+        : _localization[_actionErrorKey];
+
+    /// <summary>
+    /// Gets a value indicating whether inline action error feedback is shown.
+    /// </summary>
+    public bool ShowActionError => !ShowFailure && !string.IsNullOrEmpty(ActionErrorText);
+
+    /// <summary>
+    /// Gets the localized tooltip and accessible name for the open-video button.
+    /// </summary>
+    public string OpenVideoToolTip => _localization["Tool.WeChatVideo.Action.OpenVideo"];
+
+    /// <summary>
+    /// Gets the localized tooltip and accessible name for the show-in-folder button.
+    /// </summary>
+    public string RevealInFolderToolTip => _localization["Tool.WeChatVideo.Action.RevealInFolder"];
+
+    /// <summary>
+    /// Gets the localized tooltip and accessible name for the re-download button.
+    /// </summary>
+    public string RedownloadToolTip => _localization["Tool.WeChatVideo.Action.Redownload"];
+
+    /// <summary>
+    /// Gets the localized tooltip and accessible name for the remove-from-list button.
+    /// </summary>
+    public string RemoveFromListToolTip => _localization["Tool.WeChatVideo.Action.RemoveFromList"];
+
+    /// <summary>
+    /// Gets the localized label for the re-download primary button in the missing-file state.
+    /// </summary>
+    public string RedownloadActionText => _localization["Tool.WeChatVideo.Action.Redownload"];
+
+    /// <summary>
     /// Gets the number of bytes written so far.
     /// </summary>
     public double ProgressValue => _item.DownloadedBytes;
@@ -246,6 +354,38 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// Gets the command that runs the state button's action.
     /// </summary>
     public IRelayCommand PrimaryCommand
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the command that opens the downloaded video with the system default player.
+    /// </summary>
+    public IRelayCommand OpenVideoCommand
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the command that reveals the downloaded video in the system file manager.
+    /// </summary>
+    public IRelayCommand RevealInFolderCommand
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the command that re-downloads a completed or missing-file video.
+    /// </summary>
+    public IRelayCommand RedownloadCommand
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the command that removes the video from the session list without deleting disk files.
+    /// </summary>
+    public IRelayCommand RemoveCommand
     {
         get;
     }
@@ -309,12 +449,29 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
             item.Capture.ThumbUrl,
             StringComparison.Ordinal);
         _item = item;
+        _actionErrorKey = null;
         if (coverChanged)
         {
             ClearThumbnail();
         }
 
         RefreshAll();
+    }
+
+    /// <summary>
+    /// Sets or clears an inline error message for a failed row action such as opening or revealing a file.
+    /// </summary>
+    /// <param name="localizationKey">The localization key of the message, or <see langword="null"/> to clear.</param>
+    public void SetActionError(string? localizationKey)
+    {
+        if (string.Equals(_actionErrorKey, localizationKey, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _actionErrorKey = localizationKey;
+        OnPropertyChanged(nameof(ActionErrorText));
+        OnPropertyChanged(nameof(ShowActionError));
     }
 
     /// <summary>
@@ -330,7 +487,9 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
 
         _canDownload = canDownload;
         OnPropertyChanged(nameof(CanPrimaryAction));
+        OnPropertyChanged(nameof(CanRedownload));
         PrimaryCommand.NotifyCanExecuteChanged();
+        RedownloadCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -381,6 +540,14 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(FailureText));
         OnPropertyChanged(nameof(ShowFailure));
         OnPropertyChanged(nameof(ExpiredHint));
+        OnPropertyChanged(nameof(LocalFileMissingHint));
+        OnPropertyChanged(nameof(ActionErrorText));
+        OnPropertyChanged(nameof(ShowActionError));
+        OnPropertyChanged(nameof(OpenVideoToolTip));
+        OnPropertyChanged(nameof(RevealInFolderToolTip));
+        OnPropertyChanged(nameof(RedownloadToolTip));
+        OnPropertyChanged(nameof(RemoveFromListToolTip));
+        OnPropertyChanged(nameof(RedownloadActionText));
         OnPropertyChanged(nameof(QualityToolTip));
     }
 
@@ -408,6 +575,12 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsExpired));
         OnPropertyChanged(nameof(IsCompleted));
+        OnPropertyChanged(nameof(IsLocalFileMissing));
+        OnPropertyChanged(nameof(ShowCompletedActions));
+        OnPropertyChanged(nameof(ShowFileMissingActions));
+        OnPropertyChanged(nameof(ShowDefaultPrimaryAction));
+        OnPropertyChanged(nameof(CanOpenOrReveal));
+        OnPropertyChanged(nameof(CanRedownload));
         OnPropertyChanged(nameof(IsFailed));
         OnPropertyChanged(nameof(IsDownloading));
         OnPropertyChanged(nameof(IsPrimaryAccent));
@@ -417,6 +590,9 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(FailureText));
         OnPropertyChanged(nameof(ShowFailure));
         OnPropertyChanged(nameof(ShowExpiredHint));
+        OnPropertyChanged(nameof(ShowLocalFileMissingHint));
+        OnPropertyChanged(nameof(ActionErrorText));
+        OnPropertyChanged(nameof(ShowActionError));
         OnPropertyChanged(nameof(ProgressValue));
         OnPropertyChanged(nameof(ProgressMaximum));
         OnPropertyChanged(nameof(IsIndeterminate));
@@ -424,6 +600,10 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasThumbnail));
         OnPropertyChanged(nameof(CoverOpacity));
         PrimaryCommand.NotifyCanExecuteChanged();
+        OpenVideoCommand.NotifyCanExecuteChanged();
+        RevealInFolderCommand.NotifyCanExecuteChanged();
+        RedownloadCommand.NotifyCanExecuteChanged();
+        RemoveCommand.NotifyCanExecuteChanged();
     }
 
     private void RefreshQualityOptions(bool forceRebuild)
@@ -477,6 +657,46 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
         }
 
         _primaryAction(this);
+    }
+
+    private void RunOpenVideo()
+    {
+        if (_isDisposed || !CanOpenOrReveal)
+        {
+            return;
+        }
+
+        _openVideoAction(this);
+    }
+
+    private void RunRevealInFolder()
+    {
+        if (_isDisposed || !CanOpenOrReveal)
+        {
+            return;
+        }
+
+        _revealInFolderAction(this);
+    }
+
+    private void RunRedownload()
+    {
+        if (_isDisposed || !CanRedownload)
+        {
+            return;
+        }
+
+        _redownloadAction(this);
+    }
+
+    private void RunRemove()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _removeAction(this);
     }
 
     private static WriteableBitmap? CreateGrayscale(Bitmap source)

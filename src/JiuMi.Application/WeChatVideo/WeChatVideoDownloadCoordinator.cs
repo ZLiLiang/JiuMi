@@ -47,7 +47,9 @@ public sealed class WeChatVideoDownloadCoordinator
             {
                 State = WeChatVideoDownloadState.Queued,
                 Failure = WeChatVideoDownloadFailure.None,
+                DownloadedBytes = 0,
                 SavedPath = null,
+                IsLocalFileMissing = false,
             },
             out WeChatVideoItem? queuedItem);
 
@@ -101,6 +103,7 @@ public sealed class WeChatVideoDownloadCoordinator
                 DownloadedBytes = result.BytesReceived,
                 TotalBytes = result.TotalBytes ?? current.TotalBytes,
                 SavedPath = result.FilePath,
+                IsLocalFileMissing = false,
             },
             out _);
     }

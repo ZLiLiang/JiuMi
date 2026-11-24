@@ -171,6 +171,14 @@ public sealed class AppUpdateSchedulerTests
         }
 
         public void OpenUri(Uri uri) => OpenedUri = uri;
+
+        public void OpenFile(string path)
+        {
+        }
+
+        public void RevealInFolder(string filePath)
+        {
+        }
     }
 
     private sealed class StubApplicationInfo : IApplicationInfo

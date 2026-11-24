@@ -60,6 +60,35 @@
     <Style Selector="Border.chip.expired TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
     </Style>
+    <Style Selector="Border.chip.missing">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.chip.missing TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+    </Style>
+    <Style Selector="Button.row-icon">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.row-icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.row-icon:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.row-icon.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+    </Style>
+    <Style Selector="Button.row-icon.danger:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
     <Style Selector="TextBlock.row-title">
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
@@ -253,9 +282,15 @@
                         <TextBlock Classes="row-failure"
                                    IsVisible="{Binding ShowFailure}"
                                    Text="{Binding FailureText}" />
+                        <TextBlock Classes="row-failure"
+                                   IsVisible="{Binding ShowActionError}"
+                                   Text="{Binding ActionErrorText}" />
                         <TextBlock Classes="row-hint"
                                    IsVisible="{Binding ShowExpiredHint}"
                                    Text="{Binding ExpiredHint}" />
+                        <TextBlock Classes="row-hint"
+                                   IsVisible="{Binding ShowLocalFileMissingHint}"
+                                   Text="{Binding LocalFileMissingHint}" />
                         <ProgressBar Height="4"
                                      Margin="0,6,0,0"
                                      MaxWidth="160"
@@ -293,16 +328,64 @@
                         <Border Classes="chip"
                                 Classes.done="{Binding IsCompleted}"
                                 Classes.failed="{Binding IsFailed}"
-                                Classes.expired="{Binding IsExpired}">
+                                Classes.expired="{Binding IsExpired}"
+                                Classes.missing="{Binding IsLocalFileMissing}">
                           <TextBlock Text="{Binding StatusText}" />
                         </Border>
                         <Button Height="32"
                                 MinWidth="64"
                                 Padding="12,0"
+                                IsVisible="{Binding ShowDefaultPrimaryAction}"
                                 Classes.accent="{Binding IsPrimaryAccent}"
                                 Command="{Binding PrimaryCommand}"
                                 IsEnabled="{Binding CanPrimaryAction}"
                                 Content="{Binding PrimaryActionText}" />
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding ShowCompletedActions}">
+                          <Button Classes="row-icon"
+                                  Command="{Binding OpenVideoCommand}"
+                                  ToolTip.Tip="{Binding OpenVideoToolTip}"
+                                  AutomationProperties.Name="{Binding OpenVideoToolTip}">
+                            <fac:FASymbolIcon Symbol="Play" FontSize="13" />
+                          </Button>
+                          <Button Classes="row-icon"
+                                  Command="{Binding RevealInFolderCommand}"
+                                  ToolTip.Tip="{Binding RevealInFolderToolTip}"
+                                  AutomationProperties.Name="{Binding RevealInFolderToolTip}">
+                            <fac:FASymbolIcon Symbol="Folder" FontSize="13" />
+                          </Button>
+                          <Button Classes="row-icon"
+                                  Command="{Binding RedownloadCommand}"
+                                  ToolTip.Tip="{Binding RedownloadToolTip}"
+                                  AutomationProperties.Name="{Binding RedownloadToolTip}">
+                            <fac:FASymbolIcon Symbol="Refresh" FontSize="13" />
+                          </Button>
+                          <Button Classes="row-icon danger"
+                                  Command="{Binding RemoveCommand}"
+                                  ToolTip.Tip="{Binding RemoveFromListToolTip}"
+                                  AutomationProperties.Name="{Binding RemoveFromListToolTip}">
+                            <fac:FASymbolIcon Symbol="Dismiss" FontSize="12" />
+                          </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding ShowFileMissingActions}">
+                          <Button Height="32"
+                                  MinWidth="76"
+                                  Padding="12,0"
+                                  Classes="accent"
+                                  Command="{Binding RedownloadCommand}"
+                                  Content="{Binding RedownloadActionText}" />
+                          <Button Classes="row-icon danger"
+                                  Command="{Binding RemoveCommand}"
+                                  ToolTip.Tip="{Binding RemoveFromListToolTip}"
+                                  AutomationProperties.Name="{Binding RemoveFromListToolTip}">
+                            <fac:FASymbolIcon Symbol="Dismiss" FontSize="12" />
+                          </Button>
+                        </StackPanel>
                       </StackPanel>
                     </Grid>
                   </Border>

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using JiuMi.Application;
 using JiuMi.Application.Errors;
 using JiuMi.Application.Localization;
 using JiuMi.Application.Settings;
@@ -25,6 +26,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     private readonly WeChatVideoDownloadCoordinator _downloads;
     private readonly IWeChatVideoThumbnailFetcher _thumbnailFetcher;
     private readonly ISettingsStore _settingsStore;
+    private readonly ISystemLauncher _systemLauncher;
     private readonly ILocalizationService _localization;
     private readonly IErrorReporter _errorReporter;
     private readonly ErrorRecordFactory _recordFactory;
@@ -46,6 +48,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
     /// <param name="downloads">Runs the serial downloads.</param>
     /// <param name="thumbnailFetcher">Fetches the covers into memory.</param>
     /// <param name="settingsStore">Supplies and stores the download directory.</param>
+    /// <param name="systemLauncher">Opens downloaded videos and reveals them in the file manager.</param>
     /// <param name="localization">Supplies the interface text.</param>
     /// <param name="errorReporter">Receives start and settings failures.</param>
     /// <param name="recordFactory">Creates the records reported by this page.</param>
@@ -58,6 +61,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         WeChatVideoDownloadCoordinator downloads,
         IWeChatVideoThumbnailFetcher thumbnailFetcher,
         ISettingsStore settingsStore,
+        ISystemLauncher systemLauncher,
         ILocalizationService localization,
         IErrorReporter errorReporter,
         ErrorRecordFactory recordFactory,
@@ -70,6 +74,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(downloads);
         ArgumentNullException.ThrowIfNull(thumbnailFetcher);
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(systemLauncher);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(errorReporter);
         ArgumentNullException.ThrowIfNull(recordFactory);
@@ -82,6 +87,7 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
         _downloads = downloads;
         _thumbnailFetcher = thumbnailFetcher;
         _settingsStore = settingsStore;
+        _systemLauncher = systemLauncher;
         _localization = localization;
         _errorReporter = errorReporter;
         _recordFactory = recordFactory;
@@ -476,6 +482,10 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
                 _localization,
                 CanDownload,
                 HandlePrimaryAction,
+                HandleOpenVideo,
+                HandleRevealInFolder,
+                HandleRedownload,
+                HandleRemove,
                 HandleQualitySelected);
             Rows.Insert(0, row);
         }
@@ -649,6 +659,78 @@ public sealed class WeChatVideoViewModel : ViewModelBase, IDisposable
                 _session.Remove(row.Key);
                 break;
         }
+    }
+
+    private void HandleOpenVideo(WeChatVideoRowViewModel row) =>
+        RunCompletedFileAction(
+            row,
+            _systemLauncher.OpenFile,
+            "Opening a downloaded WeChat video failed",
+            "Tool.WeChatVideo.Failure.OpenFile");
+
+    private void HandleRevealInFolder(WeChatVideoRowViewModel row) =>
+        RunCompletedFileAction(
+            row,
+            _systemLauncher.RevealInFolder,
+            "Revealing a downloaded WeChat video in folder failed",
+            "Tool.WeChatVideo.Failure.RevealInFolder");
+
+    private void RunCompletedFileAction(
+        WeChatVideoRowViewModel row,
+        Action<string> launchAction,
+        string failureLogMessage,
+        string failureErrorKey)
+    {
+        if (_disposed || row.Item.State != WeChatVideoDownloadState.Completed)
+        {
+            return;
+        }
+
+        row.SetActionError(null);
+        string? savedPath = row.Item.SavedPath;
+        if (string.IsNullOrWhiteSpace(savedPath) || !File.Exists(savedPath))
+        {
+            _session.TryMarkLocalFileMissing(row.Key, out _);
+            return;
+        }
+
+#pragma warning disable CA1031 // Launcher failures report inline feedback without taking down the page.
+        try
+        {
+            launchAction(savedPath);
+        }
+        catch (Exception exception)
+        {
+            _logger.Warning(exception, "{FailureMessage}", failureLogMessage);
+            row.SetActionError(failureErrorKey);
+        }
+#pragma warning restore CA1031
+    }
+
+    private void HandleRedownload(WeChatVideoRowViewModel row)
+    {
+        if (_disposed ||
+            (row.Item.State != WeChatVideoDownloadState.Completed && !row.Item.IsLocalFileMissing))
+        {
+            return;
+        }
+
+        row.SetActionError(null);
+        RefreshDirectoryState();
+        if (CanDownload)
+        {
+            _ = StartDownloadAsync(row);
+        }
+    }
+
+    private void HandleRemove(WeChatVideoRowViewModel row)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _session.Remove(row.Key);
     }
 
     private async Task StartDownloadAsync(WeChatVideoRowViewModel row)

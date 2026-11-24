@@ -78,6 +78,16 @@ public sealed record WeChatVideoItem
     }
 
     /// <summary>
+    /// Gets a value indicating whether the previously downloaded local file was found missing
+    /// when the user tried to open or reveal it, returning the item to a re-downloadable state.
+    /// </summary>
+    public bool IsLocalFileMissing
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
     /// Gets the user-selected <c>file_format</c> quality variant, or <see langword="null"/> to
     /// download the default stream returned by WeChat.
     /// </summary>
@@ -92,6 +102,7 @@ public sealed record WeChatVideoItem
     /// </summary>
     public bool CanSelectQuality =>
         State is WeChatVideoDownloadState.Idle
+            or WeChatVideoDownloadState.Completed
             or WeChatVideoDownloadState.Failed
             or WeChatVideoDownloadState.Canceled;
 }
