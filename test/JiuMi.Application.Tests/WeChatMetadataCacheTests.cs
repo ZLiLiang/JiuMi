@@ -83,6 +83,27 @@ public sealed class WeChatMetadataCacheTests
         Assert.False(cache.TryGet(prefix, out _));
     }
 
+    [Fact]
+    public void Upsert_GivenDuplicateWithoutSpecs_KeepsExistingItemWithSpecs()
+    {
+        var cache = new WeChatMetadataCache();
+        string prefix = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        WeChatVideoCaptureItem withSpecs = CreateItem(prefix, decodeKey: "123", token: "tok1", description: "标题") with
+        {
+            Specs =
+            [
+                new WeChatVideoSpec { FileFormat = "xWT101", Width = 1080, Height = 1920, CodingFormat = "h265" },
+            ],
+        };
+        WeChatVideoCaptureItem withoutSpecs = CreateItem(prefix, decodeKey: "123", token: "tok1", description: "标题");
+
+        cache.Upsert(withSpecs);
+        cache.Upsert(withoutSpecs);
+
+        Assert.True(cache.TryGet(prefix, out WeChatVideoCaptureItem? found));
+        Assert.Same(withSpecs, found);
+    }
+
     private static WeChatVideoCaptureItem CreateItem(
         string prefix,
         string? decodeKey,

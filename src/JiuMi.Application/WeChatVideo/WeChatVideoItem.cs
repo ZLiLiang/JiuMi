@@ -76,4 +76,14 @@ public sealed record WeChatVideoItem
         get;
         init;
     }
+
+    /// <summary>
+    /// Gets the user-selected <c>file_format</c> quality variant, or <see langword="null"/> to
+    /// download the default stream returned by WeChat.
+    /// </summary>
+    public string? SelectedFileFormat
+    {
+        get;
+        init;
+    }
 }

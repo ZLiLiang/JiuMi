@@ -3,6 +3,7 @@
              xmlns:fac="using:FluentAvalonia.UI.Controls"
              xmlns:loc="using:JiuMi.Localization"
              xmlns:vm="using:JiuMi.ViewModels"
+             xmlns:wechat="using:JiuMi.Application.WeChatVideo"
              x:Class="JiuMi.Views.WeChatVideoView"
              x:DataType="vm:WeChatVideoViewModel">
   <UserControl.Styles>
@@ -263,8 +264,27 @@
 
                       <StackPanel Grid.Column="2"
                                   Orientation="Horizontal"
-                                  Spacing="12"
+                                  Spacing="10"
                                   VerticalAlignment="Center">
+                        <ComboBox Height="32"
+                                  MinWidth="112"
+                                  MaxWidth="156"
+                                  FontSize="12"
+                                  VerticalAlignment="Center"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding QualityOptions}"
+                                  SelectedItem="{Binding SelectedQualityOption, Mode=TwoWay}"
+                                  IsVisible="{Binding ShowQualitySelector}"
+                                  IsEnabled="{Binding CanSelectQuality}"
+                                  ToolTip.Tip="{Binding QualityToolTip}"
+                                  AutomationProperties.Name="{loc:Localize Tool.WeChatVideo.Quality.Label}">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="wechat:WeChatVideoSpecOption">
+                              <TextBlock Text="{Binding Label}"
+                                         TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <Border Classes="chip"
                                 Classes.done="{Binding IsCompleted}"
                                 Classes.failed="{Binding IsFailed}"

@@ -148,6 +148,49 @@ public sealed class WeChatVideoSessionTests
         Assert.False(raised);
     }
 
+    [Fact]
+    public void TrySelectFileFormat_GivenIdleOrRetryableState_UpdatesAndPreservesAcrossCaptureRefresh()
+    {
+        WeChatVideoItem item = _session.AddOrUpdate(
+            Capture("https://finder.video.qq.com/a?token=1", "oid-1", "nid-1"));
+
+        bool selected = _session.TrySelectFileFormat(item.Key, "xWT101", out WeChatVideoItem? updated);
+
+        Assert.True(selected);
+        Assert.NotNull(updated);
+        Assert.Equal("xWT101", updated.SelectedFileFormat);
+
+        WeChatVideoItem refreshed = _session.AddOrUpdate(
+            Capture("https://finder.video.qq.com/a?token=2", "oid-1", "nid-1"));
+        Assert.Equal("xWT101", refreshed.SelectedFileFormat);
+
+        bool reset = _session.TrySelectFileFormat(item.Key, null, out WeChatVideoItem? afterReset);
+        Assert.True(reset);
+        Assert.NotNull(afterReset);
+        Assert.Null(afterReset.SelectedFileFormat);
+    }
+
+    [Theory]
+    [InlineData(WeChatVideoDownloadState.Queued)]
+    [InlineData(WeChatVideoDownloadState.Downloading)]
+    [InlineData(WeChatVideoDownloadState.Completed)]
+    [InlineData(WeChatVideoDownloadState.Expired)]
+    public void TrySelectFileFormat_GivenLockedState_RejectsSelectionChange(WeChatVideoDownloadState lockedState)
+    {
+        WeChatVideoItem item = _session.AddOrUpdate(
+            Capture("https://finder.video.qq.com/a?token=1", "oid-1", "nid-1"));
+        _session.TryUpdate(item.Key, current => current with { State = lockedState }, out _);
+        bool raised = false;
+        _session.Changed += (_, _) => raised = true;
+
+        bool selected = _session.TrySelectFileFormat(item.Key, "xWT101", out WeChatVideoItem? updated);
+
+        Assert.False(selected);
+        Assert.Null(updated);
+        Assert.False(raised);
+        Assert.Null(Assert.Single(_session.Items).SelectedFileFormat);
+    }
+
     private static WeChatVideoCaptureItem Capture(string url, string? oid = null, string? nid = null) => new()
     {
         Url = url,

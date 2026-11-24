@@ -150,6 +150,27 @@ public sealed class WeChatVideoDownloadCoordinatorTests
         Assert.Equal([(WeChatVideoDownloadState.Downloading, 100L)], snapshots);
     }
 
+    [Fact]
+    public async Task StartAsync_GivenSelectedFileFormat_AppendsVideoFlagToRequestUrl()
+    {
+        var downloader = new StubDownloader
+        {
+            Handler = (_, _) => Task.FromResult(
+                WeChatVideoDownloadResult.Success(@"C:\out\video.mp4", 10, 10)),
+        };
+        await using var queue = new WeChatVideoDownloadQueue(downloader);
+        var coordinator = new WeChatVideoDownloadCoordinator(_session, queue);
+        WeChatVideoItem item = AddItem("描述", decodeKey: "42");
+        _session.TrySelectFileFormat(item.Key, "xWT101", out _);
+
+        await coordinator.StartAsync(item, Path.GetTempPath());
+
+        Assert.NotNull(downloader.LastRequest);
+        Assert.Equal(
+            "https://finder.video.qq.com/media?token=abc&X-snsvideoflag=xWT101",
+            downloader.LastRequest.MediaUrl.AbsoluteUri);
+    }
+
     private WeChatVideoItem AddItem(string? description, string? decodeKey = null)
     {
         return _session.AddOrUpdate(new WeChatVideoCaptureItem
