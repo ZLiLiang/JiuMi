@@ -920,6 +920,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 - `WeChatVideoSession` 只存在本次会话，关闭应用即清空；按捕获时间倒序。
 - 去重键优先取 URL 中的 `encfilekey`（同视频在不同入口刷新会重新分配 `decode_key` 与 `token`），缺失时依次回退 `oid` + `nid` 与去掉 `token` 参数的 URL；重复捕获只刷新媒体信息，保留首次捕获时间与下载状态。
 - 列表插入与封面异步加载在 UI 层完成；封面抓取失败只留占位色，不产生错误记录。
+- 封面悬停预览：鼠标在有封面的缩略图上稳定悬停 `1000 ms` 后，通过主窗口 `OverlayLayer` 在缩略图右侧（留 `10 px` 间距、顶底边自动防裁切）以纯只读、不拦截鼠标事件的卡片完整展示内存已解码的 `Thumbnail`（`Uniform`、不放大超过原图实际像素、上限 `320×420 px` 并随窗口可用区收紧；已过期行沿用置灰封面，无额外网络请求）；移出缩略图、滚动列表、切换页面或窗口失焦时立即关闭，相邻行缩略图各自独立重新计时。
 
 ### 下载与解密
 
@@ -941,7 +942,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 测试缝
 
-1. `JiuMi.Application` 纯函数：`WeChatMediaJsonExtractor`（普通 JSON、双重转义 JSON、跨对象边界、多 CDN 子域校验、无加密定向提取、`NetworkService` `encfilekey` 扫描、`spec[]` 编码与码率提取）、`WeChatMetadataCache`（LRU 淘汰与完整度合并，含 `Specs` 权重）、`WeChatPlaybackCorrelator`（基线过滤、预加载去噪与去重）、`WeChatVideoUrl`（`encfilekey` 去重、`*.video.qq.com` 校验、去 token 与 `X-snsvideoflag` 拼接/替换）、`WeChatVideoSpecSelector`（默认项前置、排序、去重与标签格式化）、文件名清洗与冲突、时长 / 大小格式、会话去重与档位状态锁定、串行队列与取消。
+1. `JiuMi.Application` 纯函数：`WeChatMediaJsonExtractor`（普通 JSON、双重转义 JSON、跨对象边界、多 CDN 子域校验、无加密定向提取、`NetworkService` `encfilekey` 扫描、`spec[]` 编码与码率提取）、`WeChatMetadataCache`（LRU 淘汰与完整度合并，含 `Specs` 权重）、`WeChatPlaybackCorrelator`（基线过滤、预加载去噪与去重）、`WeChatVideoUrl`（`encfilekey` 去重、`*.video.qq.com` 校验、去 token 与 `X-snsvideoflag` 拼接/替换）、`WeChatVideoSpecSelector`（默认项前置、排序、去重与标签格式化）、`WeChatVideoThumbnailPreviewLayout`（按原图实际像素等比缩放且不放大、窗口可用区收紧与顶底边防裁切定位）、文件名清洗与冲突、时长 / 大小格式、会话去重与档位状态锁定、串行队列与取消。
 2. `JiuMi.Infrastructure`：`MemoryWeChatVideoCapture`（通过模拟 `IWeChatProcessLocator` 与 `IWeChatProcessMemoryReader` 覆盖微信未运行、权限不足、基线过滤、预加载去噪、定向补扫重试、`NetworkService` 子进程重启重定位）、下载器（HEAD、Range、重试、仅头部 XOR、过期判定、取消删 part）、封面抓取。
 3. UI 的开关、列表与进度不设自动化测试。
 

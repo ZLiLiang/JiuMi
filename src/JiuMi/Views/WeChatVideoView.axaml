@@ -200,7 +200,8 @@
           <ScrollViewer Grid.Row="1"
                         Margin="0,8,0,0"
                         HorizontalScrollBarVisibility="Disabled"
-                        VerticalScrollBarVisibility="Auto">
+                        VerticalScrollBarVisibility="Auto"
+                        ScrollChanged="OnListScrollChanged">
             <ItemsControl ItemsSource="{Binding Rows}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WeChatVideoRowViewModel">
@@ -215,8 +216,12 @@
                               VerticalAlignment="Center"
                               CornerRadius="4"
                               ClipToBounds="True"
+                              Background="Transparent"
                               BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                              BorderThickness="1">
+                              BorderThickness="1"
+                              PointerEntered="OnThumbnailPointerEntered"
+                              PointerExited="OnThumbnailPointerExited"
+                              DetachedFromVisualTree="OnThumbnailDetachedFromVisualTree">
                         <Panel>
                           <Image Source="{Binding Thumbnail}"
                                  Stretch="UniformToFill"
