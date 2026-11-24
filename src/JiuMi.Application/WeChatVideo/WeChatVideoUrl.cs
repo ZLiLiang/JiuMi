@@ -204,17 +204,16 @@ public static class WeChatVideoUrl
         return new UriBuilder(parsed) { Query = string.Join('&', updated) }.Uri.AbsoluteUri;
     }
 
-    private static bool IsTokenPair(string pair)
-    {
-        int separator = pair.IndexOf('=', StringComparison.Ordinal);
-        string key = separator < 0 ? pair : pair[..separator];
-        return string.Equals(key, "token", StringComparison.Ordinal);
-    }
+    private static bool IsTokenPair(string pair) =>
+        HasQueryKey(pair, "token", StringComparison.Ordinal);
 
-    private static bool IsVideoFlagPair(string pair)
+    private static bool IsVideoFlagPair(string pair) =>
+        HasQueryKey(pair, "X-snsvideoflag", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasQueryKey(string pair, string expectedKey, StringComparison comparison)
     {
         int separator = pair.IndexOf('=', StringComparison.Ordinal);
         string key = separator < 0 ? pair : pair[..separator];
-        return string.Equals(key, "X-snsvideoflag", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(key, expectedKey, comparison);
     }
 }

@@ -16,7 +16,7 @@ public static class WeChatVideoSpecSelector
     /// <param name="defaultLabel">The localized display label for the default option.</param>
     /// <returns>The ordered options, always containing at least the default option.</returns>
     public static IReadOnlyList<WeChatVideoSpecOption> BuildOptions(
-        IReadOnlyList<WeChatVideoSpec> specs,
+        IEnumerable<WeChatVideoSpec> specs,
         string defaultLabel)
     {
         ArgumentNullException.ThrowIfNull(specs);

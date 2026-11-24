@@ -289,10 +289,7 @@ public sealed class WeChatVideoRowViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets a value indicating whether the user may change the quality selection in the current state.
     /// </summary>
-    public bool CanSelectQuality =>
-        _item.State is WeChatVideoDownloadState.Idle
-            or WeChatVideoDownloadState.Failed
-            or WeChatVideoDownloadState.Canceled;
+    public bool CanSelectQuality => _item.CanSelectQuality;
 
     /// <summary>
     /// Gets the localized tooltip for the quality selector.

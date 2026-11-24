@@ -138,9 +138,7 @@ public sealed class WeChatVideoSession
                 return false;
             }
 
-            if (existing.State is not (WeChatVideoDownloadState.Idle
-                or WeChatVideoDownloadState.Failed
-                or WeChatVideoDownloadState.Canceled))
+            if (!existing.CanSelectQuality)
             {
                 return false;
             }

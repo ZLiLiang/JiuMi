@@ -294,7 +294,7 @@ public sealed class WeChatMediaJsonExtractorTests
             $$$"""
             {"url":"https://finder.video.qq.com/251/20302/stodownload?encfilekey={{{EncKeyA}}}&token=tok1","decode_key":"123456","spec":[
                 {"file_format":"xWT101","coding_format":"h265","width":1080,"height":1920,"bit_rate":2200,"video_bitrate":2050,"audio_bitrate":128,"vfps":30.0,"file_size":0},
-                {"fileFormat":"xWT111","codingFormat":"h264","width":720,"height":1280,"bitRate":1500,"videoBitrate":1380,"audioBitrate":96,"vfps":29.97}
+                {"fileFormat":"xWT111","codingFormat":"h264","width":720,"height":1280,"bitRate":1500,"videoBitRate":1380,"audioBitRate":96,"vfps":29.97}
             ]}
             """;
 

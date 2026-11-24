@@ -809,8 +809,8 @@ public static partial class WeChatMediaJsonExtractor
             int? width = GetInt32Property(item, "width");
             int? height = GetInt32Property(item, "height");
             int? bitRate = GetInt32Property(item, "bit_rate", "bitRate");
-            int? videoBitRate = GetInt32Property(item, "video_bitrate", "videoBitrate");
-            int? audioBitRate = GetInt32Property(item, "audio_bitrate", "audioBitrate");
+            int? videoBitRate = GetInt32Property(item, "video_bitrate", "videoBitRate", "videoBitrate");
+            int? audioBitRate = GetInt32Property(item, "audio_bitrate", "audioBitRate", "audioBitrate");
             double? vfps = GetDoubleProperty(item, "vfps");
             long? fileSize = GetInt64Property(item, "file_size", "fileSize");
 

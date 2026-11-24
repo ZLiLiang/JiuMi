@@ -86,4 +86,12 @@ public sealed record WeChatVideoItem
         get;
         init;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the quality variant may be changed in the current download state.
+    /// </summary>
+    public bool CanSelectQuality =>
+        State is WeChatVideoDownloadState.Idle
+            or WeChatVideoDownloadState.Failed
+            or WeChatVideoDownloadState.Canceled;
 }

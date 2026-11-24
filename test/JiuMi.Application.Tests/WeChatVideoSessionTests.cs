@@ -148,11 +148,19 @@ public sealed class WeChatVideoSessionTests
         Assert.False(raised);
     }
 
-    [Fact]
-    public void TrySelectFileFormat_GivenIdleOrRetryableState_UpdatesAndPreservesAcrossCaptureRefresh()
+    [Theory]
+    [InlineData(WeChatVideoDownloadState.Idle)]
+    [InlineData(WeChatVideoDownloadState.Failed)]
+    [InlineData(WeChatVideoDownloadState.Canceled)]
+    public void TrySelectFileFormat_GivenAllowedState_UpdatesAndPreservesAcrossCaptureRefresh(
+        WeChatVideoDownloadState allowedState)
     {
         WeChatVideoItem item = _session.AddOrUpdate(
             Capture("https://finder.video.qq.com/a?token=1", "oid-1", "nid-1"));
+        if (allowedState != WeChatVideoDownloadState.Idle)
+        {
+            _session.TryUpdate(item.Key, current => current with { State = allowedState }, out _);
+        }
 
         bool selected = _session.TrySelectFileFormat(item.Key, "xWT101", out WeChatVideoItem? updated);
 
