@@ -295,13 +295,35 @@ public static class MyJiuMiTransitionRules
     public static MyJiuMiDesktopPlacement PlaceFromAnchor(
         MyJiuMiScreenPoint anchor,
         double sizeDip,
+        IReadOnlyList<MyJiuMiScreenArea> workAreas) =>
+        PlaceFromAnchor(anchor, sizeDip, 0.5, 1.0, workAreas);
+
+    /// <summary>
+    /// Places a desktop window of any size so the normalized character anchor sits on
+    /// <paramref name="anchor"/>.
+    /// </summary>
+    /// <param name="anchor">The target anchor point in physical screen pixels.</param>
+    /// <param name="sizeDip">The window size in device-independent pixels.</param>
+    /// <param name="anchorNormalizedX">The normalized horizontal anchor within the window (<c>0</c>–<c>1</c>).</param>
+    /// <param name="anchorNormalizedY">The normalized vertical anchor within the window (<c>0</c>–<c>1</c>).</param>
+    /// <param name="workAreas">Every screen work area, at least one.</param>
+    /// <returns>The clamped window origin and the screen that received it.</returns>
+    public static MyJiuMiDesktopPlacement PlaceFromAnchor(
+        MyJiuMiScreenPoint anchor,
+        double sizeDip,
+        double anchorNormalizedX,
+        double anchorNormalizedY,
         IReadOnlyList<MyJiuMiScreenArea> workAreas)
     {
         MyJiuMiScreenArea area = SelectArea(anchor, workAreas);
         int pixelSize = PixelSize(sizeDip, area.Scaling);
+        double normX = Math.Clamp(anchorNormalizedX, 0, 1);
+        double normY = Math.Clamp(anchorNormalizedY, 0, 1);
+        int offsetX = (int)Math.Round(pixelSize * normX, MidpointRounding.AwayFromZero);
+        int offsetY = (int)Math.Round(pixelSize * normY, MidpointRounding.AwayFromZero);
         var desired = new MyJiuMiScreenPoint(
-            anchor.X - (pixelSize / 2),
-            anchor.Y - pixelSize);
+            anchor.X - offsetX,
+            anchor.Y - offsetY);
         return new MyJiuMiDesktopPlacement(Clamp(desired, area, pixelSize), area, pixelSize);
     }
 

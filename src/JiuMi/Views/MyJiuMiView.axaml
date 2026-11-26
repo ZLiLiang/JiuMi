@@ -33,7 +33,7 @@
               DoubleTapped="OnRoomDoubleTapped">
           <Grid x:Name="RoomWall"
                 Grid.Row="0"
-                ClipToBounds="True"
+                ZIndex="1"
                 Background="Transparent"
                 SizeChanged="OnRoomWallSizeChanged">
             <Grid x:Name="CatStage"

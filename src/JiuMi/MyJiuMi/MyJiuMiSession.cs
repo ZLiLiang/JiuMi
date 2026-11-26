@@ -30,6 +30,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private readonly ISettingsStore _settingsStore;
     private readonly TimeProvider _timeProvider;
     private readonly Serilog.ILogger _logger;
+    private readonly MyJiuMiPetPackManifest _manifest;
     private readonly MyJiuMiPresenceMachine _presence = new();
     private readonly MyJiuMiStateMachine _machine;
     private readonly Dictionary<MyJiuMiState, Bitmap?[]> _frames = [];
@@ -41,6 +42,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private MyJiuMiDesktopWindow? _desktopWindow;
     private MyJiuMiDesktopWindow? _dragPreview;
     private Bitmap? _frame;
+    private MyJiuMiPetPackAnchor _frameAnchor;
     private bool _isFrameVisible;
     private bool _isHeartVisible;
     private bool _isZzzVisible;
@@ -63,8 +65,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private int _renderedFrame = -1;
     private bool _renderedJumping;
     private Bitmap? _renderedJumpFrame;
-    private Bitmap? _jumpAirborne;
-    private Bitmap? _jumpLanding;
+    private Bitmap?[]? _jumpFrames;
+    private MyJiuMiPetPackClip? _jumpClip;
     private bool _jumpFramesLoaded;
     private bool _jumpFramesFailed;
     private DesktopEntranceRun? _desktopEntrance;
@@ -94,7 +96,23 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _settingsStore = settingsStore;
         _timeProvider = timeProvider;
         _logger = logger;
-        _machine = new MyJiuMiStateMachine(timeProvider, Random.Shared);
+        _manifest = LoadManifest(logger);
+        _frameAnchor = _manifest.DefaultAnchor;
+        _machine = new MyJiuMiStateMachine(timeProvider, Random.Shared, _manifest);
+    }
+
+    /// <summary>
+    /// Gets the active character pack manifest.
+    /// </summary>
+    public MyJiuMiPetPackManifest Manifest => _manifest;
+
+    /// <summary>
+    /// Gets the effective canvas anchor of the currently displayed frame.
+    /// </summary>
+    public MyJiuMiPetPackAnchor FrameAnchor
+    {
+        get => _frameAnchor;
+        private set => SetProperty(ref _frameAnchor, value);
     }
 
     /// <summary>
@@ -433,7 +451,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return false;
         }
 
-        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+        MyJiuMiDesktopPlacement placement = PlaceFromDefaultAnchor(
             new MyJiuMiScreenPoint(anchor.X, anchor.Y),
             MyJiuMiTransitionRules.HomeSizeDip,
             workAreas);
@@ -588,7 +606,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         int? desktopCatX = window is null
             ? null
             : window.Position.X +
-                (MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling) / 2);
+                AnchorPixelOffset(
+                    MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling)).X;
 
         if (!MyJiuMiTransitionRules.CanSummonFromDesktop(
                 homeHost is not null,
@@ -612,9 +631,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         int windowWidth = MyJiuMiTransitionRules.PixelSize(window.Width, window.RenderScaling);
         int windowHeight = MyJiuMiTransitionRules.PixelSize(window.Height, window.RenderScaling);
+        MyJiuMiScreenPoint anchorOffset = AnchorPixelOffset(windowWidth, windowHeight);
         var start = new MyJiuMiScreenPoint(
-            window.Position.X + (windowWidth / 2),
-            window.Position.Y + windowHeight);
+            window.Position.X + anchorOffset.X,
+            window.Position.Y + anchorOffset.Y);
         double entryEdge = MyJiuMiTransitionRules.SummonEntryEdge(roomRect, catX);
         double handoffPositionX = MyJiuMiTransitionRules.SummonHandoffPositionX(
             entryEdge,
@@ -696,11 +716,12 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         if (_desktopWalk is not null)
         {
-            int pixelSize = MyJiuMiTransitionRules.PixelSize(placement.Area.Scaling);
+            MyJiuMiScreenPoint anchorOffset = AnchorPixelOffset(
+                MyJiuMiTransitionRules.PixelSize(placement.Area.Scaling));
             _desktopWalk = new DesktopWalk(
                 new MyJiuMiScreenPoint(
-                    placement.Origin.X + (pixelSize / 2),
-                    placement.Origin.Y + pixelSize),
+                    placement.Origin.X + anchorOffset.X,
+                    placement.Origin.Y + anchorOffset.Y),
                 _machine.PositionX,
                 placement.Area);
         }
@@ -808,10 +829,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             }
         }
 
-        _jumpAirborne?.Dispose();
-        _jumpAirborne = null;
-        _jumpLanding?.Dispose();
-        _jumpLanding = null;
+        DisposeJumpFrames();
         _frames.Clear();
         _failedStates.Clear();
     }
@@ -887,21 +905,41 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
     private void EndJump() => _jumpStartedAt = null;
 
-    private Bitmap? GetJumpFrame(DateTimeOffset now)
+    private (Bitmap? Frame, MyJiuMiPetPackAnchor Anchor) GetJumpFrame(DateTimeOffset now)
     {
-        if (_jumpStartedAt is not { } jumpStartedAt)
+        if (_jumpStartedAt is not { } jumpStartedAt ||
+            _jumpFrames is not { Length: > 0 } frames ||
+            _jumpClip is not { } clip)
         {
-            return null;
+            return (null, _manifest.DefaultAnchor);
         }
 
+        const double startProgress = 0.14;
+        const double endProgress = 0.84;
         double progress =
             (now - jumpStartedAt).TotalSeconds / MyJiuMiMotionRules.JumpDuration.TotalSeconds;
-        if (progress < 0.14 || progress >= 0.84)
+        if (progress < startProgress || progress >= endProgress)
         {
-            return null;
+            return (null, _manifest.DefaultAnchor);
         }
 
-        return progress < 0.70 ? _jumpAirborne : _jumpLanding;
+        double windowFraction = (progress - startProgress) / (endProgress - startProgress);
+        TimeSpan clipDuration = clip.Duration;
+        TimeSpan targetElapsed = clipDuration > TimeSpan.Zero
+            ? TimeSpan.FromTicks((long)(clipDuration.Ticks * windowFraction))
+            : TimeSpan.Zero;
+
+        TimeSpan boundary = TimeSpan.Zero;
+        for (int index = 0; index < clip.Frames.Count && index < frames.Length; index++)
+        {
+            boundary += clip.Frames[index].Duration;
+            if (targetElapsed < boundary || index == frames.Length - 1)
+            {
+                return (frames[index], clip.Frames[index].Anchor);
+            }
+        }
+
+        return (frames[^1], clip.Frames[^1].Anchor);
     }
 
     [SuppressMessage(
@@ -916,22 +954,52 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         _jumpFramesLoaded = true;
+        if (!_manifest.TryGetJumpClip(out MyJiuMiPetPackClip? jumpClip) || jumpClip is null || jumpClip.Frames.Count == 0)
+        {
+            _jumpFramesFailed = true;
+            return;
+        }
+
+        var loaded = new Bitmap?[jumpClip.Frames.Count];
         try
         {
-            _jumpAirborne = LoadJumpFrame("jump/airborne.png");
-            _jumpLanding = LoadJumpFrame("jump/landing.png");
+            for (int index = 0; index < loaded.Length; index++)
+            {
+                loaded[index] = LoadJumpFrame(jumpClip.Frames[index].Path);
+            }
+
+            _jumpFrames = loaded;
+            _jumpClip = jumpClip;
         }
         catch (Exception exception)
         {
             _jumpFramesFailed = true;
-            _jumpAirborne?.Dispose();
-            _jumpAirborne = null;
-            _jumpLanding?.Dispose();
-            _jumpLanding = null;
+            foreach (Bitmap? frame in loaded)
+            {
+                frame?.Dispose();
+            }
+
+            _jumpFrames = null;
+            _jumpClip = null;
             _logger.Warning(
                 exception,
                 "The My JiuMi jump frames could not be loaded; the stand frame is used");
         }
+    }
+
+    private void DisposeJumpFrames()
+    {
+        if (_jumpFrames is not null)
+        {
+            foreach (Bitmap? frame in _jumpFrames)
+            {
+                frame?.Dispose();
+            }
+
+            _jumpFrames = null;
+        }
+
+        _jumpClip = null;
     }
 
     private static Bitmap LoadJumpFrame(string path)
@@ -1098,7 +1166,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         int frameIndex = _machine.FrameIndex;
         DateTimeOffset now = _timeProvider.GetUtcNow();
         bool jumping = IsJumpActive(now);
-        Bitmap? jumpFrame = jumping ? GetJumpFrame(now) : null;
+        (Bitmap? jumpFrame, MyJiuMiPetPackAnchor jumpAnchor) = jumping
+            ? GetJumpFrame(now)
+            : (null, _manifest.DefaultAnchor);
         if (forceFrame ||
             _renderedState != state ||
             _renderedFrame != frameIndex ||
@@ -1109,6 +1179,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             {
                 IsFrameVisible = true;
                 Frame = jumpFrame;
+                FrameAnchor = jumpAnchor;
             }
             else
             {
@@ -1119,6 +1190,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 {
                     IsFrameVisible = false;
                     Frame = null;
+                    FrameAnchor = _manifest.DefaultAnchor;
                     if (Presence == MyJiuMiPresence.Desktop)
                     {
                         HandleDesktopFrameLoss();
@@ -1129,6 +1201,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 {
                     IsFrameVisible = true;
                     Frame = frames[renderFrame];
+                    MyJiuMiPetPackClip clip = _manifest.GetClip(renderState);
+                    FrameAnchor = renderFrame < clip.Frames.Count
+                        ? clip.Frames[renderFrame].Anchor
+                        : _manifest.DefaultAnchor;
                 }
             }
 
@@ -1217,7 +1293,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _desktopSizeDip = MyJiuMiTransitionRules.HomeSizeDip;
         DesktopOpacity = 1;
 
-        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+        MyJiuMiDesktopPlacement placement = PlaceFromDefaultAnchor(
             new MyJiuMiScreenPoint(anchor.X, anchor.Y),
             MyJiuMiTransitionRules.HomeSizeDip,
             workAreas);
@@ -1284,7 +1360,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         double startSizeDip = entrance is DesktopEntrance.Minimized or DesktopEntrance.Dragged
             ? MyJiuMiTransitionRules.HomeSizeDip
             : MyJiuMiTransitionRules.DesktopSizeDip;
-        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+        MyJiuMiDesktopPlacement placement = PlaceFromDefaultAnchor(
             new MyJiuMiScreenPoint(anchor.X, anchor.Y),
             startSizeDip,
             workAreas);
@@ -1354,7 +1430,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return null;
         }
 
-        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+        MyJiuMiDesktopPlacement placement = PlaceFromDefaultAnchor(
             new MyJiuMiScreenPoint(anchor.X, anchor.Y),
             MyJiuMiTransitionRules.HomeSizeDip,
             workAreas);
@@ -1510,8 +1586,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             IReadOnlyList<MyJiuMiScreenArea> workAreas = ReadWorkAreas();
             if (workAreas.Count > 0)
             {
-                MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+                MyJiuMiDesktopPlacement placement = PlaceFromDefaultAnchor(
                     new MyJiuMiScreenPoint(run.Anchor.X, run.Anchor.Y),
+                    MyJiuMiTransitionRules.DesktopSizeDip,
                     workAreas);
                 window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
             }
@@ -1555,12 +1632,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        int pixelSize = MyJiuMiTransitionRules.PixelSize(_desktopSizeDip, area.Scaling);
+        MyJiuMiScreenPoint anchorOffset = AnchorPixelOffset(
+            MyJiuMiTransitionRules.PixelSize(_desktopSizeDip, area.Scaling));
         var desired = new MyJiuMiScreenPoint(
             anchor.X +
                 (int)Math.Round(offsetDip * area.Scaling, MidpointRounding.AwayFromZero) -
-                (pixelSize / 2),
-            anchor.Y - pixelSize);
+                anchorOffset.X,
+            anchor.Y - anchorOffset.Y);
         MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.ResolveOrigin(desired, workAreas);
         window.Position = new PixelPoint(placement.Origin.X, placement.Origin.Y);
     }
@@ -1623,7 +1701,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        MyJiuMiDesktopPlacement placement = MyJiuMiTransitionRules.PlaceFromAnchor(
+        MyJiuMiDesktopPlacement placement = PlaceFromDefaultAnchor(
             anchor,
             window.Width,
             workAreas);
@@ -1938,13 +2016,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return null;
         }
 
-        MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(state);
-        var loaded = new Bitmap?[clip.FrameDurations.Count];
+        MyJiuMiPetPackClip clip = _manifest.GetClip(state);
+        var loaded = new Bitmap?[clip.Frames.Count];
         try
         {
             for (int index = 0; index < loaded.Length; index++)
             {
-                Uri uri = new(_assetRoot, $"{clip.AssetFolder}/{index:D2}.png");
+                Uri uri = new(_assetRoot, clip.Frames[index].Path);
                 using Stream stream = AssetLoader.Open(uri);
                 loaded[index] = new Bitmap(stream);
             }
@@ -1966,6 +2044,58 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 state);
             return null;
         }
+    }
+
+    private (double NormalizedX, double NormalizedY) GetNormalizedDefaultAnchor() =>
+        MyJiuMiAnchorRules.Normalize(_manifest.DefaultAnchor, _manifest.Canvas);
+
+    private MyJiuMiDesktopPlacement PlaceFromDefaultAnchor(
+        MyJiuMiScreenPoint anchor,
+        double sizeDip,
+        IReadOnlyList<MyJiuMiScreenArea> workAreas)
+    {
+        (double normX, double normY) = GetNormalizedDefaultAnchor();
+        return MyJiuMiTransitionRules.PlaceFromAnchor(anchor, sizeDip, normX, normY, workAreas);
+    }
+
+    private MyJiuMiScreenPoint AnchorPixelOffset(int pixelSize) =>
+        AnchorPixelOffset(pixelSize, pixelSize);
+
+    private MyJiuMiScreenPoint AnchorPixelOffset(int pixelWidth, int pixelHeight)
+    {
+        (double normX, double normY) = GetNormalizedDefaultAnchor();
+        return new MyJiuMiScreenPoint(
+            (int)Math.Round(pixelWidth * normX, MidpointRounding.AwayFromZero),
+            (int)Math.Round(pixelHeight * normY, MidpointRounding.AwayFromZero));
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Asset loading is a UI boundary; a missing or malformed manifest falls back to the built-in catalog.")]
+    private static MyJiuMiPetPackManifest LoadManifest(Serilog.ILogger logger)
+    {
+        try
+        {
+            using Stream stream = AssetLoader.Open(new Uri(_assetRoot, "manifest.json"));
+            MyJiuMiPetPackLoadResult result = MyJiuMiPetPackManifestLoader.Load(stream);
+            if (result.IsSuccess && result.Manifest is not null)
+            {
+                return result.Manifest;
+            }
+
+            logger.Warning(
+                "The My JiuMi character pack manifest was invalid ({Reason}); using the built-in fallback catalog",
+                result.Error);
+        }
+        catch (Exception exception)
+        {
+            logger.Warning(
+                exception,
+                "The My JiuMi character pack manifest could not be loaded; using the built-in fallback catalog");
+        }
+
+        return MyJiuMiAnimationCatalog.CreateFallbackManifest();
     }
 
     private enum DesktopEntrance

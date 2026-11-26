@@ -27,7 +27,9 @@ public partial class MyJiuMiDesktopWindow : Window
     private const int MaNoActivate = 3;
     private const int WaActive = 1;
 
+    private readonly TranslateTransform _catAnchorOffset = new(0, 0);
     private readonly ScaleTransform _catMirror = new(1, 1);
+    private readonly TransformGroup _catImageTransform = new();
     private readonly MyJiuMiSession? _session;
     private IPointer? _pointer;
     private PixelPoint _pointerStartScreen;
@@ -43,7 +45,8 @@ public partial class MyJiuMiDesktopWindow : Window
     public MyJiuMiDesktopWindow()
     {
         InitializeComponent();
-        CatImage.RenderTransform = _catMirror;
+        _catImageTransform.Children = [_catAnchorOffset, _catMirror];
+        CatImage.RenderTransform = _catImageTransform;
         Closed += OnClosed;
 
         if (OperatingSystem.IsWindows())
@@ -106,7 +109,8 @@ public partial class MyJiuMiDesktopWindow : Window
     private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MyJiuMiSession.DesktopOpacity) or
-            nameof(MyJiuMiSession.IsFacingRight))
+            nameof(MyJiuMiSession.IsFacingRight) or
+            nameof(MyJiuMiSession.FrameAnchor))
         {
             ApplyAppearance();
         }
@@ -120,6 +124,14 @@ public partial class MyJiuMiDesktopWindow : Window
         }
 
         Opacity = _session.DesktopOpacity;
+        double slotSize = Bounds.Width > 0 ? Bounds.Width : Width;
+        (double offsetX, double offsetY) = MyJiuMiAnchorRules.ComputeDesktopFrameDeltaDip(
+            _session.FrameAnchor,
+            _session.Manifest.DefaultAnchor,
+            _session.Manifest.Canvas,
+            slotSize);
+        _catAnchorOffset.X = offsetX;
+        _catAnchorOffset.Y = offsetY;
         _catMirror.ScaleX = _session.IsFacingRight ? -1 : 1;
     }
 
@@ -188,7 +200,10 @@ public partial class MyJiuMiDesktopWindow : Window
             // A release inside the visible room hands the cat back; otherwise the window stays on
             // the desktop and is clamped into the nearest work area.
             PixelPoint release = this.PointToScreen(e.GetPosition(this));
-            PixelPoint anchor = this.PointToScreen(new Point(Bounds.Width / 2, Bounds.Height));
+            (double normX, double normY) = MyJiuMiAnchorRules.Normalize(
+                _session.Manifest.DefaultAnchor,
+                _session.Manifest.Canvas);
+            PixelPoint anchor = this.PointToScreen(new Point(Bounds.Width * normX, Bounds.Height * normY));
             _session.EndDesktopDrag();
             if (!_session.TryReturnHomeFromDesktop(release, anchor))
             {

@@ -25,6 +25,12 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     private readonly TranslateTransform _motionOffset = new(0, 0);
     private readonly ScaleTransform _shadowScale = new(1, 1);
     private readonly TransformGroup _motionTransform = new();
+    private readonly TranslateTransform _catAnchorOffset = new(0, 0);
+    private readonly ScaleTransform _catMirror = new(1, 1);
+    private readonly TransformGroup _catImageTransform = new();
+    private readonly TranslateTransform _dragCatAnchorOffset = new(0, 0);
+    private readonly ScaleTransform _dragCatMirror = new(1, 1);
+    private readonly TransformGroup _dragCatTransform = new();
     private MyJiuMiViewModel? _viewModel;
     private Window? _window;
     private OverlayLayer? _dragLayer;
@@ -49,9 +55,13 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
     {
         InitializeComponent();
         _motionTransform.Children = [_motionScale, _motionRotation, _motionOffset];
+        _catImageTransform.Children = [_catAnchorOffset, _catMirror];
+        _dragCatTransform.Children = [_dragCatAnchorOffset, _dragCatMirror];
         CatStage.RenderTransform = _homeScale;
         CatRoot.RenderTransform = _motionTransform;
+        CatImage.RenderTransform = _catImageTransform;
         CatShadow.RenderTransform = _shadowScale;
+        ApplyCatTransform();
         ApplyMotion();
         RoomWall.EffectiveViewportChanged += OnEffectiveViewportChanged;
     }
@@ -76,7 +86,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 
         _isAttached = true;
         Subscribe();
-        ApplyMirror();
+        ApplyCatTransform();
         ApplyScale();
         ApplyMotion();
         UpdateActivation();
@@ -116,7 +126,7 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         _viewModel = DataContext as MyJiuMiViewModel;
         Subscribe();
         _viewModel?.Session.AttachHomeHost(this);
-        ApplyMirror();
+        ApplyCatTransform();
         ApplyScale();
         ApplyMotion();
         UpdateActivation();
@@ -268,9 +278,9 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MyJiuMiViewModel.IsFacingRight))
+        if (e.PropertyName is nameof(MyJiuMiViewModel.IsFacingRight) or nameof(MyJiuMiViewModel.FrameAnchor))
         {
-            ApplyMirror();
+            ApplyCatTransform();
         }
 
         if (e.PropertyName == nameof(MyJiuMiViewModel.HomeScale))
@@ -294,11 +304,27 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
         }
     }
 
-    private void ApplyMirror()
+    private void ApplyCatTransform()
     {
-        CatImage.RenderTransform = _viewModel?.IsFacingRight == true
-            ? new ScaleTransform(-1, 1)
-            : null;
+        if (_viewModel is null)
+        {
+            _catAnchorOffset.X = 0;
+            _catAnchorOffset.Y = 0;
+            _catMirror.ScaleX = 1;
+            return;
+        }
+
+        (double offsetX, double offsetY) = MyJiuMiAnchorRules.ComputePageFrameOffsetDip(
+            _viewModel.FrameAnchor,
+            _viewModel.Canvas,
+            MyJiuMiInteractionRules.CatSize);
+        _catAnchorOffset.X = offsetX;
+        _catAnchorOffset.Y = offsetY;
+        double mirrorX = _viewModel.IsFacingRight ? -1 : 1;
+        _catMirror.ScaleX = mirrorX;
+        _dragCatAnchorOffset.X = offsetX;
+        _dragCatAnchorOffset.Y = offsetY;
+        _dragCatMirror.ScaleX = mirrorX;
     }
 
     private void ApplyScale()
@@ -485,6 +511,8 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
             Stretch = Stretch.Uniform,
             Source = _viewModel.Frame,
             IsHitTestVisible = false,
+            RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            RenderTransform = _dragCatTransform,
         };
         RenderOptions.SetBitmapInterpolationMode(_dragCat, BitmapInterpolationMode.HighQuality);
         _dragLayer.Children.Add(_dragCat);

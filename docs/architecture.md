@@ -215,7 +215,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 - 状态在 `JiuMi.Application`：`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk`；`MyJiuMiStateMachine` 纯逻辑，注入时间与随机源，不依赖 Avalonia。
 - `LyingIdle` 是唯一默认状态；`Blink` 只从 `LyingIdle` 触发；`SleepIn` / `Wake` / `Stretch` 不循环。
-- 帧序与逐帧时长由 `MyJiuMiAnimationCatalog` 唯一定义；UI 只按清单换帧。最终帧数与时长在 [#117](https://github.com/ZLiLiang/JiuMi/issues/117) 定稿后由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。
+- 帧序、逐帧时长、资源路径与显式锚点由角色包清单 `src/JiuMi/Assets/MyJiuMi/manifest.json`（`schemaVersion: 1`）唯一定义，由 `MyJiuMiPetPackManifestLoader`（`System.Text.Json` Source Generation）解析并校验；`MyJiuMiAnimationCatalog` 仅保留为清单加载失败时的内置兜底。`jump` 已正式收编进清单 `clips["jump"]`，与点击小跳叠加层衔接；可选 `interactions` 与 `files` 缺省时优雅降级。
 - 调度：页面激活时启动 `DispatcherTimer`（约 16ms 渲染滴答）驱动，状态机按注入的 `TimeProvider` 计算逐帧截止时间；页面离开即停表，不做后台补偿。
 - 眨眼：只在 `LyingIdle` 随机 4–8 秒。
 - 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 103 DIP/s（与走路帧步幅匹配）；走路帧循环、页面内位移插值；到达回 `LyingIdle`。自主走动不重置睡眠计时。
@@ -242,21 +242,21 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 帧资源与本地化
 
-- 资源：`src/JiuMi/Assets/MyJiuMi/<state>/<nn>.png`，PNG RGBA；状态名小写连字符：`lying-idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `stretch` / `walk`。
-- #119 先显示 `src/JiuMi/Assets/MyJiuMi/placeholder/lying-idle.png` 的静态方向稿；#120 已接入帧清单并删除该占位目录。
-- 页面按约 200 DIP 显示；建议 2× 导出（约 400×400），最终导出尺寸由 [#121](https://github.com/ZLiLiang/JiuMi/issues/121) 冻结。帧只含猫本体，墙、地板与接触阴影由页面绘制。桌面窗按 160 DIP 显示同一组帧，不新增交接专用帧。
+- 角色包清单：`src/JiuMi/Assets/MyJiuMi/manifest.json`（`schemaVersion: 1`），声明 `canvas`（`400×400`）、`defaultAnchor`（支持动作级/单帧级 `anchor` 覆写）、`clips`（`lying-idle` / `blink` / `react` / `drag` / `sleep-in` / `sleep` / `wake` / `stretch` / `walk` / `jump`，全量毫秒 `durationMs`）、可选 `interactions` 扩展槽与可选 `files` SHA-256 校验表。现有内置橘猫以 `defaultAnchor: { x: 200, y: 399 }` 迁入清单，v2 新资产将使用 `defaultAnchor: { x: 200, y: 360 }`（底留 40 px 垂尾余量）。
+- 显式锚点渲染：`MyJiuMiView`（200 DIP）与 `MyJiuMiDesktopWindow`（160 DIP）经 `MyJiuMiAnchorRules` 将清单锚点归一化到当前显示 DIP 尺寸对齐地板线与水平落点，不再硬编码贴底 `y=399`；120 ms 交接缩放行为不变。
+- 自动化质检：`tools/verify-pet-pack.ps1` 对角色包目录执行格式/清单完整性校验、L1 `diff = 0` 检查、L2/L3 偏移阈值检查，并导出 Contact Sheet（含锚点十字线）、Onion Skin 叠影图与浅/深色 200 DIP 预览图。
 - 按状态按需加载；页面离开时停表，重复进入复用已解码帧，不重复读盘。
 - 入口名称：`Tool.MyJiuMi.Name`，用于左侧导航。
 - 页面文案：`MyJiuMi.Title` / `MyJiuMi.Subtitle` / `MyJiuMi.Cat.AutomationName`；`Zzz` 是固定装饰字符，不登记文案键。
-- 桌面模式（设计）新增 `MyJiuMi.DesktopHint`（猫在桌面时页面空房间的提示），实现时成对进中英文 JSON；桌面窗复用 `MyJiuMi.Cat.AutomationName`，不新增窗口文案。
+- 桌面模式新增 `MyJiuMi.DesktopHint`（猫在桌面时页面空房间的提示），成对进中英文 JSON；桌面窗复用 `MyJiuMi.Cat.AutomationName`，不新增窗口文案。
 - 新键先登记在本地化章节的已登记键表，再进 JSON；旧 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 退役。
 
 ### 分层与测试
 
-- UI：`MyJiuMiView`、`MyJiuMiViewModel`、帧渲染、爱心/`Zzz` 叠加与指针事件；房间绘制与位置换算在 UI。桌面模式（设计）新增 `MyJiuMiSession`（共享状态机、帧缓存、16 ms 计时器与宿主协调）、`MyJiuMiDesktopWindow`、窗口级拖拽覆盖层，以及外壳隐藏/最小化钩子。
-- Application：`MyJiuMiStateMachine`、`MyJiuMiAnimationCatalog`、`MyJiuMiState`、睡眠/眨眼/闲逛调度与归一化 X 夹取；纯逻辑，注入时间/随机源。桌面模式（设计）新增 `MyJiuMiPresenceMachine`（`Home` / `Leaving` / `Desktop` / `Returning` 迁移与守卫）与 `MyJiuMiTransitionRules`（48 DIP 提交阈值、房间投影、走回入口侧/交接点/走回时长、工作区夹取）；状态机另支持召唤专用的原地 Walk、1.6x pace 与快速 Walk 帧。
+- UI：`MyJiuMiView`、`MyJiuMiViewModel`、`MyJiuMiSession`（加载角色包清单、共享状态机、帧缓存、16 ms 计时器与宿主协调）、`MyJiuMiDesktopWindow`、窗口级拖拽覆盖层，以及外壳隐藏/最小化钩子；帧锚点平移与房间位置换算在 UI。
+- Application：`MyJiuMiStateMachine`、`MyJiuMiPetPackManifestLoader`（Source-Generated JSON）、`MyJiuMiPetPackManifest` / `MyJiuMiPetPackClip` / `MyJiuMiPetPackFrame`、`MyJiuMiAnchorRules`、`MyJiuMiAnimationCatalog`（兜底）、`MyJiuMiState`、`MyJiuMiPresenceMachine` 与 `MyJiuMiTransitionRules`；纯逻辑，注入时间/随机源。
 - Infrastructure：不新增服务；`ISettingsStore` 既有读写承载 `myJiuMi.x`。
-- 测试：`JiuMi.Application.Tests` 覆盖状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取；桌面模式（设计）再加 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧/交接点/1.6x pace 与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
+- 测试：`JiuMi.Application.Tests` 覆盖清单解析与校验、锚点覆写/回退与 DIP 偏移换算、缺失可选 `interactions`/`files` 降级、非法清单降级、状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取，以及 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧/交接点/1.6x pace 与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
 - 性能：页面离开即停表；目标 <1% 系统 CPU（仅页面可见时），帧切换不触发整页重排。桌面窗懒创建、回家即关闭，不保留隐藏窗口或后台计时器；桌面模式的计时成本只在猫离家时存在。
 - Win10/Win11：页面模式不涉及透明窗口、置顶与焦点；桌面模式（设计）在两版共用同一套窗口与交接逻辑，差异按手动清单确认。
 
