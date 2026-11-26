@@ -17,6 +17,8 @@ public sealed class MyJiuMiStateMachine
 
     private readonly TimeProvider _timeProvider;
     private readonly Random _random;
+    private readonly Dictionary<MyJiuMiState, MyJiuMiAnimationClip>? _manifestClips;
+    private readonly MyJiuMiAnimationClip? _manifestSummonWalk;
 
     private MyJiuMiState _state;
     private DateTimeOffset _stateStartedAt;
@@ -41,13 +43,29 @@ public sealed class MyJiuMiStateMachine
     /// </summary>
     /// <param name="timeProvider">Supplies the current time.</param>
     /// <param name="random">Picks blink and wander delays, directions and targets.</param>
-    public MyJiuMiStateMachine(TimeProvider timeProvider, Random random)
+    /// <param name="manifest">Optional character pack manifest supplying clip frame counts and timings.</param>
+    public MyJiuMiStateMachine(
+        TimeProvider timeProvider,
+        Random random,
+        MyJiuMiPetPackManifest? manifest = null)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(random);
 
         _timeProvider = timeProvider;
         _random = random;
+
+        if (manifest is not null)
+        {
+            _manifestClips = new Dictionary<MyJiuMiState, MyJiuMiAnimationClip>();
+            foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
+            {
+                _manifestClips[state] = manifest.GetClip(state).ToAnimationClip();
+            }
+
+            _manifestSummonWalk = MyJiuMiAnimationCatalog.CreateSummonWalk(
+                manifest.GetClip(MyJiuMiState.Walk));
+        }
     }
 
     /// <summary>
@@ -655,8 +673,10 @@ public sealed class MyJiuMiStateMachine
 
     private MyJiuMiAnimationClip CurrentClip =>
         _state == MyJiuMiState.Walk && _walkPace == WalkPace.Summon
-            ? MyJiuMiAnimationCatalog.SummonWalk
-            : MyJiuMiAnimationCatalog.GetClip(_state);
+            ? _manifestSummonWalk ?? MyJiuMiAnimationCatalog.SummonWalk
+            : _manifestClips is not null && _manifestClips.TryGetValue(_state, out MyJiuMiAnimationClip? clip)
+                ? clip
+                : MyJiuMiAnimationCatalog.GetClip(_state);
 
     private static double NormalizeWidth(double width) =>
         double.IsFinite(width) && width > 0 ? width : 0;

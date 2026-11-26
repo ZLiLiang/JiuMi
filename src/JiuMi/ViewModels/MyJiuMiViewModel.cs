@@ -40,6 +40,16 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public Bitmap? Frame => _session.Frame;
 
     /// <summary>
+    /// Gets the active character pack canvas dimensions.
+    /// </summary>
+    public MyJiuMiPetPackCanvas Canvas => _session.Manifest.Canvas;
+
+    /// <summary>
+    /// Gets the effective canvas anchor of the currently displayed frame.
+    /// </summary>
+    public MyJiuMiPetPackAnchor FrameAnchor => _session.FrameAnchor;
+
+    /// <summary>
     /// Gets the cat's margin inside the room wall; the cat sits on the floor line.
     /// </summary>
     public Thickness CatMargin
@@ -247,6 +257,10 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
 
             case nameof(MyJiuMiSession.Frame):
                 OnPropertyChanged(nameof(Frame));
+                break;
+
+            case nameof(MyJiuMiSession.FrameAnchor):
+                OnPropertyChanged(nameof(FrameAnchor));
                 break;
 
             case nameof(MyJiuMiSession.IsHeartVisible):

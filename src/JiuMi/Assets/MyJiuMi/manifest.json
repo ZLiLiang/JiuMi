@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "id": "jiumi-orange-cat",
+  "name": "JiuMi Orange Cat",
+  "canvas": {
+    "width": 400,
+    "height": 400
+  },
+  "defaultAnchor": {
+    "x": 200,
+    "y": 399
+  },
+  "clips": {
+    "lying-idle": {
+      "loop": true,
+      "frames": [
+        { "path": "lying-idle/00.png", "durationMs": 1500 },
+        { "path": "lying-idle/01.png", "durationMs": 1500 }
+      ]
+    },
+    "blink": {
+      "loop": false,
+      "frames": [
+        { "path": "blink/00.png", "durationMs": 60 },
+        { "path": "blink/01.png", "durationMs": 90 },
+        { "path": "blink/02.png", "durationMs": 60 }
+      ]
+    },
+    "react": {
+      "loop": false,
+      "frames": [
+        { "path": "react/00.png", "durationMs": 120 },
+        { "path": "react/01.png", "durationMs": 120 }
+      ]
+    },
+    "drag": {
+      "loop": true,
+      "frames": [
+        { "path": "drag/00.png", "durationMs": 400 },
+        { "path": "drag/01.png", "durationMs": 400 }
+      ]
+    },
+    "sleep-in": {
+      "loop": false,
+      "frames": [
+        { "path": "sleep-in/00.png", "durationMs": 150 },
+        { "path": "sleep-in/01.png", "durationMs": 150 },
+        { "path": "sleep-in/02.png", "durationMs": 150 }
+      ]
+    },
+    "sleep": {
+      "loop": true,
+      "frames": [
+        { "path": "sleep/00.png", "durationMs": 2000 },
+        { "path": "sleep/01.png", "durationMs": 2000 }
+      ]
+    },
+    "wake": {
+      "loop": false,
+      "frames": [
+        { "path": "wake/00.png", "durationMs": 150 },
+        { "path": "wake/01.png", "durationMs": 150 },
+        { "path": "wake/02.png", "durationMs": 150 }
+      ]
+    },
+    "stretch": {
+      "loop": false,
+      "frames": [
+        { "path": "stretch/00.png", "durationMs": 120 },
+        { "path": "stretch/01.png", "durationMs": 120 },
+        { "path": "stretch/02.png", "durationMs": 120 },
+        { "path": "stretch/03.png", "durationMs": 120 }
+      ]
+    },
+    "walk": {
+      "loop": true,
+      "frames": [
+        { "path": "walk/00.png", "durationMs": 26 },
+        { "path": "walk/01.png", "durationMs": 26 },
+        { "path": "walk/02.png", "durationMs": 26 },
+        { "path": "walk/03.png", "durationMs": 26 },
+        { "path": "walk/04.png", "durationMs": 26 },
+        { "path": "walk/05.png", "durationMs": 26 },
+        { "path": "walk/06.png", "durationMs": 26 },
+        { "path": "walk/07.png", "durationMs": 26 },
+        { "path": "walk/08.png", "durationMs": 26 },
+        { "path": "walk/09.png", "durationMs": 26 },
+        { "path": "walk/10.png", "durationMs": 26 },
+        { "path": "walk/11.png", "durationMs": 26 },
+        { "path": "walk/12.png", "durationMs": 26 },
+        { "path": "walk/13.png", "durationMs": 26 },
+        { "path": "walk/14.png", "durationMs": 26 },
+        { "path": "walk/15.png", "durationMs": 26 },
+        { "path": "walk/16.png", "durationMs": 26 },
+        { "path": "walk/17.png", "durationMs": 26 },
+        { "path": "walk/18.png", "durationMs": 26 },
+        { "path": "walk/19.png", "durationMs": 26 },
+        { "path": "walk/20.png", "durationMs": 26 },
+        { "path": "walk/21.png", "durationMs": 26 },
+        { "path": "walk/22.png", "durationMs": 26 },
+        { "path": "walk/23.png", "durationMs": 26 },
+        { "path": "walk/24.png", "durationMs": 26 },
+        { "path": "walk/25.png", "durationMs": 26 },
+        { "path": "walk/26.png", "durationMs": 26 },
+        { "path": "walk/27.png", "durationMs": 26 },
+        { "path": "walk/28.png", "durationMs": 26 },
+        { "path": "walk/29.png", "durationMs": 26 },
+        { "path": "walk/30.png", "durationMs": 26 },
+        { "path": "walk/31.png", "durationMs": 26 },
+        { "path": "walk/32.png", "durationMs": 26 }
+      ]
+    },
+    "jump": {
+      "loop": false,
+      "frames": [
+        { "path": "jump/airborne.png", "durationMs": 504 },
+        { "path": "jump/landing.png", "durationMs": 126 }
+      ]
+    }
+  }
+}

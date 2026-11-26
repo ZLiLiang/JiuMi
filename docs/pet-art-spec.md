@@ -122,3 +122,73 @@
 - [ ] ImageGen 原图/导出路径（进 git：`docs/images/pet/direction-117/`）
 - [ ] 帧计划：状态 → 帧数 → 时长 → 资源路径（#117 后由 #121 冻结）
 - [ ] 最终逐帧 PNG 与体积记录（#121）
+
+---
+
+## v2 规范化生产管线与通用角色包协议（#209 / #210）
+
+从 Phase 1（#210）起，角色动画由 JiuMi 原生角色包清单（`manifest.json`, `schemaVersion: 1`）驱动，渲染与美术生产彻底解耦。现有 v1 橘猫资产已迁入 `src/JiuMi/Assets/MyJiuMi/manifest.json`（沿用 `defaultAnchor: { x: 200, y: 399 }` 做零回归承接）；Phase 2 / Phase 3 新橘猫资产按下方 v2 规范生产并整包替换。
+
+### 1. 母版与基准母姿冻结流程（Phase 2）
+
+1. **1 张角色风格母版**：冻结色板（Hex）、粗深棕描边宽度、头身比（3–3.5 头身）、杏仁眼与白口鼻/胸口/白爪/白尖尾特征。
+2. **4 张基准母姿**：趴姿（`lying-idle`）、站姿（`stretch` 终帧 / `walk` 起步）、熟睡（`sleep`）、拎起（`drag`）。4 张母姿在同一 `400×400` 物理基准尺下对齐脚底线 `y=360` 与水平落点 `x=200` 后冻结，禁止后续单帧自由重绘导致头身比或线宽漂移。
+3. **3 套提示词模板**：分别对应 L1 局部微动、L2 大姿态过渡与 L3 全身连续循环。
+
+### 2. 画布与显式锚点（v2 默认 `x=200, y=360`）
+
+- 画布统一 `400×400` 8-bit RGBA PNG（无多余 `tEXt` / `zTXt` / `iTXt` / `eXIf` 文本块）。
+- 清单显式声明脚底/躯干落点 `defaultAnchor: { x, y }`，支持动作级 `clip.anchor` 与单帧级 `frame.anchor` 覆写（优先级：`frame > clip > defaultAnchor`）。
+- **v2 新资产默认锚点为 `x=200, y=360`**，在画布底边保留 **40 px（200 DIP 下 20 DIP）余量**，防止垂尾或低姿态被画布底边裁切；**禁止**按含尾巴的整图包围盒自动居中。
+- 页面模式（200 DIP）与桌面模式（160 DIP）均按清单锚点对齐地板线与水平落点；现有 v1 资产使用 `defaultAnchor: { x: 200, y: 399 }` 保持零回归。
+
+### 3. 三层混合生产工艺与分层防偏移容差
+
+| 层级 | 覆盖状态 | 生产工艺 | 防偏移容差 / 硬拦截门 |
+| --- | --- | --- | --- |
+| **L1 局部微动** | `lying-idle`、`blink`、`sleep`、`react`、`drag` | 冻结母姿底图 + 局部 Image Edit + Alpha Mask 回贴 | 静止躯干与描边严格零偏移（静态主体 `diff = 0` 占比校验） |
+| **L2 大姿态过渡** | `stretch`、`sleep-in`、`wake`、`jump` | 首尾帧锁定 I2V 抽帧（6–8 帧，10–12 fps） | 接受动作自然带来的 `1–3 px` 重心起伏；相邻帧质心突跳 `> 6 px` 或包围盒缩放突变 `> 5%` 硬拦截 |
+| **L3 全身连续循环** | `walk` | 固定机位首帧锁定 + 步态参考 I2V 抽帧（16–20 帧，18–24 fps，整段单一裁切与缩放） | 同 L2：相邻帧质心突跳 `> 6 px` 或包围盒缩放突变 `> 5%` 硬拦截 |
+| **L4 程序叠加** | 跳跃抛物线 `dy`、接触阴影、`Zzz`、爱心、左右镜像 | 代码实时绘制 | 不烘焙进 PNG 帧 |
+
+### 4. JiuMi 原生角色包清单（`manifest.json`, `schemaVersion: 1`）
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "jiumi-orange-cat",
+  "name": "JiuMi Orange Cat",
+  "canvas": { "width": 400, "height": 400 },
+  "defaultAnchor": { "x": 200, "y": 360 },
+  "clips": {
+    "lying-idle": { "loop": true, "frames": [{ "path": "lying-idle/00.png", "durationMs": 1500 }] },
+    "blink": { "loop": false, "frames": [] },
+    "react": { "loop": false, "frames": [] },
+    "drag": { "loop": true, "frames": [] },
+    "sleep-in": { "loop": false, "frames": [] },
+    "sleep": { "loop": true, "frames": [] },
+    "wake": { "loop": false, "frames": [] },
+    "stretch": { "loop": false, "frames": [] },
+    "walk": { "loop": true, "frames": [] },
+    "jump": { "loop": false, "frames": [] }
+  },
+  "interactions": {},
+  "files": {}
+}
+```
+
+- 全量时长统一毫秒 `durationMs`；`jump` 正式收编进 `clips`（与点击小跳叠加层衔接）；`interactions` 与 `files`（可选 SHA-256 校验表）缺省时优雅降级为空表。
+- 运行时使用 Source-Generated `System.Text.Json` 上下文反序列化（兼顾后续 #66 `PublishTrimmed` 裁剪）。
+
+### 5. 自动化质检与审片导出（`tools/verify-pet-pack.ps1`）
+
+```powershell
+pwsh ./tools/verify-pet-pack.ps1 -PackDir src/JiuMi/Assets/MyJiuMi
+```
+
+单命令完成以下检查并输出审片图至 `artifacts/pet-qa/<pack-id>/`：
+
+1. **格式与清单完整性**：`schemaVersion: 1`、必需状态、`400×400` 8-bit RGBA PNG、缺失/孤儿文件检测、多余 PNG 文本块告警、可选 `files` SHA-256 校验。
+2. **L1 零偏移门**：计算 L1 各帧相对首帧的像素精确一致（`diff = 0`）占比。
+3. **L2 / L3 连续性门**：输出相邻帧脚底 `y_max` 波动、alpha 加权质心突跳（`> 6 px` 拦截）与包围盒对角线缩放突变（`> 5%` 拦截）。
+4. **审片图导出**：`contact-sheet.png`（含显式锚点十字线）、`onion-skin/<clip>.png`（洋葱皮叠影图）、`preview-light-dark-200dip.png`（浅/深色双背景 200 DIP 预览图）及 `report.json`。
