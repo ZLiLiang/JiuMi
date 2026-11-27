@@ -1,8 +1,106 @@
 # 我的JiuMi 视频生成提示词
 
-记录桌面猫动画所用的 VideoGen 提示词与后处理，方便后续制作跳跃、趴下、起身等动作。提示词按「参考图 + 动作 + 固定机位 + 风格约束」组织；换动作时只替换动作段，其余约束保持不变。
+记录桌面猫动画所用的 Image Edit / VideoGen 提示词与后处理规范。**Phase 2（#211）已冻结 v2 角色风格母版、4 张基准母姿与 L1/L2/L3 三套标准化提示词模板**；Phase 3 全量新动画生产一律以「v2 标准化模板」章节为唯一入口，下方保留 v1 历史记录备查。
 
-## 走路循环
+---
+
+## v2 冻结母版与标准化提示词模板（#211，Phase 2）
+
+### 1. 冻结参考资产（唯一参考源）
+
+| 资产 | 路径 | 规格与对齐 | 用途 |
+| --- | --- | --- | --- |
+| 角色风格母版 | `docs/images/pet/v2-masters/style-sheet.png` | 脸部特写 + 3/4 站姿标尺 + Hex 色板 + 描边线宽样本 + 四母姿同尺排布 | 角色身份、配色、线宽唯一依据 |
+| 四母姿同画布原图 | `docs/images/pet/v2-masters/raw/master-4poses-sheet-raw.png` | `1024×1024` 单画布 `2×2` 同批联合生成原图（暖米白纯底 `#F4EFE9`） | 4 张母姿的唯一源画布，确保头身比、线宽与尾巴完全同尺同源 |
+| 母姿 B：趴姿 | `docs/images/pet/v2-masters/master-lying.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · `scale=0.720`（`332×173`） | `lying-idle` / `blink` / `react` 底图；`stretch` 首帧、`wake` 末帧、`sleep-in` 首帧 |
+| 母姿 A：站姿 | `docs/images/pet/v2-masters/master-standing.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · `scale=0.720`（`326×250`） | 静止四足站立（前后双腿各自并拢，非迈腿态）；`stretch` 末帧、`walk` 首帧、`jump` 起止基准 |
+| 母姿 C：熟睡 | `docs/images/pet/v2-masters/master-sleeping.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · `scale=0.720`（`294×162`） | `sleep` 底图；`sleep-in` 末帧、`wake` 首帧 |
+| 独立态：拎起 | `docs/images/pet/v2-masters/master-drag.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · `scale=0.720`（`294×253`） | `drag` 循环底图 |
+| 单态切片原图 | `docs/images/pet/v2-masters/raw/master-{lying,standing,sleeping,drag}-raw.png` | 从同画布原图无损切分的 `600×600` 纯底单姿原图 | L1/L2/L3 模型输入原图（导出统一乘 `0.720`） |
+| 审片图 | `docs/images/pet/v2-masters/onion-skin-masters.png`、`preview-light-dark-200dip.png` | `tools/verify-pet-pack.ps1` 渲染输出 | 四母姿洋葱皮重叠校验 + 浅/深色 200 DIP 边缘校验 |
+
+**冻结色板与物理标尺**：
+- 轮廓深棕 `#5C3B22`（圆角连接；`400×400` 导出 **`~3.0 px`** → `200 DIP` 运行时 `~1.5 px`）；主毛暖橘 `#F19C45`；虎斑深橘 `#DF8232`（用于额头/背部/四肢，**不单独描边**）；奶油白 `#F8EDD9`（口鼻/胸腹/白爪/饱满圆白尖尾）；耳廓粉 `#F3BDA0`；粉鼻 `#E28C7A`；琥珀虹膜 `#D88A28`（竖瞳 `#3A2210` + 白色高光）；参考画布底色 `#F4EFE9`（仅生成用，运行时透明）。
+- **物理标尺（`400×400` 实测自 `master-standing.png`）**：头宽 **`98 px`**、躯干长（胸前至臀后不含尾）**`~225 px`**（全长含头约 3.3 头身）、肩背高（距地面线 `y=360`）**`180 px`**。四张母姿来自同一张 `2×2` 联合生成原图，导出统一使用**单一缩放系数 `0.720`**（`maxY = 359–360`，底边留 `40 px` 余量；质心 `x = 199.6–200.5`；`foot_dy = 0 px`）。不同姿势的躯干伸展度与尾巴透视长度随姿态自然变化，**不强制拉齐外接框尺寸**，也**禁止**按含尾巴包围盒单独缩放单帧。
+- **尾巴一致性标准（v2 冻结）**：采用**干净饱满的纯暖橘（`#F19C45`）毛绒尾 + 饱满圆润奶油白尖（`#F8EDD9`）**，**彻底去掉尾巴上“一圈一圈”的高对比深色环纹**；既根治跨蜷曲/站立/拎起姿态的数圈与粗细漂移，也避免 Phase 3 I2V 视频生成出现尾纹闪烁。视觉长短随姿势自然透视，不强行统一成单一像素长度。
+
+### 2. L1 局部编辑模板（`lying-idle` / `blink` / `sleep` / `react` / `drag`）
+
+- **适用状态**：`lying-idle`、`blink`、`sleep`、`react`、`drag`（幅度小、躯干与外轮廓必须保持静态零偏移）。
+- **输入**：对应冻结母姿的切片原图（`docs/images/pet/v2-masters/raw/master-{lying,standing,sleeping,drag}-raw.png`，`600×600` 纯 `#F4EFE9` 底）。
+- **后处理硬门**：仅抠出局部变化区域（眼/耳/尾/呼吸胸腹），用 **Alpha Mask 回贴到冻结的 `400×400` 母姿底图**，确保未编辑区域的躯干与外轮廓达到 `diff = 0`（通过 `tools/verify-pet-pack.ps1` 的 L1 `MinL1ExactMatchPct >= 80%` 门）。
+
+```text
+Edit ONLY the specified local region of the provided 2D flat hand-drawn illustration of the orange tabby cat.
+
+STRICT LOCKS (DO NOT CHANGE):
+- Keep the exact same character identity, 3-3.5 head body proportions, body silhouette, torso position, head size, camera framing, bold uniform dark-brown outline (#5C3B22), flat color palette (#F19C45 orange fur, #DF8232 un-outlined tabby stripes on forehead/back/legs only, plush solid warm-orange tail #F19C45 with NO dark stacked rings and a plump rounded cream-white tip #F8EDD9, #F8EDD9 white muzzle/chest/belly/paws, #E28C7A pink nose, #D88A28 amber iris), and plain solid uniform warm off-white background (#F4EFE9).
+- Do NOT shift, scale, rotate, or redraw the unedited body, paws, or outer contour.
+- Do NOT add fur strands, gradients, 3D shading, ground shadows, props, text, or watermarks.
+
+LOCAL EDIT ONLY:
+<REPLACE_WITH_STATE_EDIT:
+  - blink-half: lower the upper eyelids halfway over the amber irises while keeping head, ears, whiskers, and body 100% identical.
+  - blink-closed: close both eyes smoothly into gentle dark-brown curved lines while keeping head, ears, whiskers, and body 100% identical.
+  - lying-idle-01: gently sway ONLY the cream-tipped tail tip slightly upward/outward by ~15 px and add a subtle 4 px chest rise from breathing; keep head, face, front paws, and ground line 100% locked.
+  - sleep-01: add a subtle 5 px slow-breathing rise on the back contour only; keep folded ears, closed eyes, paws, and curled tail 100% locked.
+  - react-01: perk both ears slightly more upright and widen the almond amber eyes slightly in mild surprise; keep torso and paws 100% locked.
+  - drag-01: sway ONLY the dangling hind paws and hanging cream-tipped tail slightly to the right by ~12 px; keep head, shoulders, and torso 100% locked.
+>
+```
+
+### 3. L2 首尾帧过渡 I2V 模板（`stretch` / `sleep-in` / `wake` / `jump`）
+
+- **适用状态**：`stretch`（`master-lying` → `master-standing`）、`sleep-in`（`master-lying` → `master-sleeping`）、`wake`（`master-sleeping` → `master-lying`）、`jump`（`master-standing` → 垂直轻跳 → `master-standing`）。
+- **生成参数**：Image-to-Video（First + Last Frame Lock），1:1（`768×768` 或 `1024×1024`），`24 fps`，`2–3 s`，非循环。
+- **抽帧与后处理硬门**：均匀抽取 **6–8 帧**（运行时 `10–12 fps`，即 `83–100 ms/帧`）；整段使用**单一缩放系数**与**统一抠像去边（defringe 至 `#5C3B22`）**对齐至 `anchor: { x: 200, y: 360 }`；过 `tools/verify-pet-pack.ps1` 连续性硬门（相邻帧质心突跳 `<= 6 px`、包围盒缩放变化 `<= 5%`）。
+
+```text
+Animate a smooth, natural 2D hand-drawn frame-by-frame transition between the locked start frame and the locked end frame of this exact orange tabby cat.
+
+STRICT STYLE & CAMERA LOCKS:
+- Preserve the exact same character design, 3-3.5 head body proportions, almond half-lidded amber eyes, pink nose, white muzzle/chest/belly/paws, plush solid warm-orange tail (#F19C45, NO dark stacked rings on the tail) with a plump rounded cream-white tip (#F8EDD9), bold uniform dark-brown outline (#5C3B22), un-outlined tabby stripes (#DF8232) on forehead/back/legs only, and flat warm 2D illustration style.
+- Do NOT restyle, do not add 3D depth, fur texture, gradients, soft glow, or photorealism.
+- Locked static camera: zero zoom, zero pan, zero tilt, zero camera shake.
+- Plain solid uniform warm off-white background (#F4EFE9) throughout every frame.
+- No ground shadow, no floor line, no props, no motion lines, no text, no watermark, no extra cats.
+
+MOTION (IN PLACE, NO HORIZONTAL DRIFT):
+<REPLACE_WITH_TRANSITION:
+  - stretch (lying -> standing): The cat smoothly pushes up from the lying pose into a brief natural feline back-arch/front-paw stretch, then settles cleanly into the exact locked neutral four-paw standing end frame in place.
+  - sleep-in (lying -> sleeping): The cat smoothly lowers its head onto its front paws, gently folds its ears slightly, closes its eyes, and tucks its body snugly into the exact locked curled sleeping end frame in place.
+  - wake (sleeping -> lying): The cat smoothly lifts its head from its paws, perks its ears back up, opens its almond half-lidded amber eyes, and settles into the exact locked lying end frame in place.
+  - jump (standing -> standing): The cat performs a small vertical hop in place — brief crouch anticipation, push-off with all four white paws tucked cleanly off the ground, short airborne apex, soft landing back onto the exact locked four-paw standing end frame. No forward translation.
+>
+```
+
+### 4. L3 固定机位走路 I2V 模板（`walk`）
+
+- **适用状态**：`walk`（全身连续循环；只需面向左侧的单向循环，向右由运行时水平镜像）。
+- **输入**：首帧锁定 `docs/images/pet/v2-masters/raw/master-standing-raw.png`（静止四足站姿，确保起手比例与白尖尾 100% 对齐），步态节奏参考 `docs/images/pet/references/walk-reference.gif`。
+- **生成参数**：Reference / Image-to-Video，固定机位，`3–5 s`，`24 fps`，纯 `#F4EFE9` 底。
+- **抽帧与后处理硬门**：选取 1 个完整左右交替步态周期，抽取 **16–20 帧**（运行时 `18–24 fps`，即 `42–56 ms/帧`，按页面移速 `~103 DIP/s` 匹配步幅不滑步）；整段采用**单一裁切与单一缩放系数**，统一去边对齐至 `anchor: { x: 200, y: 360 }`；通过 `tools/verify-pet-pack.ps1` 连续性硬门（相邻帧质心突跳 `<= 6 px`、包围盒缩放变化 `<= 5%`）。
+
+```text
+Animate the provided 2D flat hand-drawn illustration of the orange tabby cat (starting from the locked neutral standing pose) into a smooth, seamless in-place walk cycle facing left.
+
+STRICT STYLE & CAMERA LOCKS:
+- Keep the exact same character identity, 3-3.5 head body proportions, face, almond half-lidded amber eyes, pink nose, white muzzle/chest/belly/paws, plush solid warm-orange tail (#F19C45, NO dark stacked rings on the tail) with a plump rounded cream-white tip (#F8EDD9), bold uniform dark-brown outline (#5C3B22), un-outlined tabby stripes (#DF8232) on forehead/back/legs only, and flat warm 2D illustration style.
+- Do NOT restyle, do not make it 3D, do not add fur strands, gradients, shading flicker, or photorealism.
+- Locked static camera: zero zoom, zero pan, zero tilt; plain solid uniform warm off-white background (#F4EFE9).
+- Full body visible in left-facing 3/4 side view, all four white paws clearly visible and never cropped.
+
+WALK CYCLE MOTION (TREADMILL IN PLACE):
+- The cat walks smoothly in place to the left as if on an invisible treadmill, matching a natural four-beat feline walk gait: front legs alternate cleanly (left forward, then right forward), hind legs alternate naturally with slight shoulder/hip sway, and the cream-tipped tail sways gently and relaxed behind the body without touching the ground line.
+- Keep the cat at the exact same scale, horizontal center, and vertical ground plane across every frame; zero forward translation, zero vertical drift, zero sliding paws.
+- Smooth seamless loop. No ground shadow, no floor line, no props, no motion lines, no text, no watermark, no extra cats.
+```
+
+---
+
+## v1 历史记录（#121 / #161 / #163 归档备查）
+
+### 走路循环（v1）
 
 - 参考图：`docs/images/pet/direction-117/walk.png`（已确认走路单帧）
 - 生成：VideoGen，wan30，`reference_to_video`，5 s，1280×720
