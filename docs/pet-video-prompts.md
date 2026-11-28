@@ -14,7 +14,7 @@
 | 四母姿总览原图 | `docs/images/pet/v2-masters/raw/master-4poses-sheet-raw.png` | `1200×1200` `2×2` 归一化合图（基于「静止站姿单图 → 趴姿/拎起 → 趴姿推熟睡」链式派生，统一 `#F4EFE9` 纯底） | 4 张母姿统一标尺与花纹核对总览 |
 | 母姿 B：趴姿 | `docs/images/pet/v2-masters/master-lying.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · 统一标尺 `0.700@600`（`354×217`） | `lying-idle` / `blink` / `react` 底图；`stretch` 首帧、`wake` 末帧、`sleep-in` 首帧 |
 | 母姿 A：站姿 | `docs/images/pet/v2-masters/master-standing.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · 统一标尺 `0.700@600`（`333×244`） | 静止四足站立唯一锚点（前后双腿各自并拢、前腿横纹清晰一致）；`stretch` 末帧、`walk` 首帧、`jump` 起止基准 |
-| 母姿 C：熟睡 | `docs/images/pet/v2-masters/master-sleeping.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · 统一标尺 `0.700@600`（`352×171`） | 由趴姿直接低头闭眼派生（躯干与绕侧尾 100% 咬合）；`sleep` 底图、`sleep-in` 末帧、`wake` 首帧 |
+| 母姿 C：熟睡 | `docs/images/pet/v2-masters/master-sleeping.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · 统一标尺 `0.700@600`（`344×163`） | 由趴姿直接低头闭眼派生（躯干与绕侧尾 100% 咬合）；`sleep` 底图、`sleep-in` 末帧、`wake` 首帧 |
 | 独立态：拎起 | `docs/images/pet/v2-masters/master-drag.png` | `400×400` 8-bit RGBA · `anchor: { x: 200, y: 360 }` · 统一标尺 `0.700@600`（`332×252`） | `drag` 循环底图 |
 | 单态切片原图 | `docs/images/pet/v2-masters/raw/master-{lying,standing,sleeping,drag}-raw.png` | 去背归一化至 `#F4EFE9` 纯底的 `600×600` 单姿原图（与 `400×400` 严格 `1.5×` 对应，`anchor: 300,540`） | L1/L2/L3 模型输入原图（导出统一乘 `2/3 ≈ 0.667`） |
 | 审片图 | `docs/images/pet/v2-masters/onion-skin-masters.png`、`preview-light-dark-200dip.png` | `tools/verify-pet-pack.ps1` 渲染输出 | 四母姿洋葱皮重叠校验 + 浅/深色 200 DIP 边缘校验 |
