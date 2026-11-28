@@ -276,6 +276,24 @@ public partial class MyJiuMiView : UserControl, IMyJiuMiHomeHost
 
     private void OnRoomWallSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateActivation();
 
+    private void OnPagePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_viewModel is null ||
+            _isDragging ||
+            RoomWall.Bounds.Width <= 0 ||
+            RoomWall.Bounds.Height <= 0)
+        {
+            return;
+        }
+
+        Point pointer = e.GetPosition(RoomWall);
+        double headX = _viewModel.CatCenterX;
+        double headY =
+            RoomWall.Bounds.Height -
+            (MyJiuMiInteractionRules.CatSize * MyJiuMiInteractionRules.SitWatchHeadHeightRatio);
+        _viewModel.UpdateCursor(pointer.X - headX, pointer.Y - headY);
+    }
+
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MyJiuMiViewModel.IsFacingRight) or nameof(MyJiuMiViewModel.FrameAnchor))

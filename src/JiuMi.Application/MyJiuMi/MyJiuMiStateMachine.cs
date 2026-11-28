@@ -19,6 +19,8 @@ public sealed class MyJiuMiStateMachine
     private readonly Random _random;
     private readonly Dictionary<MyJiuMiState, MyJiuMiAnimationClip>? _manifestClips;
     private readonly MyJiuMiAnimationClip? _manifestSummonWalk;
+    private readonly Dictionary<MyJiuMiSitWatchDirection, MyJiuMiAnimationClip>? _sitWatchClips;
+    private readonly MyJiuMiAnimationClip? _sitToLieClip;
 
     private MyJiuMiState _state;
     private DateTimeOffset _stateStartedAt;
@@ -26,6 +28,18 @@ public sealed class MyJiuMiStateMachine
     private DateTimeOffset _sleepDeadline;
     private DateTimeOffset? _nextBlinkAt;
     private DateTimeOffset? _nextWanderAt;
+    private MyJiuMiSitWatchDirection _sitWatchDirection = MyJiuMiSitWatchDirection.Center;
+    private DateTimeOffset _sitWatchStartedAt;
+    private DateTimeOffset _watchClipStartedAt;
+    private DateTimeOffset _lastEffectiveCursorMoveAt;
+    private DateTimeOffset? _lastWatchDirectionChangedAt;
+    private bool _hasCursorPosition;
+    private double _lastCursorOffsetX;
+    private double _lastCursorOffsetY;
+    private bool _hasWatchMoveBaseline;
+    private double _watchMoveBaselineX;
+    private double _watchMoveBaselineY;
+    private bool _hasWatchDirectionLocked;
     private int _frameIndex;
     private double _positionX = MyJiuMiPositionRules.Default;
     private double _stageWidth;
@@ -58,13 +72,34 @@ public sealed class MyJiuMiStateMachine
         if (manifest is not null)
         {
             _manifestClips = new Dictionary<MyJiuMiState, MyJiuMiAnimationClip>();
-            foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
+            foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
             {
                 _manifestClips[state] = manifest.GetClip(state).ToAnimationClip();
             }
 
             _manifestSummonWalk = MyJiuMiAnimationCatalog.CreateSummonWalk(
                 manifest.GetClip(MyJiuMiState.Walk));
+
+            if (manifest.SupportsSitWatch &&
+                manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Left, out MyJiuMiPetPackClip? left) &&
+                manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Center, out MyJiuMiPetPackClip? center) &&
+                manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Right, out MyJiuMiPetPackClip? right) &&
+                left is not null &&
+                center is not null &&
+                right is not null)
+            {
+                _sitWatchClips = new Dictionary<MyJiuMiSitWatchDirection, MyJiuMiAnimationClip>
+                {
+                    [MyJiuMiSitWatchDirection.Left] = left.ToAnimationClip(),
+                    [MyJiuMiSitWatchDirection.Center] = center.ToAnimationClip(),
+                    [MyJiuMiSitWatchDirection.Right] = right.ToAnimationClip(),
+                };
+            }
+
+            if (manifest.TryGetSitToLieClip(out MyJiuMiPetPackClip? sitToLie) && sitToLie is not null)
+            {
+                _sitToLieClip = sitToLie.ToAnimationClip();
+            }
         }
     }
 
@@ -99,7 +134,28 @@ public sealed class MyJiuMiStateMachine
     public bool IsFacingRight => _isFacingRight;
 
     /// <summary>
-    /// Starts a fresh page visit in <see cref="MyJiuMiState.LyingIdle"/> at the saved position.
+    /// Gets a value indicating whether the active character pack supports <see cref="MyJiuMiState.SitWatch"/>.
+    /// </summary>
+    public bool SupportsSitWatch => _sitWatchClips is not null;
+
+    /// <summary>
+    /// Gets the active gaze direction while in <see cref="MyJiuMiState.SitWatch"/>.
+    /// </summary>
+    public MyJiuMiSitWatchDirection SitWatchDirection => _sitWatchDirection;
+
+    /// <summary>
+    /// Gets a value indicating whether a cursor sample has been reported during this active session.
+    /// </summary>
+    public bool HasCursorPosition => _hasCursorPosition;
+
+    /// <summary>
+    /// Gets the latest cursor vertical offset from the cat's head centre, in DIP.
+    /// </summary>
+    public double CursorOffsetY => _lastCursorOffsetY;
+
+    /// <summary>
+    /// Starts a fresh page visit at the saved position, entering <see cref="MyJiuMiState.SitWatch"/>
+    /// when the character pack declares sit-watch slots or <see cref="MyJiuMiState.LyingIdle"/> otherwise.
     /// </summary>
     /// <param name="stageWidth">The room width in DIP.</param>
     /// <param name="positionX">The saved normalized horizontal position.</param>
@@ -111,9 +167,10 @@ public sealed class MyJiuMiStateMachine
         _isFacingRight = false;
         _isActive = true;
         _pendingAction = PendingAction.None;
+        ResetSitWatchState();
         _lastUpdateAt = now;
         ResetSleep(now);
-        EnterLyingIdle(now, restartWander: true);
+        EnterRestingState(now, restartWander: true);
     }
 
     /// <summary>
@@ -127,8 +184,59 @@ public sealed class MyJiuMiStateMachine
         _walkPace = WalkPace.Normal;
         _nextBlinkAt = null;
         _nextWanderAt = null;
+        ResetSitWatchState();
         _state = MyJiuMiState.LyingIdle;
         _frameIndex = 0;
+    }
+
+    /// <summary>
+    /// Reports the cursor position relative to the cat's head centre in DIP. Cursor motion updates
+    /// gaze direction and effective-move timing during <see cref="MyJiuMiState.SitWatch"/> and never
+    /// wakes a cat in <see cref="MyJiuMiState.SleepIn"/> or <see cref="MyJiuMiState.Sleep"/>.
+    /// </summary>
+    /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
+    /// <param name="offsetYDip">The cursor Y minus the cat head centre Y, in DIP.</param>
+    public void UpdateCursor(double offsetXDip, double offsetYDip)
+    {
+        if (!_isActive ||
+            !double.IsFinite(offsetXDip) ||
+            !double.IsFinite(offsetYDip) ||
+            _state is MyJiuMiState.SleepIn or MyJiuMiState.Sleep)
+        {
+            return;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _lastCursorOffsetX = offsetXDip;
+        _lastCursorOffsetY = offsetYDip;
+        _hasCursorPosition = true;
+
+        if (_state != MyJiuMiState.SitWatch)
+        {
+            return;
+        }
+
+        if (!_hasWatchMoveBaseline)
+        {
+            _hasWatchMoveBaseline = true;
+            _watchMoveBaselineX = offsetXDip;
+            _watchMoveBaselineY = offsetYDip;
+            _lastEffectiveCursorMoveAt = now;
+        }
+        else
+        {
+            double deltaX = offsetXDip - _watchMoveBaselineX;
+            double deltaY = offsetYDip - _watchMoveBaselineY;
+            double threshold = MyJiuMiInteractionRules.SitWatchEffectiveMoveDip;
+            if ((deltaX * deltaX) + (deltaY * deltaY) > threshold * threshold)
+            {
+                _watchMoveBaselineX = offsetXDip;
+                _watchMoveBaselineY = offsetYDip;
+                _lastEffectiveCursorMoveAt = now;
+            }
+        }
+
+        ApplySitWatchDirection(now);
     }
 
     /// <summary>
@@ -249,7 +357,7 @@ public sealed class MyJiuMiStateMachine
 
         if (_state == MyJiuMiState.Walk && _walkPace == WalkPace.Summon)
         {
-            EnterLyingIdle(_timeProvider.GetUtcNow(), restartWander: true);
+            EnterRestingState(_timeProvider.GetUtcNow(), restartWander: true);
         }
     }
 
@@ -271,7 +379,7 @@ public sealed class MyJiuMiStateMachine
         _pendingAction = PendingAction.None;
         if (Math.Abs(target - _positionX) < double.Epsilon)
         {
-            EnterLyingIdle(now, restartWander: true);
+            EnterRestingState(now, restartWander: true);
             return false;
         }
 
@@ -307,6 +415,20 @@ public sealed class MyJiuMiStateMachine
                 _pendingAction = PendingAction.None;
                 EnterState(MyJiuMiState.SleepIn, now);
                 continue;
+            }
+
+            if (_state == MyJiuMiState.SitWatch)
+            {
+                ApplySitWatchDirection(now);
+                bool maxDurationReached = now - _sitWatchStartedAt >= MyJiuMiInteractionRules.SitWatchMaxDuration;
+                bool stillnessTimedOut = now - _lastEffectiveCursorMoveAt >= MyJiuMiInteractionRules.SitWatchIdleTimeout;
+                if (maxDurationReached || stillnessTimedOut)
+                {
+                    HandleSitWatchPatienceExhausted(now);
+                    continue;
+                }
+
+                break;
             }
 
             if (_state == MyJiuMiState.LyingIdle)
@@ -395,7 +517,7 @@ public sealed class MyJiuMiStateMachine
         }
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        EnterLyingIdle(now, restartWander: true);
+        EnterRestingState(now, restartWander: true);
         if (IsSleepDue(now))
         {
             EnterState(MyJiuMiState.SleepIn, now);
@@ -493,14 +615,14 @@ public sealed class MyJiuMiStateMachine
         double remaining = _walkTargetX - _positionX;
         if (Math.Abs(remaining) < double.Epsilon)
         {
-            EnterLyingIdle(now, restartWander: true);
+            EnterRestingState(now, restartWander: true);
             return;
         }
 
         if (_stageWidth <= 0)
         {
             _positionX = _walkTargetX;
-            EnterLyingIdle(now, restartWander: true);
+            EnterRestingState(now, restartWander: true);
             return;
         }
 
@@ -512,7 +634,7 @@ public sealed class MyJiuMiStateMachine
         if (step >= Math.Abs(remaining))
         {
             _positionX = _walkTargetX;
-            EnterLyingIdle(now, restartWander: true);
+            EnterRestingState(now, restartWander: true);
             return;
         }
 
@@ -534,7 +656,11 @@ public sealed class MyJiuMiStateMachine
                 return true;
 
             case MyJiuMiState.React:
-                EnterLyingIdle(now, restartWander: true);
+                EnterRestingState(now, restartWander: true);
+                return true;
+
+            case MyJiuMiState.SitToLie:
+                EnterLyingIdleForSitSleep(now);
                 return true;
 
             case MyJiuMiState.SleepIn:
@@ -553,7 +679,7 @@ public sealed class MyJiuMiStateMachine
                 }
                 else
                 {
-                    EnterLyingIdle(now, restartWander: true);
+                    EnterRestingState(now, restartWander: true);
                 }
 
                 return true;
@@ -580,6 +706,137 @@ public sealed class MyJiuMiStateMachine
         EnterState(MyJiuMiState.Walk, at);
     }
 
+    private void EnterRestingState(DateTimeOffset at, bool restartWander)
+    {
+        if (SupportsSitWatch)
+        {
+            EnterSitWatch(at);
+            return;
+        }
+
+        EnterLyingIdle(at, restartWander);
+    }
+
+    private void EnterSitWatch(DateTimeOffset at)
+    {
+        _isFacingRight = false;
+        _sitWatchStartedAt = at;
+        _watchClipStartedAt = at;
+        _lastEffectiveCursorMoveAt = at;
+        _lastWatchDirectionChangedAt = null;
+        _hasWatchMoveBaseline = _hasCursorPosition;
+        if (_hasCursorPosition)
+        {
+            _watchMoveBaselineX = _lastCursorOffsetX;
+            _watchMoveBaselineY = _lastCursorOffsetY;
+            _sitWatchDirection = MyJiuMiInteractionRules.ClassifySitWatchDirection(_lastCursorOffsetX);
+            _hasWatchDirectionLocked = true;
+        }
+        else
+        {
+            _sitWatchDirection = MyJiuMiSitWatchDirection.Center;
+            _hasWatchDirectionLocked = false;
+        }
+
+        EnterState(MyJiuMiState.SitWatch, at);
+    }
+
+    private void ApplySitWatchDirection(DateTimeOffset now)
+    {
+        if (_state != MyJiuMiState.SitWatch || !_hasCursorPosition)
+        {
+            return;
+        }
+
+        if (!_hasWatchDirectionLocked)
+        {
+            MyJiuMiSitWatchDirection initial = MyJiuMiInteractionRules.ClassifySitWatchDirection(_lastCursorOffsetX);
+            _hasWatchDirectionLocked = true;
+            if (initial != _sitWatchDirection)
+            {
+                CommitSitWatchDirection(initial, now);
+            }
+
+            return;
+        }
+
+        MyJiuMiSitWatchDirection desired = MyJiuMiInteractionRules.ResolveSitWatchDirection(
+            _sitWatchDirection,
+            _lastCursorOffsetX);
+        if (desired == _sitWatchDirection)
+        {
+            return;
+        }
+
+        if (_lastWatchDirectionChangedAt is { } lastChanged &&
+            now - lastChanged < MyJiuMiInteractionRules.SitWatchMinSwitchInterval)
+        {
+            return;
+        }
+
+        CommitSitWatchDirection(desired, now);
+    }
+
+    private void CommitSitWatchDirection(MyJiuMiSitWatchDirection direction, DateTimeOffset now)
+    {
+        _sitWatchDirection = direction;
+        _watchClipStartedAt = now;
+        _lastWatchDirectionChangedAt = now;
+        _frameIndex = 0;
+    }
+
+    private void ResetSitWatchState()
+    {
+        _sitWatchDirection = MyJiuMiSitWatchDirection.Center;
+        _hasCursorPosition = false;
+        _lastCursorOffsetX = 0;
+        _lastCursorOffsetY = 0;
+        _hasWatchMoveBaseline = false;
+        _hasWatchDirectionLocked = false;
+        _lastWatchDirectionChangedAt = null;
+    }
+
+    private void ClearCursorCache()
+    {
+        _hasCursorPosition = false;
+        _lastCursorOffsetX = 0;
+        _lastCursorOffsetY = 0;
+        _hasWatchMoveBaseline = false;
+    }
+
+    private void HandleSitWatchPatienceExhausted(DateTimeOffset now)
+    {
+        if (_isWanderingEnabled &&
+            NextRandom() >= MyJiuMiInteractionRules.SitWatchPageSleepProbability &&
+            TryChooseWanderTarget(out double target))
+        {
+            _pendingAction = PendingAction.Walk;
+            _walkTargetX = target;
+            EnterState(MyJiuMiState.Stretch, now);
+            return;
+        }
+
+        if (_sitToLieClip is not null)
+        {
+            _isFacingRight = false;
+            _pendingAction = PendingAction.None;
+            EnterState(MyJiuMiState.SitToLie, now);
+            return;
+        }
+
+        EnterLyingIdleForSitSleep(now);
+    }
+
+    private void EnterLyingIdleForSitSleep(DateTimeOffset at)
+    {
+        EnterLyingIdle(at, restartWander: false);
+        DateTimeOffset bufferDeadline = at + MyJiuMiInteractionRules.SitWatchLieSleepBuffer;
+        if (bufferDeadline < _sleepDeadline)
+        {
+            _sleepDeadline = bufferDeadline;
+        }
+    }
+
     private void EnterLyingIdle(DateTimeOffset at, bool restartWander)
     {
         EnterState(MyJiuMiState.LyingIdle, at);
@@ -599,6 +856,12 @@ public sealed class MyJiuMiStateMachine
         {
             _isSummonWalkHeld = false;
             _walkPace = WalkPace.Normal;
+        }
+
+        // Moving the cat or falling asleep invalidates any earlier head-relative cursor offset.
+        if (state is MyJiuMiState.Walk or MyJiuMiState.Drag or MyJiuMiState.SleepIn or MyJiuMiState.Sleep)
+        {
+            ClearCursorCache();
         }
 
         if (state == MyJiuMiState.LyingIdle)
@@ -643,7 +906,8 @@ public sealed class MyJiuMiStateMachine
     private void UpdateFrame(DateTimeOffset now)
     {
         MyJiuMiAnimationClip clip = CurrentClip;
-        TimeSpan elapsed = now - _stateStartedAt;
+        DateTimeOffset clipStartedAt = _state == MyJiuMiState.SitWatch ? _watchClipStartedAt : _stateStartedAt;
+        TimeSpan elapsed = now - clipStartedAt;
         if (elapsed < TimeSpan.Zero)
         {
             elapsed = TimeSpan.Zero;
@@ -669,14 +933,40 @@ public sealed class MyJiuMiStateMachine
     }
 
     private static bool IsResting(MyJiuMiState state) =>
-        state is MyJiuMiState.LyingIdle or MyJiuMiState.Blink;
+        state is MyJiuMiState.LyingIdle or MyJiuMiState.Blink or MyJiuMiState.SitWatch;
 
-    private MyJiuMiAnimationClip CurrentClip =>
-        _state == MyJiuMiState.Walk && _walkPace == WalkPace.Summon
-            ? _manifestSummonWalk ?? MyJiuMiAnimationCatalog.SummonWalk
-            : _manifestClips is not null && _manifestClips.TryGetValue(_state, out MyJiuMiAnimationClip? clip)
-                ? clip
-                : MyJiuMiAnimationCatalog.GetClip(_state);
+    private MyJiuMiAnimationClip CurrentClip
+    {
+        get
+        {
+            if (_state == MyJiuMiState.SitWatch &&
+                _sitWatchClips is not null &&
+                _sitWatchClips.TryGetValue(_sitWatchDirection, out MyJiuMiAnimationClip? watchClip))
+            {
+                return watchClip;
+            }
+
+            if (_state == MyJiuMiState.SitToLie && _sitToLieClip is not null)
+            {
+                return _sitToLieClip;
+            }
+
+            if (_state == MyJiuMiState.Walk && _walkPace == WalkPace.Summon)
+            {
+                return _manifestSummonWalk ?? MyJiuMiAnimationCatalog.SummonWalk;
+            }
+
+            if (_manifestClips is not null && _manifestClips.TryGetValue(_state, out MyJiuMiAnimationClip? clip))
+            {
+                return clip;
+            }
+
+            return MyJiuMiAnimationCatalog.GetClip(
+                _state is MyJiuMiState.SitWatch or MyJiuMiState.SitToLie
+                    ? MyJiuMiState.LyingIdle
+                    : _state);
+        }
+    }
 
     private static double NormalizeWidth(double width) =>
         double.IsFinite(width) && width > 0 ? width : 0;

@@ -28,13 +28,14 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private static readonly Uri _assetRoot = new("avares://JiuMi/Assets/MyJiuMi/");
 
     private readonly ISettingsStore _settingsStore;
+    private readonly IMyJiuMiCursorPositionProvider _cursorPositionProvider;
     private readonly TimeProvider _timeProvider;
     private readonly Serilog.ILogger _logger;
     private readonly MyJiuMiPetPackManifest _manifest;
     private readonly MyJiuMiPresenceMachine _presence = new();
     private readonly MyJiuMiStateMachine _machine;
-    private readonly Dictionary<MyJiuMiState, Bitmap?[]> _frames = [];
-    private readonly HashSet<MyJiuMiState> _failedStates = [];
+    private readonly Dictionary<string, Bitmap?[]> _frames = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _failedClips = new(StringComparer.Ordinal);
 
     private DispatcherTimer? _timer;
     private MainWindow? _shell;
@@ -58,10 +59,12 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private DateTimeOffset? _homeEntranceStartedAt;
     private DateTimeOffset _leaveStartedAt;
     private DateTimeOffset _motionStartedAt;
+    private DateTimeOffset _lastMotionUpdateAt;
     private DateTimeOffset? _jumpStartedAt;
+    private double _smoothedSitWatchTiltDegrees;
     private MyJiuMiMotion _motion = MyJiuMiMotion.None;
     private MyJiuMiLeaveTrigger? _leaveTrigger;
-    private MyJiuMiState? _renderedState;
+    private string? _renderedClipKey;
     private int _renderedFrame = -1;
     private bool _renderedJumping;
     private Bitmap? _renderedJumpFrame;
@@ -82,18 +85,22 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     /// Initializes a new instance of the <see cref="MyJiuMiSession"/> class.
     /// </summary>
     /// <param name="settingsStore">Supplies and stores the normalized cat position.</param>
+    /// <param name="cursorPositionProvider">Reads the desktop system cursor position for sit-watch tracking.</param>
     /// <param name="timeProvider">Supplies the animation and overlay clock.</param>
     /// <param name="logger">Receives frame, handoff and screen warnings.</param>
     public MyJiuMiSession(
         ISettingsStore settingsStore,
+        IMyJiuMiCursorPositionProvider cursorPositionProvider,
         TimeProvider timeProvider,
         Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(cursorPositionProvider);
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(logger);
 
         _settingsStore = settingsStore;
+        _cursorPositionProvider = cursorPositionProvider;
         _timeProvider = timeProvider;
         _logger = logger;
         _manifest = LoadManifest(logger);
@@ -205,7 +212,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Gets the procedural micro-motion of the page cat; the desktop host ignores it.
+    /// Gets the procedural micro-motion shared by both the page and desktop hosts (breathing,
+    /// resting sway and sit-watch micro-tilt).
     /// </summary>
     public MyJiuMiMotion Motion
     {
@@ -322,6 +330,22 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         _homeStageWidth = stageWidth;
         _machine.SetStageWidth(stageWidth);
+    }
+
+    /// <summary>
+    /// Reports pointer coordinates relative to the home cat's head centre in DIP for sit-watch head
+    /// tracking and micro-tilt.
+    /// </summary>
+    /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
+    /// <param name="offsetYDip">The cursor Y minus the cat head centre Y, in DIP.</param>
+    public void UpdateHomeCursor(double offsetXDip, double offsetYDip)
+    {
+        if (_isDisposed || Presence != MyJiuMiPresence.Home || !_machine.IsActive)
+        {
+            return;
+        }
+
+        _machine.UpdateCursor(offsetXDip, offsetYDip);
     }
 
     /// <summary>
@@ -831,7 +855,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         DisposeJumpFrames();
         _frames.Clear();
-        _failedStates.Clear();
+        _failedClips.Clear();
     }
 
     /// <inheritdoc />
@@ -848,6 +872,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
+        PollDesktopCursor();
         _machine.Update();
         UpdateSummonPageWalk();
         UpdateMotion();
@@ -860,9 +885,46 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         UpdateSummon();
     }
 
+    private void PollDesktopCursor()
+    {
+        if (Presence != MyJiuMiPresence.Desktop ||
+            _desktopWindow is not { } window ||
+            !_machine.IsActive ||
+            !_machine.SupportsSitWatch ||
+            _summon is not null)
+        {
+            return;
+        }
+
+        if (!_cursorPositionProvider.TryGetPosition(out MyJiuMiScreenPoint cursorScreen))
+        {
+            return;
+        }
+
+        double scaling = Math.Max(window.RenderScaling, 0.01d);
+        double slotSizeDip = window.Bounds.Width > 0 ? window.Bounds.Width : window.Width;
+        if (!(slotSizeDip > 0))
+        {
+            slotSizeDip = MyJiuMiTransitionRules.DesktopSizeDip;
+        }
+
+        (double normX, double normY) = GetNormalizedDefaultAnchor();
+        double headXInWindowDip = slotSizeDip * normX;
+        double headYInWindowDip =
+            (slotSizeDip * normY) - (slotSizeDip * MyJiuMiInteractionRules.SitWatchHeadHeightRatio);
+        double cursorInWindowDipX = (cursorScreen.X - window.Position.X) / scaling;
+        double cursorInWindowDipY = (cursorScreen.Y - window.Position.Y) / scaling;
+        _machine.UpdateCursor(
+            cursorInWindowDipX - headXInWindowDip,
+            cursorInWindowDipY - headYInWindowDip);
+    }
+
     private void StartMotion()
     {
-        _motionStartedAt = _timeProvider.GetUtcNow();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _motionStartedAt = now;
+        _lastMotionUpdateAt = now;
+        _smoothedSitWatchTiltDegrees = 0;
         _jumpStartedAt = null;
         _renderedJumping = false;
         _renderedJumpFrame = null;
@@ -871,14 +933,16 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
     private void UpdateMotion()
     {
-        if (_isDisposed || !_machine.IsActive || Presence == MyJiuMiPresence.Desktop)
+        if (_isDisposed ||
+            !_machine.IsActive ||
+            (Presence == MyJiuMiPresence.Desktop && !_machine.SupportsSitWatch))
         {
             ResetMotion();
             return;
         }
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        if (_jumpStartedAt is { } jumpStartedAt)
+        if (Presence == MyJiuMiPresence.Home && _jumpStartedAt is { } jumpStartedAt)
         {
             if (now - jumpStartedAt >= MyJiuMiMotionRules.JumpDuration)
             {
@@ -886,12 +950,28 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             }
             else
             {
+                _lastMotionUpdateAt = now;
                 Motion = MyJiuMiMotionRules.SampleJump(now - jumpStartedAt);
                 return;
             }
         }
 
-        Motion = MyJiuMiMotionRules.Sample(now - _motionStartedAt, _machine.State);
+        double targetTilt = _machine.State == MyJiuMiState.SitWatch && _machine.HasCursorPosition
+            ? MyJiuMiMotionRules.ComputeSitWatchTiltDegrees(
+                _machine.SitWatchDirection,
+                _machine.CursorOffsetY)
+            : 0;
+        TimeSpan elapsed = now - _lastMotionUpdateAt;
+        _lastMotionUpdateAt = now;
+        _smoothedSitWatchTiltDegrees = MyJiuMiMotionRules.SmoothSitWatchTiltDegrees(
+            _smoothedSitWatchTiltDegrees,
+            targetTilt,
+            elapsed);
+
+        double? tilt = _machine.State == MyJiuMiState.SitWatch
+            ? _smoothedSitWatchTiltDegrees
+            : null;
+        Motion = MyJiuMiMotionRules.Sample(now - _motionStartedAt, _machine.State, tilt);
     }
 
     private void StartJump(DateTimeOffset now)
@@ -1169,8 +1249,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         (Bitmap? jumpFrame, MyJiuMiPetPackAnchor jumpAnchor) = jumping
             ? GetJumpFrame(now)
             : (null, _manifest.DefaultAnchor);
+        MyJiuMiPetPackClip activeClip = ResolveRenderClip(state, jumping);
         if (forceFrame ||
-            _renderedState != state ||
+            !string.Equals(_renderedClipKey, activeClip.Key, StringComparison.Ordinal) ||
             _renderedFrame != frameIndex ||
             _renderedJumping != jumping ||
             !ReferenceEquals(_renderedJumpFrame, jumpFrame))
@@ -1183,9 +1264,18 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             }
             else
             {
-                MyJiuMiState renderState = jumping ? MyJiuMiState.Stretch : state;
                 int renderFrame = jumping ? MyJiuMiMotionRules.JumpFrameIndex : frameIndex;
-                Bitmap?[]? frames = GetFrames(renderState);
+                Bitmap?[]? frames = GetFrames(activeClip);
+                if ((frames is null || renderFrame >= frames.Length) &&
+                    !jumping &&
+                    state is MyJiuMiState.SitWatch or MyJiuMiState.SitToLie)
+                {
+                    // Optional sit-watch interaction frames degrade gracefully to lying-idle.
+                    activeClip = _manifest.GetClip(MyJiuMiState.LyingIdle);
+                    frames = GetFrames(activeClip);
+                    renderFrame = 0;
+                }
+
                 if (frames is null || renderFrame >= frames.Length)
                 {
                     IsFrameVisible = false;
@@ -1201,14 +1291,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 {
                     IsFrameVisible = true;
                     Frame = frames[renderFrame];
-                    MyJiuMiPetPackClip clip = _manifest.GetClip(renderState);
-                    FrameAnchor = renderFrame < clip.Frames.Count
-                        ? clip.Frames[renderFrame].Anchor
+                    FrameAnchor = renderFrame < activeClip.Frames.Count
+                        ? activeClip.Frames[renderFrame].Anchor
                         : _manifest.DefaultAnchor;
                 }
             }
 
-            _renderedState = state;
+            _renderedClipKey = activeClip.Key;
             _renderedFrame = frameIndex;
             _renderedJumping = jumping;
             _renderedJumpFrame = jumpFrame;
@@ -1929,10 +2018,11 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         IsZzzVisible = false;
         IsFrameVisible = false;
         Frame = null;
-        _renderedState = null;
+        _renderedClipKey = null;
         _renderedFrame = -1;
         _renderedJumping = false;
         _renderedJumpFrame = null;
+        _smoothedSitWatchTiltDegrees = 0;
         EndJump();
         ResetMotion();
     }
@@ -1995,28 +2085,45 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
     }
 
+    private MyJiuMiPetPackClip ResolveRenderClip(MyJiuMiState state, bool jumping)
+    {
+        if (jumping)
+        {
+            return _manifest.GetClip(MyJiuMiState.Stretch);
+        }
+
+        if (_manifest.TryGetActiveClip(state, _machine.SitWatchDirection, out MyJiuMiPetPackClip? clip) &&
+            clip is not null)
+        {
+            return clip;
+        }
+
+        return _manifest.GetClip(MyJiuMiState.LyingIdle);
+    }
+
+    private Bitmap?[]? GetFrames(MyJiuMiState state) => GetFrames(_manifest.GetClip(state));
+
     [SuppressMessage(
         "Design",
         "CA1031:Do not catch general exception types",
         Justification = "Asset loading is a UI boundary; a missing frame must degrade to a hidden cat.")]
-    private Bitmap?[]? GetFrames(MyJiuMiState state)
+    private Bitmap?[]? GetFrames(MyJiuMiPetPackClip clip)
     {
         if (_isDisposed)
         {
             return null;
         }
 
-        if (_frames.TryGetValue(state, out Bitmap?[]? frames))
+        if (_frames.TryGetValue(clip.Key, out Bitmap?[]? frames))
         {
             return frames;
         }
 
-        if (_failedStates.Contains(state))
+        if (_failedClips.Contains(clip.Key))
         {
             return null;
         }
 
-        MyJiuMiPetPackClip clip = _manifest.GetClip(state);
         var loaded = new Bitmap?[clip.Frames.Count];
         try
         {
@@ -2027,7 +2134,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 loaded[index] = new Bitmap(stream);
             }
 
-            _frames[state] = loaded;
+            _frames[clip.Key] = loaded;
             return loaded;
         }
         catch (Exception exception)
@@ -2037,11 +2144,11 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 frame?.Dispose();
             }
 
-            _failedStates.Add(state);
+            _failedClips.Add(clip.Key);
             _logger.Warning(
                 exception,
-                "The My JiuMi frames for {State} could not be loaded; the cat stays hidden",
-                state);
+                "The My JiuMi frames for {ClipKey} could not be loaded; the cat stays hidden",
+                clip.Key);
             return null;
         }
     }

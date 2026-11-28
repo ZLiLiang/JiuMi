@@ -142,4 +142,62 @@ public sealed class MyJiuMiMotionRulesTests
     {
         Assert.Equal(37.6, MyJiuMiMotionRules.JumpHeightDip, 9);
     }
+
+    [Theory]
+    [InlineData(MyJiuMiSitWatchDirection.Right, -200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Right, 0, 0.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Right, 200, 3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Right, -500, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Right, 500, 3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Left, -200, 3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Left, 200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Center, -200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Center, 200, 3.0)]
+    public void ComputeSitWatchTiltDegrees_GivenCursorOffsetY_ClampsToThreeDegrees(
+        MyJiuMiSitWatchDirection direction,
+        double cursorOffsetY,
+        double expectedDegrees)
+    {
+        double tilt = MyJiuMiMotionRules.ComputeSitWatchTiltDegrees(direction, cursorOffsetY);
+
+        Assert.Equal(expectedDegrees, tilt, 6);
+    }
+
+    [Fact]
+    public void Sample_GivenSitWatchAndTilt_CombinesBreathingAndClampedMicroTilt()
+    {
+        TimeSpan elapsed = TimeSpan.FromTicks(MyJiuMiMotionRules.BreathPeriod.Ticks / 4);
+
+        MyJiuMiMotion motion = MyJiuMiMotionRules.Sample(elapsed, MyJiuMiState.SitWatch, sitWatchTiltDegrees: 2.5);
+
+        Assert.Equal(1 + 0.015, motion.ScaleY, 9);
+        Assert.Equal(1 - (0.015 * 0.35), motion.ScaleX, 9);
+        Assert.Equal(2.5, motion.RotationDegrees, 9);
+    }
+
+    [Fact]
+    public void Sample_GivenSitWatchWithoutCursorTilt_DoesNotSway()
+    {
+        MyJiuMiMotion motion = MyJiuMiMotionRules.Sample(TimeSpan.FromSeconds(1), MyJiuMiState.SitWatch);
+
+        Assert.Equal(0, motion.RotationDegrees, 9);
+    }
+
+    [Fact]
+    public void SmoothSitWatchTiltDegrees_GivenPositiveStep_MovesSmoothlyTowardTargetAndClamps()
+    {
+        double halfway = MyJiuMiMotionRules.SmoothSitWatchTiltDegrees(
+            currentDegrees: 0,
+            targetDegrees: 5,
+            elapsed: TimeSpan.FromMilliseconds(80));
+
+        Assert.True(halfway > 1.5 && halfway < 3.0, $"expected smooth step in (1.5, 3.0), got {halfway}");
+
+        double snappedZero = MyJiuMiMotionRules.SmoothSitWatchTiltDegrees(
+            currentDegrees: 0.005,
+            targetDegrees: 0,
+            elapsed: TimeSpan.FromMilliseconds(16));
+
+        Assert.Equal(0, snappedZero, 9);
+    }
 }

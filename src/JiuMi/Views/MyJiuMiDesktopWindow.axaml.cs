@@ -27,6 +27,9 @@ public partial class MyJiuMiDesktopWindow : Window
     private const int MaNoActivate = 3;
     private const int WaActive = 1;
 
+    private readonly ScaleTransform _motionScale = new(1, 1);
+    private readonly RotateTransform _motionRotation = new(0);
+    private readonly TransformGroup _motionTransform = new();
     private readonly TranslateTransform _catAnchorOffset = new(0, 0);
     private readonly ScaleTransform _catMirror = new(1, 1);
     private readonly TransformGroup _catImageTransform = new();
@@ -45,8 +48,11 @@ public partial class MyJiuMiDesktopWindow : Window
     public MyJiuMiDesktopWindow()
     {
         InitializeComponent();
+        _motionTransform.Children = [_motionScale, _motionRotation];
         _catImageTransform.Children = [_catAnchorOffset, _catMirror];
+        CatRoot.RenderTransform = _motionTransform;
         CatImage.RenderTransform = _catImageTransform;
+        ApplyMotion();
         Closed += OnClosed;
 
         if (OperatingSystem.IsWindows())
@@ -72,6 +78,7 @@ public partial class MyJiuMiDesktopWindow : Window
         DataContext = session;
         session.PropertyChanged += OnSessionPropertyChanged;
         ApplyAppearance();
+        ApplyMotion();
     }
 
     private IntPtr OnWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -114,6 +121,19 @@ public partial class MyJiuMiDesktopWindow : Window
         {
             ApplyAppearance();
         }
+
+        if (e.PropertyName == nameof(MyJiuMiSession.Motion))
+        {
+            ApplyMotion();
+        }
+    }
+
+    private void ApplyMotion()
+    {
+        MyJiuMiMotion motion = _session?.Motion ?? MyJiuMiMotion.None;
+        _motionScale.ScaleX = motion.ScaleX;
+        _motionScale.ScaleY = motion.ScaleY;
+        _motionRotation.Angle = motion.RotationDegrees;
     }
 
     private void ApplyAppearance()

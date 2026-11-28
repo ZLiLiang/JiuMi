@@ -161,6 +161,89 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         Assert.Single(manifest.Files);
     }
 
+    [Fact]
+    public void Load_GivenSitWatchInteractions_EnablesSitWatchAndExposesAllFourSlots()
+    {
+        string json = ValidMinimalManifestJson.TrimEnd()[..^1] + """
+            ,
+              "interactions": {
+                "sit-watch-left": {
+                  "loop": true,
+                  "frames": [
+                    { "path": "sit-watch-left/00.png", "durationMs": 500 }
+                  ]
+                },
+                "sit-watch-center": {
+                  "loop": true,
+                  "frames": [
+                    { "path": "sit-watch-center/00.png", "durationMs": 500 }
+                  ]
+                },
+                "sit-watch-right": {
+                  "loop": true,
+                  "frames": [
+                    { "path": "sit-watch-right/00.png", "durationMs": 500 }
+                  ]
+                },
+                "sit-to-lie": {
+                  "loop": false,
+                  "frames": [
+                    { "path": "sit-to-lie/00.png", "durationMs": 125 },
+                    { "path": "sit-to-lie/01.png", "durationMs": 125 },
+                    { "path": "sit-to-lie/02.png", "durationMs": 125 },
+                    { "path": "sit-to-lie/03.png", "durationMs": 125 }
+                  ]
+                }
+              }
+            }
+            """;
+
+        MyJiuMiPetPackLoadResult result = MyJiuMiPetPackManifestLoader.Load(json);
+
+        Assert.True(result.IsSuccess, result.Error);
+        MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
+        Assert.Equal(1, manifest.SchemaVersion);
+        Assert.True(manifest.SupportsSitWatch);
+        Assert.True(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Left, out MyJiuMiPetPackClip? left));
+        Assert.True(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Center, out MyJiuMiPetPackClip? center));
+        Assert.True(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Right, out MyJiuMiPetPackClip? right));
+        Assert.True(manifest.TryGetSitToLieClip(out MyJiuMiPetPackClip? sitToLie));
+        Assert.Equal("sit-watch-left/00.png", left?.Frames[0].Path);
+        Assert.Equal("sit-watch-center/00.png", center?.Frames[0].Path);
+        Assert.Equal("sit-watch-right/00.png", right?.Frames[0].Path);
+        Assert.Equal(TimeSpan.FromMilliseconds(500), sitToLie?.Duration);
+    }
+
+    [Fact]
+    public void Load_GivenPartialSitWatchInteractions_DegradesSitWatchSupportToFalse()
+    {
+        string json = ValidMinimalManifestJson.TrimEnd()[..^1] + """
+            ,
+              "interactions": {
+                "sit-watch-left": {
+                  "loop": true,
+                  "frames": [
+                    { "path": "sit-watch-left/00.png", "durationMs": 500 }
+                  ]
+                },
+                "sit-watch-center": {
+                  "loop": true,
+                  "frames": [
+                    { "path": "sit-watch-center/00.png", "durationMs": 500 }
+                  ]
+                }
+              }
+            }
+            """;
+
+        MyJiuMiPetPackLoadResult result = MyJiuMiPetPackManifestLoader.Load(json);
+
+        Assert.True(result.IsSuccess, result.Error);
+        MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
+        Assert.False(manifest.SupportsSitWatch);
+        Assert.False(manifest.TryGetSitToLieClip(out _));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("{ not valid json")]
@@ -235,7 +318,7 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         Assert.Equal(new MyJiuMiPetPackCanvas(400, 400), manifest.Canvas);
         Assert.Equal(new MyJiuMiPetPackAnchor(200, 399), manifest.DefaultAnchor);
 
-        foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
+        foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
         {
             MyJiuMiAnimationClip legacy = MyJiuMiAnimationCatalog.GetClip(state);
             MyJiuMiPetPackClip clip = manifest.GetClip(state);
