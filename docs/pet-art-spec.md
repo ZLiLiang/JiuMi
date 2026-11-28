@@ -189,6 +189,6 @@ pwsh ./tools/verify-pet-pack.ps1 -PackDir src/JiuMi/Assets/MyJiuMi
 单命令完成以下检查并输出审片图至 `artifacts/pet-qa/<pack-id>/`：
 
 1. **格式与清单完整性**：`schemaVersion: 1`、必需状态、`400×400` 8-bit RGBA PNG、缺失/孤儿文件检测、多余 PNG 文本块告警、可选 `files` SHA-256 校验。
-2. **L1 零偏移门**：计算 L1 各帧相对首帧的像素精确一致（`diff = 0`）占比。
+2. **L1 零偏移门**：计算 L1 各帧相对首帧的像素精确一致（`diff = 0`）占比；对清单中声明的全部 `interactions.sit-watch-*` 方向槽位（最多 9 向）统一执行下半身 99% 严格零偏移门与脚底 `foot_dy = 0 px` 对齐门。
 3. **L2 / L3 连续性门**：输出相邻帧脚底 `y_max` 波动、alpha 加权质心突跳（`> 6 px` 拦截）与包围盒对角线缩放突变（`> 5%` 拦截）。
-4. **审片图导出**：`contact-sheet.png`（含显式锚点十字线）、`onion-skin/<clip>.png`（洋葱皮叠影图）、`preview-light-dark-200dip.png`（浅/深色双背景 200 DIP 预览图）及 `report.json`。
+4. **审片图导出**：`contact-sheet.png`（含显式锚点十字线）、`onion-skin/<clip>.png`（含覆盖全部已声明坐姿方向的 `interactions-sit-watch.png` 洋葱皮叠影图）、`preview-light-dark-200dip.png`（覆盖全部已声明坐姿方向的浅/深色双背景 200 DIP 预览图）及 `report.json`。

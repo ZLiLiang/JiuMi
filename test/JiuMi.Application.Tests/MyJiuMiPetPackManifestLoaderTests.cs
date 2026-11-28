@@ -204,6 +204,7 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
         Assert.Equal(1, manifest.SchemaVersion);
         Assert.True(manifest.SupportsSitWatch);
+        Assert.Equal(MyJiuMiSitWatchTier.ThreeWay, manifest.SitWatchTier);
         Assert.True(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Left, out MyJiuMiPetPackClip? left));
         Assert.True(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Center, out MyJiuMiPetPackClip? center));
         Assert.True(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Right, out MyJiuMiPetPackClip? right));
@@ -212,6 +213,110 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         Assert.Equal("sit-watch-center/00.png", center?.Frames[0].Path);
         Assert.Equal("sit-watch-right/00.png", right?.Frames[0].Path);
         Assert.Equal(TimeSpan.FromMilliseconds(500), sitToLie?.Duration);
+    }
+
+    [Fact]
+    public void Load_GivenNineWaySitWatchInteractions_ReportsNineWayTierAndExposesAllNineSlots()
+    {
+        string json = BuildManifestWithSitWatchKeys(
+            "sit-watch-center",
+            "sit-watch-up",
+            "sit-watch-up-right",
+            "sit-watch-right",
+            "sit-watch-down-right",
+            "sit-watch-down",
+            "sit-watch-down-left",
+            "sit-watch-left",
+            "sit-watch-up-left");
+
+        MyJiuMiPetPackLoadResult result = MyJiuMiPetPackManifestLoader.Load(json);
+
+        Assert.True(result.IsSuccess, result.Error);
+        MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
+        Assert.True(manifest.SupportsSitWatch);
+        Assert.Equal(MyJiuMiSitWatchTier.NineWay, manifest.SitWatchTier);
+
+        foreach (MyJiuMiSitWatchDirection direction in MyJiuMiPetPackManifest.SitWatchDirections)
+        {
+            string expectedKey = MyJiuMiPetPackManifest.GetSitWatchInteractionKey(direction);
+            Assert.True(manifest.TryGetDeclaredSitWatchClip(direction, out MyJiuMiPetPackClip? declared));
+            Assert.Equal(expectedKey, declared?.Key);
+            Assert.True(manifest.TryResolveSitWatchDirection(direction, out MyJiuMiSitWatchDirection resolved));
+            Assert.Equal(direction, resolved);
+            Assert.True(manifest.TryGetSitWatchClip(direction, out MyJiuMiPetPackClip? clip));
+            Assert.Equal(expectedKey, clip?.Key);
+        }
+    }
+
+    [Fact]
+    public void Load_GivenFiveWaySitWatchInteractions_ReportsFiveWayTierAndDegradesDiagonals()
+    {
+        string json = BuildManifestWithSitWatchKeys(
+            "sit-watch-center",
+            "sit-watch-up",
+            "sit-watch-right",
+            "sit-watch-down",
+            "sit-watch-left");
+
+        MyJiuMiPetPackLoadResult result = MyJiuMiPetPackManifestLoader.Load(json);
+
+        Assert.True(result.IsSuccess, result.Error);
+        MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
+        Assert.True(manifest.SupportsSitWatch);
+        Assert.Equal(MyJiuMiSitWatchTier.FiveWay, manifest.SitWatchTier);
+
+        Assert.True(manifest.TryGetDeclaredSitWatchClip(MyJiuMiSitWatchDirection.Up, out _));
+        Assert.True(manifest.TryGetDeclaredSitWatchClip(MyJiuMiSitWatchDirection.Down, out _));
+        Assert.False(manifest.TryGetDeclaredSitWatchClip(MyJiuMiSitWatchDirection.UpLeft, out _));
+        Assert.False(manifest.TryGetDeclaredSitWatchClip(MyJiuMiSitWatchDirection.DownRight, out _));
+
+        Assert.True(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.Up, out MyJiuMiSitWatchDirection upResolved));
+        Assert.Equal(MyJiuMiSitWatchDirection.Up, upResolved);
+        Assert.True(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.Down, out MyJiuMiSitWatchDirection downResolved));
+        Assert.Equal(MyJiuMiSitWatchDirection.Down, downResolved);
+        Assert.True(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.UpLeft, out MyJiuMiSitWatchDirection upLeftResolved));
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, upLeftResolved);
+        Assert.True(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.UpRight, out MyJiuMiSitWatchDirection upRightResolved));
+        Assert.Equal(MyJiuMiSitWatchDirection.Right, upRightResolved);
+        Assert.True(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.DownLeft, out MyJiuMiSitWatchDirection downLeftResolved));
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, downLeftResolved);
+        Assert.True(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.DownRight, out MyJiuMiSitWatchDirection downRightResolved));
+        Assert.Equal(MyJiuMiSitWatchDirection.Right, downRightResolved);
+    }
+
+    [Fact]
+    public void Load_GivenPartialDiagonalOrVerticalSlots_DegradesThroughNineToFiveToThreeLadder()
+    {
+        // Missing DownLeft/DownRight degrades incomplete 9-way to 5-way.
+        MyJiuMiPetPackManifest partialNine = Assert.IsType<MyJiuMiPetPackManifest>(
+            MyJiuMiPetPackManifestLoader.Load(
+                BuildManifestWithSitWatchKeys(
+                    "sit-watch-center",
+                    "sit-watch-up",
+                    "sit-watch-right",
+                    "sit-watch-down",
+                    "sit-watch-left",
+                    "sit-watch-up-left",
+                    "sit-watch-up-right")).Manifest);
+        Assert.Equal(MyJiuMiSitWatchTier.FiveWay, partialNine.SitWatchTier);
+
+        // Missing Down degrades incomplete 5-way to 3-way.
+        MyJiuMiPetPackManifest partialFive = Assert.IsType<MyJiuMiPetPackManifest>(
+            MyJiuMiPetPackManifestLoader.Load(
+                BuildManifestWithSitWatchKeys(
+                    "sit-watch-center",
+                    "sit-watch-up",
+                    "sit-watch-right",
+                    "sit-watch-left")).Manifest);
+        Assert.Equal(MyJiuMiSitWatchTier.ThreeWay, partialFive.SitWatchTier);
+        Assert.True(partialFive.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.Up, out MyJiuMiSitWatchDirection resolvedUp));
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, resolvedUp);
+        Assert.True(partialFive.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.Down, out MyJiuMiSitWatchDirection resolvedDown));
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, resolvedDown);
+        Assert.True(partialFive.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.UpLeft, out MyJiuMiSitWatchDirection resolvedUpLeft));
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, resolvedUpLeft);
+        Assert.True(partialFive.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.DownRight, out MyJiuMiSitWatchDirection resolvedDownRight));
+        Assert.Equal(MyJiuMiSitWatchDirection.Right, resolvedDownRight);
     }
 
     [Fact]
@@ -241,6 +346,9 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         Assert.True(result.IsSuccess, result.Error);
         MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
         Assert.False(manifest.SupportsSitWatch);
+        Assert.Equal(MyJiuMiSitWatchTier.None, manifest.SitWatchTier);
+        Assert.False(manifest.TryResolveSitWatchDirection(MyJiuMiSitWatchDirection.Center, out _));
+        Assert.False(manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Center, out _));
         Assert.False(manifest.TryGetSitToLieClip(out _));
     }
 
@@ -370,5 +478,20 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         clock.Advance(TimeSpan.FromMilliseconds(260));
         machine.Update();
         Assert.Equal(1, machine.FrameIndex);
+    }
+
+    private static string BuildManifestWithSitWatchKeys(params string[] keys)
+    {
+        string entries = string.Join(
+            ",\n",
+            keys.Select(key => $$"""
+                    "{{key}}": {
+                      "loop": true,
+                      "frames": [
+                        { "path": "{{key}}/00.png", "durationMs": 500 }
+                      ]
+                    }
+                """));
+        return ValidMinimalManifestJson.TrimEnd()[..^1] + ",\n  \"interactions\": {\n" + entries + "\n  }\n}";
     }
 }

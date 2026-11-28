@@ -20,6 +20,7 @@ public sealed class MyJiuMiStateMachine
     private readonly Dictionary<MyJiuMiState, MyJiuMiAnimationClip>? _manifestClips;
     private readonly MyJiuMiAnimationClip? _manifestSummonWalk;
     private readonly Dictionary<MyJiuMiSitWatchDirection, MyJiuMiAnimationClip>? _sitWatchClips;
+    private readonly MyJiuMiSitWatchTier _sitWatchTier;
     private readonly MyJiuMiAnimationClip? _sitToLieClip;
 
     private MyJiuMiState _state;
@@ -80,20 +81,23 @@ public sealed class MyJiuMiStateMachine
             _manifestSummonWalk = MyJiuMiAnimationCatalog.CreateSummonWalk(
                 manifest.GetClip(MyJiuMiState.Walk));
 
-            if (manifest.SupportsSitWatch &&
-                manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Left, out MyJiuMiPetPackClip? left) &&
-                manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Center, out MyJiuMiPetPackClip? center) &&
-                manifest.TryGetSitWatchClip(MyJiuMiSitWatchDirection.Right, out MyJiuMiPetPackClip? right) &&
-                left is not null &&
-                center is not null &&
-                right is not null)
+            _sitWatchTier = manifest.SitWatchTier;
+            if (manifest.SupportsSitWatch)
             {
-                _sitWatchClips = new Dictionary<MyJiuMiSitWatchDirection, MyJiuMiAnimationClip>
+                var clips = new Dictionary<MyJiuMiSitWatchDirection, MyJiuMiAnimationClip>();
+                foreach (MyJiuMiSitWatchDirection direction in MyJiuMiPetPackManifest.SitWatchDirections)
                 {
-                    [MyJiuMiSitWatchDirection.Left] = left.ToAnimationClip(),
-                    [MyJiuMiSitWatchDirection.Center] = center.ToAnimationClip(),
-                    [MyJiuMiSitWatchDirection.Right] = right.ToAnimationClip(),
-                };
+                    if (manifest.TryGetSitWatchClip(direction, out MyJiuMiPetPackClip? watchClip) &&
+                        watchClip is not null)
+                    {
+                        clips[direction] = watchClip.ToAnimationClip();
+                    }
+                }
+
+                if (clips.Count > 0)
+                {
+                    _sitWatchClips = clips;
+                }
             }
 
             if (manifest.TryGetSitToLieClip(out MyJiuMiPetPackClip? sitToLie) && sitToLie is not null)
@@ -137,6 +141,11 @@ public sealed class MyJiuMiStateMachine
     /// Gets a value indicating whether the active character pack supports <see cref="MyJiuMiState.SitWatch"/>.
     /// </summary>
     public bool SupportsSitWatch => _sitWatchClips is not null;
+
+    /// <summary>
+    /// Gets the active directional sit-watch capability tier resolved from the character pack manifest.
+    /// </summary>
+    public MyJiuMiSitWatchTier SitWatchTier => _sitWatchTier;
 
     /// <summary>
     /// Gets the active gaze direction while in <see cref="MyJiuMiState.SitWatch"/>.
@@ -729,7 +738,10 @@ public sealed class MyJiuMiStateMachine
         {
             _watchMoveBaselineX = _lastCursorOffsetX;
             _watchMoveBaselineY = _lastCursorOffsetY;
-            _sitWatchDirection = MyJiuMiInteractionRules.ClassifySitWatchDirection(_lastCursorOffsetX);
+            _sitWatchDirection = MyJiuMiInteractionRules.ClassifySitWatchDirection(
+                _lastCursorOffsetX,
+                _lastCursorOffsetY,
+                _sitWatchTier);
             _hasWatchDirectionLocked = true;
         }
         else
@@ -750,7 +762,10 @@ public sealed class MyJiuMiStateMachine
 
         if (!_hasWatchDirectionLocked)
         {
-            MyJiuMiSitWatchDirection initial = MyJiuMiInteractionRules.ClassifySitWatchDirection(_lastCursorOffsetX);
+            MyJiuMiSitWatchDirection initial = MyJiuMiInteractionRules.ClassifySitWatchDirection(
+                _lastCursorOffsetX,
+                _lastCursorOffsetY,
+                _sitWatchTier);
             _hasWatchDirectionLocked = true;
             if (initial != _sitWatchDirection)
             {
@@ -762,7 +777,9 @@ public sealed class MyJiuMiStateMachine
 
         MyJiuMiSitWatchDirection desired = MyJiuMiInteractionRules.ResolveSitWatchDirection(
             _sitWatchDirection,
-            _lastCursorOffsetX);
+            _lastCursorOffsetX,
+            _lastCursorOffsetY,
+            _sitWatchTier);
         if (desired == _sitWatchDirection)
         {
             return;

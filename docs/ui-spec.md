@@ -107,7 +107,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 
 | 状态 | 行为 | 进入 / 退出 |
 | --- | --- | --- |
-| 坐立注视（SitWatch） | 坐姿头部/眼神三向跟随鼠标（`sit-watch-left` / `center` / `right`），叠加轻量呼吸与随鼠标 Y 轴高低的 `±3°` 柔和微倾 | 角色包声明 `sit-watch-*` 时，进页、唤醒或走完路落定进入；看累（`12 s`）或鼠标静止（`4 s` 无 `> 8 DIP` 移动）退出；旧包缺省回退 LyingIdle |
+| 坐立注视（SitWatch） | 坐姿头部/眼神 9 向（正中 + 8 个 45° 方位，`sit-watch-*`）跟随鼠标，缺省按 `9 → 5 → 3 → LyingIdle` 逐级降级，叠加轻量呼吸与随鼠标 Y 轴高低的 `±3°` 柔和微倾 | 角色包声明 `sit-watch-*`（至少左/中/右）时，进页、唤醒或走完路落定进入；看累（`12 s`）或鼠标静止（`4 s` 无 `> 8 DIP` 移动）退出；旧包缺省回退 LyingIdle |
 | 坐姿趴下（SitToLie） | 坐姿缓缓趴下（`sit-to-lie`，4–6 帧约 0.5 s）的非循环过渡 | `SitWatch` 耐心耗尽走趴睡路径时播放，结束进入 LyingIdle 缓冲 `4 s` 后 `SleepIn → Sleep`；槽位缺省时直接切入 LyingIdle |
 | 趴姿待机（LyingIdle） | 趴在地板上呼吸、尾巴轻摆；旧包默认状态，新包用于趴下缓冲与休憩 | 旧包激活/走完进入，或 `SitToLie` 结束进入缓冲 `4 s` 入睡 |
 | 眨眼（Blink） | 半闭 → 闭 → 睁，身体姿态不变 | 仅在 LyingIdle 随机 5–7 秒触发，回 LyingIdle |
@@ -133,7 +133,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 眨眼：只在 LyingIdle，随机 5–7 秒。
 - 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟兜底（坐立注视看累趴下后改为 `4 s` 缓冲），到点进入 SleepIn → Sleep；自主走动不算交互。睡眠计时在走路中到点时，走完当前这段再 SleepIn；拖拽中到点则等松手后入睡；React/Stretch 中到点则等过渡结束。
 - 离开页面、主窗口隐藏或最小化：停止计时与走动，取消未完成动画；再次进入从默认待机（支持坐姿槽位时为 SitWatch，否则 LyingIdle）开始，位置取已保存的 X，睡眠计时重新开始。若我的JiuMi 是当前页且猫清醒，最小化/隐藏改为走出到桌面（见 ADR-0016）。
-- 坐立头跟鼠标与看累趴睡（[#221](https://github.com/ZLiLiang/JiuMi/issues/221)）：当角色包在 `interactions` 声明 `sit-watch-left` / `sit-watch-center` / `sit-watch-right` 时，进页、唤醒或走完路落定后默认进入 `SitWatch`；页面级 `PointerMoved` 以猫头中心 `catHeadX` 为基准按 `±60 DIP` 判定左/中/右三向（边界叠加 `±15 DIP` 滞回带宽 + `100 ms` 最小切帧间隔），并叠加轻量呼吸与随鼠标 Y 轴高低的 `±3°` 柔和微倾。光标位移 `> 8 DIP` 才重置静止计时；持续注视 `12 s` 或静止 `4 s` 无有效移动时，页面模式 **75%** 播放 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`，**25%** 改为自主闲逛（`Stretch → Walk`）走完后回到 `SitWatch`。处于 `SleepIn` / `Sleep` 时移动鼠标**不唤醒**。
+- 坐立头跟鼠标与看累趴睡（[#221](https://github.com/ZLiLiang/JiuMi/issues/221) / [#225](https://github.com/ZLiLiang/JiuMi/issues/225)）：当角色包在 `interactions` 声明 `sit-watch-*`（`left` / `center` / `right` 为 3 向基线，可选补齐 `up` / `down` 组成 5 向、再补齐 `up-left` / `up-right` / `down-left` / `down-right` 组成 9 向，缺省按 9 向 → 5 向 → 3 向 → 趴姿待机逐级降级）时，进页、唤醒或走完路落定后默认进入 `SitWatch`；页面级 `PointerMoved` 以猫头中心为原点按 360° 极坐标判定（`60 DIP` 中心死区半径 + `±15 DIP` 半径滞回 + 8 个 45° 方位扇区 / 5 向 90° 象限 + `±7.5°` 角度滞回 + `100 ms` 最小切帧间隔），并叠加轻量呼吸与随鼠标 Y 轴高低的 `±3°` 柔和微倾。光标位移 `> 8 DIP` 才重置静止计时；持续注视 `12 s` 或静止 `4 s` 无有效移动时，页面模式 **75%** 播放 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`，**25%** 改为自主闲逛（`Stretch → Walk`）走完后回到 `SitWatch`。处于 `SleepIn` / `Sleep` 时移动鼠标**不唤醒**。
 - 交互可打断 Blink/React/Stretch/Walk/SleepIn/SitWatch/SitToLie：拖拽立即进 Drag；单击按是否已进入 Sleep 决定 React 或 Wake；不排队等动画结束。
 - 不做：全局显示开关、托盘项、设置页桌宠分区、右键菜单、点击穿透、声音、全身追跑鼠标、工具状态联动、垂直位置持久化。
 
@@ -176,7 +176,7 @@ JiuMi 应用外壳的视觉与交互规格。跨模块的结构规则见 [`docs/
 - 单击：`React` + 爱心；重置 5 分钟睡眠计时。
 - 拖拽：4 DIP 阈值区分点击；移动窗口，松手夹回工作区；不写设置。
 - 双击：恢复并激活主窗口，导航到我的JiuMi；猫留在桌面，不自动召回。
-- 坐立头跟鼠标与看累趴睡：通过轻量 Win32 `GetCursorPos` 随 `16 ms` 会话计时器轮询全屏鼠标坐标（零全局 Hook），全屏移动均触发 `±60 DIP`（叠加 `±15 DIP` 滞回 + `100 ms` 防抖）三向坐姿切换与轻量呼吸/`±3°` 柔和微倾；持续注视 `12 s` 或静止 `4 s` 无 `> 8 DIP` 有效移动时 **100%** 播放 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`。睡眠中移动鼠标不唤醒。
+- 坐立头跟鼠标与看累趴睡：通过轻量 Win32 `GetCursorPos` 随 `16 ms` 会话计时器轮询全屏鼠标坐标（零全局 Hook），全屏移动均触发以猫头中心为原点的 360° 极坐标 9 向判定（`60 DIP` 中心死区 + `±15 DIP` 半径滞回 + 8 个 45° 方位扇区 + `±7.5°` 角度滞回 + `100 ms` 防抖，按 9 向 → 5 向 → 3 向 → 趴姿待机降级）与轻量呼吸/`±3°` 柔和微倾；持续注视 `12 s` 或静止 `4 s` 无 `> 8 DIP` 有效移动时 **100%** 播放 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`。睡眠中移动鼠标不唤醒。
 - 保留眨眼、睡眠与 `Zzz`；不做自主闲逛、双击召唤、右键菜单、声音、全身追跑鼠标、工具联动。
 - 猫在桌面时页面房间为空，底部显示 `MyJiuMi.DesktopHint`；提示弱化、不抢焦点、不是控件。
 

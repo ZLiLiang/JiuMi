@@ -9,8 +9,8 @@ Runs the Phase 1 automated QA gate for My JiuMi character packs:
 2. PNG format check: 400x400 (matching manifest canvas), 8-bit RGBA (color type 6, bit depth 8),
    missing/orphan PNG detection, and extraneous PNG text/metadata chunk detection.
 3. L1 zero-drift gate (lying-idle, blink, sleep, react, drag, plus cross-direction lower-body
-   zero-drift across interactions.sit-watch-left/center/right when declared): exact pixel diff = 0
-   ratio against frame 0 (or sit-watch-center lower body) over the union opaque mask.
+   zero-drift across all declared interactions.sit-watch-* directions, up to 9-way): exact pixel
+   diff = 0 ratio against frame 0 (or sit-watch-center lower body) over the union opaque mask.
 4. L2/L3 continuity gate: adjacent-frame foot y_max fluctuation, alpha-weighted centroid jump
    (> MaxCentroidJumpPx), and bounding-box scale anomaly (> MaxBBoxScaleChangePct).
 5. Review artifact export:
@@ -536,7 +536,10 @@ public static class JiuMiPetPackQaTool
                     g.DrawImage(bmp, new RectangleF(slotX + dx, top + header + dy, slot, slot));
                 }
 
-                g.DrawString(f.Clip, font, textBrush, slotX + 4, floorY + 8);
+                string label = f.Clip.StartsWith("interactions.", StringComparison.Ordinal)
+                    ? f.Clip.Substring("interactions.".Length)
+                    : f.Clip;
+                g.DrawString(label, font, textBrush, slotX + 4, floorY + 8);
             }
         }
     }
@@ -815,46 +818,91 @@ if ($null -ne $lyingBaseFrame) {
     }
 }
 
-# Cross-clip L1 zero-drift gate for directional sit-watch interactions (same sitting body/tail, head turn only)
-# Ratio 0.495 maps to y >= 198 on a 400x400 canvas, strictly below the chin/neck seam.
-$sitWatchKeys = @('interactions.sit-watch-left', 'interactions.sit-watch-center', 'interactions.sit-watch-right')
-$sitWatchMap = [ordered]@{}
+# Cross-clip L1 zero-drift gate for all declared directional sit-watch interactions
+# (same sitting body/tail, head turn only). Ratio 0.495 maps to y >= 198 on a 400x400 canvas,
+# strictly below the chin/neck seam.
+$canonicalSitWatchKeys = @(
+    'interactions.sit-watch-center',
+    'interactions.sit-watch-up',
+    'interactions.sit-watch-up-right',
+    'interactions.sit-watch-right',
+    'interactions.sit-watch-down-right',
+    'interactions.sit-watch-down',
+    'interactions.sit-watch-down-left',
+    'interactions.sit-watch-left',
+    'interactions.sit-watch-up-left'
+)
+$extraSitWatchKeys = @(
+    $clipReports.Keys |
+        Where-Object { $_ -like 'interactions.sit-watch-*' -and $canonicalSitWatchKeys -notcontains $_ } |
+        Sort-Object
+)
+$sitWatchKeys = @($canonicalSitWatchKeys + $extraSitWatchKeys)
+$sitWatchFramesByKey = [ordered]@{}
 foreach ($key in $sitWatchKeys) {
-    $frameMetric = Get-FirstFrameMetric -ClipName $key
-    if ($null -ne $frameMetric) {
-        $sitWatchMap[$key] = $frameMetric
+    $framesForKey = @($allFrameMetrics | Where-Object { $_.Clip -eq $key })
+    if ($framesForKey.Count -gt 0) {
+        $sitWatchFramesByKey[$key] = $framesForKey
     }
 }
-if ($sitWatchMap.Count -eq 3) {
-    $centerFrame = $sitWatchMap['interactions.sit-watch-center']
-    $lowerBodyMinY = [int][Math]::Round($canvasHeight * $SitWatchLowerBodyRatio)
-    $sitWatchMatchPcts = @{ 'interactions.sit-watch-center' = 100.0 }
-    $sitWatchFootDeltaY = 0
-
-    foreach ($sideKey in @('interactions.sit-watch-left', 'interactions.sit-watch-right')) {
-        $sideFrame = $sitWatchMap[$sideKey]
-        $pct = [JiuMiPetPackQaTool]::ComputeExactMatchPercentBelowY($centerFrame.FullPath, $sideFrame.FullPath, $lowerBodyMinY)
-        $sitWatchMatchPcts[$sideKey] = $pct
-        $footDelta = [Math]::Abs($sideFrame.MaxY - $centerFrame.MaxY)
-        if ($footDelta -gt $sitWatchFootDeltaY) {
-            $sitWatchFootDeltaY = $footDelta
-        }
-        if ($pct -lt $MinSitWatchLowerBodyMatchPct) {
-            $errors.Add(("L1 sit-watch lower-body zero-drift gate failed on '{0}' vs center (y>={1}): diff=0 ratio {2:F2}% < {3:F1}%." -f $sideKey, $lowerBodyMinY, $pct, $MinSitWatchLowerBodyMatchPct))
-        }
+if ($sitWatchFramesByKey.Count -ge 1) {
+    $referenceKey = if ($sitWatchFramesByKey.Contains('interactions.sit-watch-center')) {
+        'interactions.sit-watch-center'
+    } else {
+        @($sitWatchFramesByKey.Keys)[0]
     }
+    $referenceFrame = $sitWatchFramesByKey[$referenceKey][0]
+    $lowerBodyMinY = [int][Math]::Round($canvasHeight * $SitWatchLowerBodyRatio)
+    $sitWatchMatchPcts = @{}
+    $sitWatchFootDeltaY = 0
+    $onionFrames = [System.Collections.Generic.List[PetFrameMetrics]]::new()
+    $onionFrames.Add($referenceFrame)
+
+    foreach ($sitKey in $sitWatchFramesByKey.Keys) {
+        $framesForKey = $sitWatchFramesByKey[$sitKey]
+        if ($sitKey -ne $referenceKey) {
+            $onionFrames.Add($framesForKey[0])
+        }
+
+        $minClipPct = 100.0
+        for ($i = 0; $i -lt $framesForKey.Count; $i++) {
+            $candidate = $framesForKey[$i]
+            if ($sitKey -eq $referenceKey -and $i -eq 0) {
+                continue
+            }
+
+            $pct = [JiuMiPetPackQaTool]::ComputeExactMatchPercentBelowY($referenceFrame.FullPath, $candidate.FullPath, $lowerBodyMinY)
+            if ($pct -lt $minClipPct) {
+                $minClipPct = $pct
+            }
+
+            $footDelta = [Math]::Abs($candidate.MaxY - $referenceFrame.MaxY)
+            if ($footDelta -gt $sitWatchFootDeltaY) {
+                $sitWatchFootDeltaY = $footDelta
+            }
+
+            if ($pct -lt $MinSitWatchLowerBodyMatchPct) {
+                $errors.Add(("L1 sit-watch lower-body zero-drift gate failed on '{0}' frame {1} vs '{2}' (y>={3}): diff=0 ratio {4:F2}% < {5:F1}%." -f $sitKey, $i, $referenceKey, $lowerBodyMinY, $pct, $MinSitWatchLowerBodyMatchPct))
+            }
+        }
+
+        $sitWatchMatchPcts[$sitKey] = $minClipPct
+    }
+
     if ($sitWatchFootDeltaY -gt 0) {
         $errors.Add(("L1 sit-watch foot alignment gate failed: foot_dy={0}px across sit-watch directions (expected 0px)." -f $sitWatchFootDeltaY))
     }
 
-    $onionDir = Join-Path $OutputDir 'onion-skin'
-    [JiuMiPetPackQaTool]::RenderOnionSkin([PetFrameMetrics[]]@($sitWatchMap.Values), (Join-Path $onionDir 'interactions-sit-watch.png'))
+    if ($onionFrames.Count -ge 2) {
+        $onionDir = Join-Path $OutputDir 'onion-skin'
+        [JiuMiPetPackQaTool]::RenderOnionSkin($onionFrames.ToArray(), (Join-Path $onionDir 'interactions-sit-watch.png'))
+    }
 
-    foreach ($key in $sitWatchKeys) {
-        if ($clipReports.Contains($key)) {
-            $clipReports[$key]['tier'] = 'L1'
-            $clipReports[$key]['minL1ExactMatchPct'] = [Math]::Round($sitWatchMatchPcts[$key], 2)
-            $clipReports[$key]['maxFootDeltaY'] = $sitWatchFootDeltaY
+    foreach ($sitKey in $sitWatchFramesByKey.Keys) {
+        if ($clipReports.Contains($sitKey)) {
+            $clipReports[$sitKey]['tier'] = 'L1'
+            $clipReports[$sitKey]['minL1ExactMatchPct'] = [Math]::Round($sitWatchMatchPcts[$sitKey], 2)
+            $clipReports[$sitKey]['maxFootDeltaY'] = $sitWatchFootDeltaY
         }
     }
 }
@@ -910,10 +958,8 @@ $sampleOrder = @(
     'blink',
     'react',
     'sleep',
-    'drag',
-    'interactions.sit-watch-left',
-    'interactions.sit-watch-center',
-    'interactions.sit-watch-right',
+    'drag'
+) + $sitWatchKeys + @(
     'walk',
     'stretch',
     'jump'
@@ -956,7 +1002,7 @@ Write-Host ("  Canvas: {0}x{1}  DefaultAnchor: ({2}, {3})" -f $canvasWidth, $can
 foreach ($key in $clipReports.Keys) {
     $c = $clipReports[$key]
     $l1Text = if ($null -ne $c.minL1ExactMatchPct) { "L1_diff0=$($c.minL1ExactMatchPct)%" } else { "L1_diff0=n/a" }
-    Write-Host ("  {0,-14} frames={1,-2} {2,-16} foot_dy={3,-2}px  centroid_jump={4,-5}px  scale_chg={5}%" -f `
+    Write-Host ("  {0,-34} frames={1,-2} {2,-16} foot_dy={3,-2}px  centroid_jump={4,-5}px  scale_chg={5}%" -f `
         $key, $c.frameCount, $l1Text, $c.maxFootDeltaY, $c.maxCentroidJumpPx, $c.maxBBoxScaleChangePct)
 }
 Write-Host "  Artifacts: $OutputDir"

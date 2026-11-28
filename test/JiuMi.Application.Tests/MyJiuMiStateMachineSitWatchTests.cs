@@ -401,6 +401,241 @@ public sealed class MyJiuMiStateMachineSitWatchTests
         Assert.False(machine.HasCursorPosition);
     }
 
+    [Theory]
+    [InlineData(0, 0, MyJiuMiSitWatchDirection.Center)]
+    [InlineData(60, 0, MyJiuMiSitWatchDirection.Center)]
+    [InlineData(0, -60, MyJiuMiSitWatchDirection.Center)]
+    [InlineData(42, 42, MyJiuMiSitWatchDirection.Center)]
+    [InlineData(100, 0, MyJiuMiSitWatchDirection.Right)]
+    [InlineData(100, 100, MyJiuMiSitWatchDirection.DownRight)]
+    [InlineData(0, 100, MyJiuMiSitWatchDirection.Down)]
+    [InlineData(-100, 100, MyJiuMiSitWatchDirection.DownLeft)]
+    [InlineData(-100, 0, MyJiuMiSitWatchDirection.Left)]
+    [InlineData(-100, -100, MyJiuMiSitWatchDirection.UpLeft)]
+    [InlineData(0, -100, MyJiuMiSitWatchDirection.Up)]
+    [InlineData(100, -100, MyJiuMiSitWatchDirection.UpRight)]
+    public void UpdateCursor_GivenNineWayManifest_ClassifiesCenterAndAllEightPolarSectors(
+        double offsetX,
+        double offsetY,
+        MyJiuMiSitWatchDirection expected)
+    {
+        (MyJiuMiStateMachine machine, _) = CreateSitWatchMachine(tier: MyJiuMiSitWatchTier.NineWay);
+
+        Assert.Equal(MyJiuMiSitWatchTier.NineWay, machine.SitWatchTier);
+        machine.UpdateCursor(offsetX, offsetY);
+
+        Assert.Equal(expected, machine.SitWatchDirection);
+    }
+
+    [Fact]
+    public void UpdateCursor_GivenNineWayManifest_AppliesRadiusHysteresisAlongDiagonals()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateSitWatchMachine(tier: MyJiuMiSitWatchTier.NineWay);
+
+        machine.UpdateCursor(0, 0);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+
+        // r = sqrt(50^2 + 50^2) ~= 70.7 DIP: outside 60 DIP but inside 75 DIP exit ring -> holds Center.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        machine.UpdateCursor(-50, -50);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+
+        // r = sqrt(55^2 + 55^2) ~= 77.8 DIP > 75 DIP -> switches to UpLeft.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        machine.UpdateCursor(-55, -55);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        // r = sqrt(35^2 + 35^2) ~= 49.5 DIP: inside 60 DIP but outside 45 DIP re-entry ring -> holds UpLeft.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        machine.UpdateCursor(-35, -35);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        // r = sqrt(31^2 + 31^2) ~= 43.8 DIP <= 45 DIP -> returns to Center.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        machine.UpdateCursor(-31, -31);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+    }
+
+    [Fact]
+    public void UpdateCursor_GivenNineWayManifest_AppliesAngularHysteresisAcrossSectorBoundariesAndWrapAround()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateSitWatchMachine(tier: MyJiuMiSitWatchTier.NineWay);
+
+        // Start in Right (0°); nominal boundary with UpRight (-45°) is -22.5°, hysteresis is ±7.5° ([-30°, -15°]).
+        machine.UpdateCursor(100, 0);
+        Assert.Equal(MyJiuMiSitWatchDirection.Right, machine.SitWatchDirection);
+
+        // -28° crosses -22.5° but stays inside 30° of Right -> holds Right.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -28);
+        Assert.Equal(MyJiuMiSitWatchDirection.Right, machine.SitWatchDirection);
+
+        // -31° crosses -30° -> switches to UpRight.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -31);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpRight, machine.SitWatchDirection);
+
+        // -16° crosses back over -22.5° but stays within 30° of UpRight (-45°) -> holds UpRight.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -16);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpRight, machine.SitWatchDirection);
+
+        // -14° exceeds 30° from UpRight -> switches back to Right.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -14);
+        Assert.Equal(MyJiuMiSitWatchDirection.Right, machine.SitWatchDirection);
+
+        // Wrap-around check across ±180° between Left (180°) and UpLeft (-135°), nominal boundary -157.5°.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: 180);
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, machine.SitWatchDirection);
+
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -152);
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, machine.SitWatchDirection);
+
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -149);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -164);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 100, angleDegrees: -166);
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, machine.SitWatchDirection);
+    }
+
+    [Fact]
+    public void UpdateCursor_GivenNineWayRapidSweep_DebouncesWithHundredMillisecondMinimumInterval()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateSitWatchMachine(tier: MyJiuMiSitWatchTier.NineWay);
+
+        machine.UpdateCursor(-120, -120);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        time.Advance(TimeSpan.FromMilliseconds(50));
+        machine.UpdateCursor(120, -120);
+        machine.Update();
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        time.Advance(TimeSpan.FromMilliseconds(50));
+        machine.Update();
+        Assert.Equal(MyJiuMiSitWatchDirection.UpRight, machine.SitWatchDirection);
+    }
+
+    [Fact]
+    public void UpdateCursor_GivenFiveWayManifest_UsesCardinalQuadrantsWithHysteresis()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateSitWatchMachine(tier: MyJiuMiSitWatchTier.FiveWay);
+        Assert.Equal(MyJiuMiSitWatchTier.FiveWay, machine.SitWatchTier);
+
+        // (-80, -120) is -123.7° -> closer to Up (-90°) than Left (180°).
+        machine.UpdateCursor(-80, -120);
+        Assert.Equal(MyJiuMiSitWatchDirection.Up, machine.SitWatchDirection);
+
+        // Moving to -140° crosses the -135° boundary by only 5° (< 7.5° hysteresis) -> holds Up.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 120, angleDegrees: -140);
+        Assert.Equal(MyJiuMiSitWatchDirection.Up, machine.SitWatchDirection);
+
+        // Moving to -144° crosses -142.5° -> switches to Left.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 120, angleDegrees: -144);
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, machine.SitWatchDirection);
+
+        // Moving to (0, 120) switches cleanly to Down.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        machine.UpdateCursor(0, 120);
+        Assert.Equal(MyJiuMiSitWatchDirection.Down, machine.SitWatchDirection);
+    }
+
+    [Fact]
+    public void UpdateCursor_GivenThreeWayManifest_DegradesVerticalConesToCenterWithAngularHysteresis()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateSitWatchMachine(tier: MyJiuMiSitWatchTier.ThreeWay);
+        Assert.Equal(MyJiuMiSitWatchTier.ThreeWay, machine.SitWatchTier);
+
+        // Directly above or below resolves to Center in 3-way.
+        machine.UpdateCursor(0, -150);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+
+        // -116° crosses the -112.5° Up/UpLeft seam by 3.5° (< 7.5°) -> holds Center.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 150, angleDegrees: -116);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+
+        // -122° crosses -120° -> switches to Left.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 150, angleDegrees: -122);
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, machine.SitWatchDirection);
+
+        // -108° crosses back over -112.5° by 4.5° (< 7.5°) -> holds Left.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 150, angleDegrees: -108);
+        Assert.Equal(MyJiuMiSitWatchDirection.Left, machine.SitWatchDirection);
+
+        // -103° crosses -105° -> returns to Center.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        UpdateCursorPolar(machine, radius: 150, angleDegrees: -103);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+
+        // Directly below also stays Center.
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        machine.UpdateCursor(0, 150);
+        Assert.Equal(MyJiuMiSitWatchDirection.Center, machine.SitWatchDirection);
+    }
+
+    [Theory]
+    [InlineData(MyJiuMiSitWatchDirection.Up, 0, -150, MyJiuMiSitWatchDirection.Center)]
+    [InlineData(MyJiuMiSitWatchDirection.Down, 0, 150, MyJiuMiSitWatchDirection.Center)]
+    [InlineData(MyJiuMiSitWatchDirection.Up, -150, 0, MyJiuMiSitWatchDirection.Left)]
+    public void ResolveSitWatchDirection_GivenVerticalCurrentInThreeWayTier_NormalizesToCenterBeforeHysteresis(
+        MyJiuMiSitWatchDirection current,
+        double offsetX,
+        double offsetY,
+        MyJiuMiSitWatchDirection expected)
+    {
+        MyJiuMiSitWatchDirection resolved = MyJiuMiInteractionRules.ResolveSitWatchDirection(
+            current,
+            offsetX,
+            offsetY,
+            MyJiuMiSitWatchTier.ThreeWay);
+
+        Assert.Equal(expected, resolved);
+    }
+
+    [Fact]
+    public void UpdateCursor_GivenNineWayDesktopModeSleep_NeverWakesOnFullCircleSweep()
+    {
+        (MyJiuMiStateMachine machine, ManualTimeProvider time) = CreateSitWatchMachine(
+            random: 0.9,
+            tier: MyJiuMiSitWatchTier.NineWay);
+        machine.SetWanderingEnabled(false);
+
+        // Cursor starts in upper-left corner (typical desktop bottom-right cat placement).
+        machine.UpdateCursor(-240, -180);
+        Assert.Equal(MyJiuMiSitWatchDirection.UpLeft, machine.SitWatchDirection);
+
+        SleepFromSitWatch(machine, time);
+
+        for (int angle = 0; angle < 360; angle += 45)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(200));
+            UpdateCursorPolar(machine, radius: 200, angleDegrees: angle);
+            machine.Update();
+            Assert.Equal(MyJiuMiState.Sleep, machine.State);
+            Assert.False(machine.IsAwake);
+        }
+    }
+
+    private static void UpdateCursorPolar(MyJiuMiStateMachine machine, double radius, double angleDegrees)
+    {
+        double radians = angleDegrees * (Math.PI / 180.0);
+        machine.UpdateCursor(radius * Math.Cos(radians), radius * Math.Sin(radians));
+    }
+
     private static void SleepFromSitWatch(MyJiuMiStateMachine machine, ManualTimeProvider time)
     {
         Advance(machine, time, TimeSpan.FromSeconds(4));
@@ -412,37 +647,53 @@ public sealed class MyJiuMiStateMachineSitWatchTests
 
     private static (MyJiuMiStateMachine Machine, ManualTimeProvider Time) CreateSitWatchMachine(
         double random = 0.25,
-        bool includeSitToLie = true)
+        bool includeSitToLie = true,
+        MyJiuMiSitWatchTier tier = MyJiuMiSitWatchTier.ThreeWay)
     {
         var time = new ManualTimeProvider(_origin);
-        MyJiuMiPetPackManifest manifest = CreateSitWatchManifest(includeSitToLie);
+        MyJiuMiPetPackManifest manifest = CreateSitWatchManifest(includeSitToLie, tier);
         var machine = new MyJiuMiStateMachine(time, new FixedRandom(random), manifest);
         machine.Activate(DefaultWidth, 0.5);
         return (machine, time);
     }
 
-    private static MyJiuMiPetPackManifest CreateSitWatchManifest(bool includeSitToLie)
+    private static MyJiuMiPetPackManifest CreateSitWatchManifest(
+        bool includeSitToLie,
+        MyJiuMiSitWatchTier tier = MyJiuMiSitWatchTier.ThreeWay)
     {
         MyJiuMiPetPackManifest baseManifest = MyJiuMiAnimationCatalog.CreateFallbackManifest();
         MyJiuMiPetPackAnchor anchor = baseManifest.DefaultAnchor;
-        var interactions = new Dictionary<string, MyJiuMiPetPackClip>(StringComparer.Ordinal)
+        var interactions = new Dictionary<string, MyJiuMiPetPackClip>(StringComparer.Ordinal);
+
+        IEnumerable<MyJiuMiSitWatchDirection> directions = tier switch
         {
-            [MyJiuMiPetPackManifest.SitWatchLeftInteractionKey] = new(
-                MyJiuMiPetPackManifest.SitWatchLeftInteractionKey,
-                [new MyJiuMiPetPackFrame("sit-watch-left/00.png", TimeSpan.FromMilliseconds(500), anchor)],
-                Loops: true,
-                anchor),
-            [MyJiuMiPetPackManifest.SitWatchCenterInteractionKey] = new(
-                MyJiuMiPetPackManifest.SitWatchCenterInteractionKey,
-                [new MyJiuMiPetPackFrame("sit-watch-center/00.png", TimeSpan.FromMilliseconds(500), anchor)],
-                Loops: true,
-                anchor),
-            [MyJiuMiPetPackManifest.SitWatchRightInteractionKey] = new(
-                MyJiuMiPetPackManifest.SitWatchRightInteractionKey,
-                [new MyJiuMiPetPackFrame("sit-watch-right/00.png", TimeSpan.FromMilliseconds(500), anchor)],
-                Loops: true,
-                anchor),
+            MyJiuMiSitWatchTier.NineWay => MyJiuMiPetPackManifest.SitWatchDirections,
+            MyJiuMiSitWatchTier.FiveWay =>
+            [
+                MyJiuMiSitWatchDirection.Center,
+                MyJiuMiSitWatchDirection.Up,
+                MyJiuMiSitWatchDirection.Right,
+                MyJiuMiSitWatchDirection.Down,
+                MyJiuMiSitWatchDirection.Left,
+            ],
+            MyJiuMiSitWatchTier.ThreeWay =>
+            [
+                MyJiuMiSitWatchDirection.Left,
+                MyJiuMiSitWatchDirection.Center,
+                MyJiuMiSitWatchDirection.Right,
+            ],
+            _ => [],
         };
+
+        foreach (MyJiuMiSitWatchDirection direction in directions)
+        {
+            string key = MyJiuMiPetPackManifest.GetSitWatchInteractionKey(direction);
+            interactions[key] = new MyJiuMiPetPackClip(
+                key,
+                [new MyJiuMiPetPackFrame($"{key}/00.png", TimeSpan.FromMilliseconds(500), anchor)],
+                Loops: true,
+                anchor);
+        }
 
         if (includeSitToLie)
         {

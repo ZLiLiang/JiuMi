@@ -90,16 +90,22 @@ public static class MyJiuMiInteractionRules
     public static TimeSpan HeartDuration { get; } = TimeSpan.FromMilliseconds(800);
 
     /// <summary>
-    /// Gets the horizontal distance from the cat's head centre, in DIP, within which the cat looks
+    /// Gets the centre deadzone radius from the cat's head centre, in DIP, within which the cat looks
     /// forward in <see cref="MyJiuMiState.SitWatch"/>.
     /// </summary>
-    public const double SitWatchHorizontalThresholdDip = 60;
+    public const double SitWatchCenterRadiusDip = 60;
 
     /// <summary>
-    /// Gets the hysteresis half-band, in DIP, applied around <see cref="SitWatchHorizontalThresholdDip"/>
-    /// to prevent rapid head flipping when the cursor hovers near the boundary.
+    /// Gets the radial hysteresis half-band, in DIP, applied around <see cref="SitWatchCenterRadiusDip"/>
+    /// to prevent rapid switching when the cursor hovers near the centre deadzone boundary.
     /// </summary>
-    public const double SitWatchHysteresisDip = 15;
+    public const double SitWatchRadiusHysteresisDip = 15;
+
+    /// <summary>
+    /// Gets the angular hysteresis half-band, in degrees, applied across directional sector boundaries
+    /// in <see cref="MyJiuMiState.SitWatch"/> to prevent flicker when hovering near a seam.
+    /// </summary>
+    public const double SitWatchAngleHysteresisDegrees = 7.5;
 
     /// <summary>
     /// Gets the minimum elapsed time between gaze direction changes in <see cref="MyJiuMiState.SitWatch"/>.
@@ -141,67 +147,200 @@ public static class MyJiuMiInteractionRules
     public const double SitWatchHeadHeightRatio = 0.6;
 
     /// <summary>
-    /// Classifies an initial horizontal cursor offset relative to the cat's head centre using the
-    /// nominal <see cref="SitWatchHorizontalThresholdDip"/> boundaries.
+    /// Projects <paramref name="direction"/> to the nearest sit-watch direction supported by
+    /// <paramref name="tier"/> along the degradation ladder (9-way → 5-way → 3-way → centre).
+    /// </summary>
+    /// <param name="direction">The desired sit-watch gaze direction.</param>
+    /// <param name="tier">The sit-watch directional capability tier supported by the active pack.</param>
+    /// <returns>The degraded gaze direction supported by <paramref name="tier"/>.</returns>
+    public static MyJiuMiSitWatchDirection DegradeSitWatchDirection(
+        MyJiuMiSitWatchDirection direction,
+        MyJiuMiSitWatchTier tier) => tier switch
+        {
+            MyJiuMiSitWatchTier.NineWay => direction,
+            MyJiuMiSitWatchTier.FiveWay => direction switch
+            {
+                MyJiuMiSitWatchDirection.UpLeft or MyJiuMiSitWatchDirection.DownLeft => MyJiuMiSitWatchDirection.Left,
+                MyJiuMiSitWatchDirection.UpRight or MyJiuMiSitWatchDirection.DownRight => MyJiuMiSitWatchDirection.Right,
+                _ => direction,
+            },
+            MyJiuMiSitWatchTier.ThreeWay => direction switch
+            {
+                MyJiuMiSitWatchDirection.Left
+                    or MyJiuMiSitWatchDirection.UpLeft
+                    or MyJiuMiSitWatchDirection.DownLeft => MyJiuMiSitWatchDirection.Left,
+                MyJiuMiSitWatchDirection.Right
+                    or MyJiuMiSitWatchDirection.UpRight
+                    or MyJiuMiSitWatchDirection.DownRight => MyJiuMiSitWatchDirection.Right,
+                _ => MyJiuMiSitWatchDirection.Center,
+            },
+            _ => MyJiuMiSitWatchDirection.Center,
+        };
+
+    /// <summary>
+    /// Classifies an initial 2D cursor offset relative to the cat's head centre in polar coordinates
+    /// (centre deadzone radius plus 360-degree directional sectors degraded to <paramref name="tier"/>).
     /// </summary>
     /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
-    /// <returns>The matching gaze direction.</returns>
-    public static MyJiuMiSitWatchDirection ClassifySitWatchDirection(double offsetXDip)
+    /// <param name="offsetYDip">The cursor Y minus the cat head centre Y, in DIP (negative is above).</param>
+    /// <param name="tier">The sit-watch directional capability tier supported by the active pack.</param>
+    /// <returns>The matching gaze direction supported by <paramref name="tier"/>.</returns>
+    public static MyJiuMiSitWatchDirection ClassifySitWatchDirection(
+        double offsetXDip,
+        double offsetYDip,
+        MyJiuMiSitWatchTier tier = MyJiuMiSitWatchTier.NineWay)
     {
-        if (!double.IsFinite(offsetXDip))
+        if (!double.IsFinite(offsetXDip) ||
+            !double.IsFinite(offsetYDip) ||
+            tier == MyJiuMiSitWatchTier.None)
         {
             return MyJiuMiSitWatchDirection.Center;
         }
 
-        if (offsetXDip < -SitWatchHorizontalThresholdDip)
+        double radius = double.Hypot(offsetXDip, offsetYDip);
+        if (radius <= SitWatchCenterRadiusDip)
         {
-            return MyJiuMiSitWatchDirection.Left;
+            return MyJiuMiSitWatchDirection.Center;
         }
 
-        if (offsetXDip > SitWatchHorizontalThresholdDip)
-        {
-            return MyJiuMiSitWatchDirection.Right;
-        }
-
-        return MyJiuMiSitWatchDirection.Center;
+        return ClassifyOuterDirection(ToAngleDegrees(offsetXDip, offsetYDip), tier);
     }
 
     /// <summary>
-    /// Resolves the next gaze direction from <paramref name="current"/> by applying the
-    /// <see cref="SitWatchHysteresisDip"/> band around <see cref="SitWatchHorizontalThresholdDip"/>.
+    /// Resolves the next 360-degree gaze direction from <paramref name="current"/> by applying radial
+    /// hysteresis around <see cref="SitWatchCenterRadiusDip"/> and angular hysteresis across sector
+    /// boundaries for <paramref name="tier"/>.
     /// </summary>
     /// <param name="current">The currently active gaze direction.</param>
     /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
-    /// <returns>The updated gaze direction.</returns>
+    /// <param name="offsetYDip">The cursor Y minus the cat head centre Y, in DIP (negative is above).</param>
+    /// <param name="tier">The sit-watch directional capability tier supported by the active pack.</param>
+    /// <returns>The updated gaze direction supported by <paramref name="tier"/>.</returns>
     public static MyJiuMiSitWatchDirection ResolveSitWatchDirection(
         MyJiuMiSitWatchDirection current,
-        double offsetXDip)
+        double offsetXDip,
+        double offsetYDip,
+        MyJiuMiSitWatchTier tier = MyJiuMiSitWatchTier.NineWay)
     {
-        if (!double.IsFinite(offsetXDip))
+        if (!double.IsFinite(offsetXDip) || !double.IsFinite(offsetYDip))
         {
             return current;
         }
 
-        double enterSide = SitWatchHorizontalThresholdDip + SitWatchHysteresisDip;
-        double exitSide = SitWatchHorizontalThresholdDip - SitWatchHysteresisDip;
-
-        return current switch
+        if (tier is not (MyJiuMiSitWatchTier.NineWay or MyJiuMiSitWatchTier.FiveWay or MyJiuMiSitWatchTier.ThreeWay))
         {
-            MyJiuMiSitWatchDirection.Left => offsetXDip > enterSide
-                ? MyJiuMiSitWatchDirection.Right
-                : offsetXDip >= -exitSide
-                    ? MyJiuMiSitWatchDirection.Center
-                    : MyJiuMiSitWatchDirection.Left,
-            MyJiuMiSitWatchDirection.Right => offsetXDip < -enterSide
-                ? MyJiuMiSitWatchDirection.Left
-                : offsetXDip <= exitSide
-                    ? MyJiuMiSitWatchDirection.Center
-                    : MyJiuMiSitWatchDirection.Right,
-            _ => offsetXDip < -enterSide
-                ? MyJiuMiSitWatchDirection.Left
-                : offsetXDip > enterSide
-                    ? MyJiuMiSitWatchDirection.Right
-                    : MyJiuMiSitWatchDirection.Center,
+            return MyJiuMiSitWatchDirection.Center;
+        }
+
+        MyJiuMiSitWatchDirection normalizedCurrent = DegradeSitWatchDirection(current, tier);
+        double radius = double.Hypot(offsetXDip, offsetYDip);
+        double exitCenterRadius = SitWatchCenterRadiusDip + SitWatchRadiusHysteresisDip;
+        double enterCenterRadius = SitWatchCenterRadiusDip - SitWatchRadiusHysteresisDip;
+
+        if (normalizedCurrent == MyJiuMiSitWatchDirection.Center)
+        {
+            if (radius <= exitCenterRadius)
+            {
+                return MyJiuMiSitWatchDirection.Center;
+            }
+
+            double angleDegrees = ToAngleDegrees(offsetXDip, offsetYDip);
+            if (tier == MyJiuMiSitWatchTier.ThreeWay)
+            {
+                double verticalHoldHalfAngle = 22.5 + SitWatchAngleHysteresisDegrees;
+                if (AngularDistanceDegrees(angleDegrees, -90.0) <= verticalHoldHalfAngle ||
+                    AngularDistanceDegrees(angleDegrees, 90.0) <= verticalHoldHalfAngle)
+                {
+                    return MyJiuMiSitWatchDirection.Center;
+                }
+
+                return offsetXDip < 0 ? MyJiuMiSitWatchDirection.Left : MyJiuMiSitWatchDirection.Right;
+            }
+
+            return ClassifyOuterDirection(angleDegrees, tier);
+        }
+
+        if (radius <= enterCenterRadius)
+        {
+            return MyJiuMiSitWatchDirection.Center;
+        }
+
+        double outerAngleDegrees = ToAngleDegrees(offsetXDip, offsetYDip);
+        double halfSector = tier switch
+        {
+            MyJiuMiSitWatchTier.NineWay => 22.5,
+            MyJiuMiSitWatchTier.FiveWay => 45.0,
+            _ => 67.5,
         };
+        if (AngularDistanceDegrees(outerAngleDegrees, GetDirectionAngleDegrees(normalizedCurrent)) <=
+            halfSector + SitWatchAngleHysteresisDegrees)
+        {
+            return normalizedCurrent;
+        }
+
+        return ClassifyOuterDirection(outerAngleDegrees, tier);
+    }
+
+    private static MyJiuMiSitWatchDirection ClassifyOuterDirection(
+        double angleDegrees,
+        MyJiuMiSitWatchTier tier) => tier switch
+        {
+            MyJiuMiSitWatchTier.NineWay => ClassifyOuterEightWay(angleDegrees),
+            MyJiuMiSitWatchTier.FiveWay => ClassifyOuterFiveWay(angleDegrees),
+            MyJiuMiSitWatchTier.ThreeWay => DegradeSitWatchDirection(
+                ClassifyOuterEightWay(angleDegrees),
+                MyJiuMiSitWatchTier.ThreeWay),
+            _ => MyJiuMiSitWatchDirection.Center,
+        };
+
+    private static MyJiuMiSitWatchDirection ClassifyOuterEightWay(double angleDegrees) =>
+        ToSectorIndex(angleDegrees, sectorCount: 8) switch
+        {
+            0 => MyJiuMiSitWatchDirection.Right,
+            1 => MyJiuMiSitWatchDirection.DownRight,
+            2 => MyJiuMiSitWatchDirection.Down,
+            3 => MyJiuMiSitWatchDirection.DownLeft,
+            4 => MyJiuMiSitWatchDirection.Left,
+            5 => MyJiuMiSitWatchDirection.UpLeft,
+            6 => MyJiuMiSitWatchDirection.Up,
+            _ => MyJiuMiSitWatchDirection.UpRight,
+        };
+
+    private static MyJiuMiSitWatchDirection ClassifyOuterFiveWay(double angleDegrees) =>
+        ToSectorIndex(angleDegrees, sectorCount: 4) switch
+        {
+            0 => MyJiuMiSitWatchDirection.Right,
+            1 => MyJiuMiSitWatchDirection.Down,
+            2 => MyJiuMiSitWatchDirection.Left,
+            _ => MyJiuMiSitWatchDirection.Up,
+        };
+
+    private static double ToAngleDegrees(double offsetXDip, double offsetYDip) =>
+        Math.Atan2(offsetYDip, offsetXDip) * (180.0 / Math.PI);
+
+    private static int ToSectorIndex(double angleDegrees, int sectorCount)
+    {
+        double sectorWidth = 360.0 / sectorCount;
+        double normalized = ((angleDegrees % 360.0) + 360.0) % 360.0;
+        return (int)Math.Floor(((normalized + (sectorWidth / 2.0)) % 360.0) / sectorWidth);
+    }
+
+    private static double GetDirectionAngleDegrees(MyJiuMiSitWatchDirection direction) => direction switch
+    {
+        MyJiuMiSitWatchDirection.Right => 0.0,
+        MyJiuMiSitWatchDirection.DownRight => 45.0,
+        MyJiuMiSitWatchDirection.Down => 90.0,
+        MyJiuMiSitWatchDirection.DownLeft => 135.0,
+        MyJiuMiSitWatchDirection.Left => 180.0,
+        MyJiuMiSitWatchDirection.UpLeft => -135.0,
+        MyJiuMiSitWatchDirection.Up => -90.0,
+        MyJiuMiSitWatchDirection.UpRight => -45.0,
+        _ => 0.0,
+    };
+
+    private static double AngularDistanceDegrees(double a, double b)
+    {
+        double difference = Math.Abs(a - b) % 360.0;
+        return difference > 180.0 ? 360.0 - difference : difference;
     }
 }
