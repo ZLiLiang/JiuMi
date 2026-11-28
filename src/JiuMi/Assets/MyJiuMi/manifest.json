@@ -124,22 +124,58 @@
     }
   },
   "interactions": {
-    "sit-watch-left": {
-      "loop": true,
-      "frames": [
-        { "path": "sit-watch-left/00.png", "durationMs": 500 }
-      ]
-    },
     "sit-watch-center": {
       "loop": true,
       "frames": [
         { "path": "sit-watch-center/00.png", "durationMs": 500 }
       ]
     },
+    "sit-watch-up": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-up/00.png", "durationMs": 500 }
+      ]
+    },
+    "sit-watch-up-right": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-up-right/00.png", "durationMs": 500 }
+      ]
+    },
     "sit-watch-right": {
       "loop": true,
       "frames": [
         { "path": "sit-watch-right/00.png", "durationMs": 500 }
+      ]
+    },
+    "sit-watch-down-right": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-down-right/00.png", "durationMs": 500 }
+      ]
+    },
+    "sit-watch-down": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-down/00.png", "durationMs": 500 }
+      ]
+    },
+    "sit-watch-down-left": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-down-left/00.png", "durationMs": 500 }
+      ]
+    },
+    "sit-watch-left": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-left/00.png", "durationMs": 500 }
+      ]
+    },
+    "sit-watch-up-left": {
+      "loop": true,
+      "frames": [
+        { "path": "sit-watch-up-left/00.png", "durationMs": 500 }
       ]
     }
   }

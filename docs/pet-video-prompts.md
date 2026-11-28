@@ -48,7 +48,7 @@ Using the provided 2D simplified Japanese picture-book orange cat as the EXACT c
 
 ### 3. L1 局部编辑模板（`lying-idle` / `blink` / `sleep` / `react` / `drag` / `interactions.sit-watch-*`）
 
-- **适用状态**：`lying-idle`、`blink`、`sleep`、`react`、`drag`，以及坐姿三向 `interactions.sit-watch-left` / `sit-watch-center` / `sit-watch-right`（#215 同步校验坐姿下身零偏移）。
+- **适用状态**：`lying-idle`、`blink`、`sleep`、`react`、`drag`，以及坐姿 9 向 `interactions.sit-watch-{center,up,up-right,right,down-right,down,down-left,left,up-left}`（#215 / #226 同步校验坐姿下身零偏移）。
 - **输入**：对应冻结母姿的切片原图（`docs/images/pet/v2-masters/raw/master-{lying,standing,sleeping,drag,sit-left,sit-center,sit-right}-raw.png`，`600×600` 纯 `#F4EFE9` 底）。
 - **后处理硬门**：仅抠出局部变化区域（眼/耳/尾/呼吸胸腹），用 **Alpha Mask 回贴到冻结的 `400×400` 母姿底图**，确保未编辑区域的躯干与外轮廓达到 `diff = 0`（通过 `tools/verify-pet-pack.ps1` 的 L1 `MinL1ExactMatchPct >= 80%` 门）。
 

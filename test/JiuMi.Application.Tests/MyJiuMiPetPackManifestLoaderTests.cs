@@ -426,6 +426,7 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         Assert.Equal(new MyJiuMiPetPackCanvas(400, 400), manifest.Canvas);
         Assert.Equal(new MyJiuMiPetPackAnchor(200, 360), manifest.DefaultAnchor);
         Assert.True(manifest.SupportsSitWatch);
+        Assert.Equal(MyJiuMiSitWatchTier.NineWay, manifest.SitWatchTier);
 
         foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
         {
@@ -443,6 +444,8 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
 
         foreach (MyJiuMiSitWatchDirection direction in Enum.GetValues<MyJiuMiSitWatchDirection>())
         {
+            Assert.True(manifest.TryGetDeclaredSitWatchClip(direction, out MyJiuMiPetPackClip? declaredClip));
+            Assert.NotNull(declaredClip);
             Assert.True(manifest.TryGetSitWatchClip(direction, out MyJiuMiPetPackClip? sitClip));
             Assert.NotNull(sitClip);
             foreach (MyJiuMiPetPackFrame frame in sitClip.Frames)
