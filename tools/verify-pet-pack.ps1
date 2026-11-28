@@ -8,13 +8,14 @@ Runs the Phase 1 automated QA gate for My JiuMi character packs:
 1. Manifest schema (schemaVersion: 1), required clips, path safety, optional SHA-256 checksums.
 2. PNG format check: 400x400 (matching manifest canvas), 8-bit RGBA (color type 6, bit depth 8),
    missing/orphan PNG detection, and extraneous PNG text/metadata chunk detection.
-3. L1 zero-drift gate (lying-idle, blink, sleep, react, drag): exact pixel diff = 0 ratio against
-   frame 0 over the union opaque mask.
+3. L1 zero-drift gate (lying-idle, blink, sleep, react, drag, plus cross-direction lower-body
+   zero-drift across interactions.sit-watch-left/center/right when declared): exact pixel diff = 0
+   ratio against frame 0 (or sit-watch-center lower body) over the union opaque mask.
 4. L2/L3 continuity gate: adjacent-frame foot y_max fluctuation, alpha-weighted centroid jump
    (> MaxCentroidJumpPx), and bounding-box scale anomaly (> MaxBBoxScaleChangePct).
 5. Review artifact export:
    - contact-sheet.png (all frames with explicit anchor crosshair)
-   - onion-skin/<clip>.png (translucent frame overlay per multi-frame clip)
+   - onion-skin/<clip>.png (translucent frame overlay per multi-frame clip and interactions-sit-watch)
    - preview-light-dark-200dip.png (200 DIP previews on light and dark room backgrounds)
    - report.json (machine-readable metrics and gate results)
 
@@ -36,6 +37,10 @@ Minimum required L1 static-body exact-match (diff = 0) percentage (default: 80.0
 .PARAMETER AllowOrphans
 Report unreferenced PNG files as warnings instead of hard failures.
 
+.PARAMETER L1Only
+Enforce format and L1 zero-drift gates (including sit-watch lower-body zero-drift) while skipping
+L2/L3 continuity hard failures during staged L1 cutovers.
+
 .PARAMETER ReportOnly
 Exit 0 even when quality gates fail (useful for baselining legacy v1 assets).
 #>
@@ -54,7 +59,13 @@ param(
 
     [double]$MinL1ExactMatchPct = 80.0,
 
+    [double]$MinSitWatchLowerBodyMatchPct = 99.0,
+
+    [double]$SitWatchLowerBodyRatio = 0.495,
+
     [switch]$AllowOrphans,
+
+    [switch]$L1Only,
 
     [switch]$ReportOnly
 )
@@ -275,6 +286,11 @@ public static class JiuMiPetPackQaTool
 
     public static double ComputeExactMatchPercent(string basePath, string comparePath)
     {
+        return ComputeExactMatchPercentBelowY(basePath, comparePath, 0);
+    }
+
+    public static double ComputeExactMatchPercentBelowY(string basePath, string comparePath, int minY)
+    {
         using (var bmpA = new Bitmap(basePath))
         using (var bmpB = new Bitmap(comparePath))
         {
@@ -295,7 +311,8 @@ public static class JiuMiPetPackQaTool
 
                 int unionCount = 0;
                 int exactCount = 0;
-                for (int y = 0; y < bmpA.Height; y++)
+                int startY = Math.Clamp(minY, 0, bmpA.Height);
+                for (int y = startY; y < bmpA.Height; y++)
                 {
                     int rowA = y * bdA.Stride;
                     int rowB = y * bdB.Stride;
@@ -742,7 +759,7 @@ function Process-ClipCollection {
                     $maxScaleChangePct = $scalePct
                 }
 
-                if (-not $isL1) {
+                if (-not $isL1 -and -not $L1Only) {
                     if ($jump -gt $MaxCentroidJumpPx) {
                         $errors.Add(("Continuity gate failed on '{0}' frame {1}->{2}: centroid jump {3:F2} px > {4:F1} px." -f $displayKey, ($i - 1), $i, $jump, $MaxCentroidJumpPx))
                     }
@@ -772,6 +789,74 @@ function Process-ClipCollection {
 Process-ClipCollection -Collection $manifest.clips -Prefix ''
 if ($manifest.ContainsKey('interactions') -and $null -ne $manifest.interactions) {
     Process-ClipCollection -Collection $manifest.interactions -Prefix 'interactions'
+}
+
+function Get-FirstFrameMetric {
+    param([string]$ClipName)
+    foreach ($metric in $allFrameMetrics) {
+        if ($metric.Clip -eq $ClipName) {
+            return $metric
+        }
+    }
+    return $null
+}
+
+# Cross-clip L1 base lock check: blink and react derive from lying-idle[0] (head/eye/ear edit only)
+$lyingBaseFrame = Get-FirstFrameMetric -ClipName 'lying-idle'
+if ($null -ne $lyingBaseFrame) {
+    foreach ($derivedClip in @('blink', 'react')) {
+        $derivedFrames = @($allFrameMetrics | Where-Object { $_.Clip -eq $derivedClip })
+        for ($i = 0; $i -lt $derivedFrames.Count; $i++) {
+            $pct = [JiuMiPetPackQaTool]::ComputeExactMatchPercent($lyingBaseFrame.FullPath, $derivedFrames[$i].FullPath)
+            if ($pct -lt $MinL1ExactMatchPct) {
+                $errors.Add(("L1 base-pose zero-drift gate failed on '{0}' frame {1} vs 'lying-idle'[0]: diff=0 ratio {2:F2}% < {3:F1}%." -f $derivedClip, $i, $pct, $MinL1ExactMatchPct))
+            }
+        }
+    }
+}
+
+# Cross-clip L1 zero-drift gate for directional sit-watch interactions (same sitting body/tail, head turn only)
+# Ratio 0.495 maps to y >= 198 on a 400x400 canvas, strictly below the chin/neck seam.
+$sitWatchKeys = @('interactions.sit-watch-left', 'interactions.sit-watch-center', 'interactions.sit-watch-right')
+$sitWatchMap = [ordered]@{}
+foreach ($key in $sitWatchKeys) {
+    $frameMetric = Get-FirstFrameMetric -ClipName $key
+    if ($null -ne $frameMetric) {
+        $sitWatchMap[$key] = $frameMetric
+    }
+}
+if ($sitWatchMap.Count -eq 3) {
+    $centerFrame = $sitWatchMap['interactions.sit-watch-center']
+    $lowerBodyMinY = [int][Math]::Round($canvasHeight * $SitWatchLowerBodyRatio)
+    $sitWatchMatchPcts = @{ 'interactions.sit-watch-center' = 100.0 }
+    $sitWatchFootDeltaY = 0
+
+    foreach ($sideKey in @('interactions.sit-watch-left', 'interactions.sit-watch-right')) {
+        $sideFrame = $sitWatchMap[$sideKey]
+        $pct = [JiuMiPetPackQaTool]::ComputeExactMatchPercentBelowY($centerFrame.FullPath, $sideFrame.FullPath, $lowerBodyMinY)
+        $sitWatchMatchPcts[$sideKey] = $pct
+        $footDelta = [Math]::Abs($sideFrame.MaxY - $centerFrame.MaxY)
+        if ($footDelta -gt $sitWatchFootDeltaY) {
+            $sitWatchFootDeltaY = $footDelta
+        }
+        if ($pct -lt $MinSitWatchLowerBodyMatchPct) {
+            $errors.Add(("L1 sit-watch lower-body zero-drift gate failed on '{0}' vs center (y>={1}): diff=0 ratio {2:F2}% < {3:F1}%." -f $sideKey, $lowerBodyMinY, $pct, $MinSitWatchLowerBodyMatchPct))
+        }
+    }
+    if ($sitWatchFootDeltaY -gt 0) {
+        $errors.Add(("L1 sit-watch foot alignment gate failed: foot_dy={0}px across sit-watch directions (expected 0px)." -f $sitWatchFootDeltaY))
+    }
+
+    $onionDir = Join-Path $OutputDir 'onion-skin'
+    [JiuMiPetPackQaTool]::RenderOnionSkin([PetFrameMetrics[]]@($sitWatchMap.Values), (Join-Path $onionDir 'interactions-sit-watch.png'))
+
+    foreach ($key in $sitWatchKeys) {
+        if ($clipReports.Contains($key)) {
+            $clipReports[$key]['tier'] = 'L1'
+            $clipReports[$key]['minL1ExactMatchPct'] = [Math]::Round($sitWatchMatchPcts[$key], 2)
+            $clipReports[$key]['maxFootDeltaY'] = $sitWatchFootDeltaY
+        }
+    }
 }
 
 # Verify optional SHA-256 files table
@@ -820,10 +905,22 @@ if ($allFrameMetrics.Count -gt 0) {
     [JiuMiPetPackQaTool]::RenderContactSheet($allFrameMetrics.ToArray(), $contactSheetPath)
 }
 
-$sampleOrder = @('lying-idle', 'walk', 'sleep', 'stretch', 'drag', 'jump')
+$sampleOrder = @(
+    'lying-idle',
+    'blink',
+    'react',
+    'sleep',
+    'drag',
+    'interactions.sit-watch-left',
+    'interactions.sit-watch-center',
+    'interactions.sit-watch-right',
+    'walk',
+    'stretch',
+    'jump'
+)
 $sampleFrames = [System.Collections.Generic.List[PetFrameMetrics]]::new()
 foreach ($sampleKey in $sampleOrder) {
-    $match = $allFrameMetrics | Where-Object { $_.Clip -eq $sampleKey } | Select-Object -First 1
+    $match = Get-FirstFrameMetric -ClipName $sampleKey
     if ($null -ne $match) {
         $sampleFrames.Add($match)
     }
