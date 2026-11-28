@@ -1,8 +1,8 @@
 # ADR-0016 桌面模式：双宿主、拖出/拖回与走出/走回
 
-- 状态：已接受（2026-11-28 按 [#221](https://github.com/ZLiLiang/JiuMi/issues/221) 修订）
+- 状态：已接受（2026-11-28 按 [#221](https://github.com/ZLiLiang/JiuMi/issues/221)、[#225](https://github.com/ZLiLiang/JiuMi/issues/225) 修订）
 - 日期：2026-11-11（修订：2026-11-28）
-- 来源：设计票 [#122](https://github.com/ZLiLiang/JiuMi/issues/122)；地图 [#103](https://github.com/ZLiLiang/JiuMi/issues/103)；页面优先决议 [ADR-0015](./0015-my-jiumi-page.md)；坐立头部跟随鼠标与看累趴睡修订 [#221](https://github.com/ZLiLiang/JiuMi/issues/221)
+- 来源：设计票 [#122](https://github.com/ZLiLiang/JiuMi/issues/122)；地图 [#103](https://github.com/ZLiLiang/JiuMi/issues/103)；页面优先决议 [ADR-0015](./0015-my-jiumi-page.md)；坐立头部跟随鼠标、9 向跟踪与看累趴睡修订 [#221](https://github.com/ZLiLiang/JiuMi/issues/221) / [#225](https://github.com/ZLiLiang/JiuMi/issues/225)
 - 前置：ADR-0014 的置顶透明窗口行为与 [#108](https://github.com/ZLiLiang/JiuMi/issues/108) 分支；[#112](https://github.com/ZLiLiang/JiuMi/issues/112) 的无焦点结论
 
 ## 背景
@@ -20,7 +20,7 @@ ADR-0015 把 v1 定为页面优先：猫只生活在「我的JiuMi」页面，�
 - **走出**：主窗口最小化或隐藏到托盘、且猫清醒时，猫自动走到桌面并留下；页面内不加按钮。
 - **走回**：把桌面猫拖回页面，或在页面双击地面召唤；双击桌面猫只打开页面，不自动召回。
 - **重启**：永远回页面；桌面模式与屏幕坐标只在本次会话有效。
-- **桌面交互**：单击反应 + 拖动移动 + 双击打开页面 + 坐立头部三向跟随鼠标与看累自动趴睡（#221，非全身追跑）；无右键菜单、无自主闲逛。
+- **桌面交互**：单击反应 + 拖动移动 + 双击打开页面 + 坐立头部 9 向（360° 8 方位 + 正中，按 9 → 5 → 3 → 趴姿待机降级）跟随鼠标与看累自动趴睡（#221 / #225，非全身追跑）；无右键菜单、无自主闲逛。
 
 现有实现与历史约束：
 
@@ -124,9 +124,9 @@ Returning --失败 / 页面不可见--> Desktop
 ### 8. 交互与调度
 
 - 桌面模式保留：`SitWatch`（角色包声明 `sit-watch-*` 时启用）、`SitToLie`（缺省直切）、`LyingIdle`、`Blink`、`React`（单击 + 爱心）、`Drag`、`SleepIn`、`Sleep`、`Wake`。**不**做自主闲逛、双击召唤、右键菜单、声音、工具联动、全身追跑鼠标。
-- **坐立头部跟随鼠标与看累自动趴睡（2026-11-28 按 [#221](https://github.com/ZLiLiang/JiuMi/issues/221) 修订）**：
-  - 唤醒（`Wake` 结束）或走路落定（`Walk` 结束），以及支持 `sit-watch-*` 槽位时坐姿落定进入 `SitWatch`；旧包缺省时回退 `LyingIdle`。
-  - 桌面模式由基础设施层轻量 Win32 `GetCursorPos`（零全局 Hook、无需额外权限）随现有 `16 ms` 会话计时器低频轮询全屏鼠标坐标，全屏移动均生效：以猫头中心 `catHeadX` 为基准按 `±60 DIP` 判定左/中/右三向（叠加 `±15 DIP` 滞回带宽 + `100 ms` 最小切帧间隔），并叠加轻量呼吸起伏与随鼠标 Y 轴高低的 `±3°` 柔和微倾。
+- **坐立头部跟随鼠标与看累自动趴睡（2026-11-28 按 [#221](https://github.com/ZLiLiang/JiuMi/issues/221) / [#225](https://github.com/ZLiLiang/JiuMi/issues/225) 修订）**：
+  - 唤醒（`Wake` 结束）或走路落定（`Walk` 结束），以及支持 `sit-watch-*` 槽位（`9 向 → 5 向 → 3 向 → 趴姿待机` 降级）时坐姿落定进入 `SitWatch`；旧包缺省时回退 `LyingIdle`。
+  - 桌面模式由基础设施层轻量 Win32 `GetCursorPos`（零全局 Hook、无需额外权限）随现有 `16 ms` 会话计时器低频轮询全屏鼠标坐标，全屏移动均生效：以猫头中心为原点按 360° 极坐标判定（`60 DIP` 中心死区半径 + `±15 DIP` 半径滞回 + 8 个 45° 方位扇区 / 5 向 90° 象限 + `±7.5°` 角度滞回 + `100 ms` 最小切帧间隔），并叠加轻量呼吸起伏与随鼠标 Y 轴高低的 `±3°` 柔和微倾。
   - 光标位移 `> 8 DIP` 才视为有效移动（重置静止计时）；持续注视达 `12 s` 或光标连续静止 `4 s` 无有效移动时，桌面模式 **100%** 播放 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`（桌面不走自主闲逛分流）。
   - **防打扰（睡眠不唤醒）**：处于 `SleepIn` / `Sleep` 时移动鼠标**不唤醒**，仍只由单击猫、拖拽或页面双击地面召唤唤醒。
 - 睡眠继续 5 分钟兜底：单击/拖拽重置；睡中单击先 `Wake`，睡中拖拽直接 `Drag`；`Zzz` 叠加。桌面窗上的睡眠计时不随主窗口隐藏而暂停，这是桌面模式与页面模式的核心差异。
@@ -164,7 +164,7 @@ Returning --失败 / 页面不可见--> Desktop
 
 ### 12. 分层与测试缝
 
-- **Application（纯逻辑）**：`MyJiuMiPresenceMachine`（迁移与守卫）、`MyJiuMiTransitionRules`（48 DIP 提交阈值、房间投影、走回入口侧、目标 X、工作区夹取）、现有 `MyJiuMiStateMachine`（含 `SitWatch` / `SitToLie` 与滞回/耐心规则）、`MyJiuMiMotionRules`（呼吸与 `±3°` 微倾）、`IMyJiuMiCursorPositionProvider` 契约与动画清单。
+- **Application（纯逻辑）**：`MyJiuMiPresenceMachine`（迁移与守卫）、`MyJiuMiTransitionRules`（48 DIP 提交阈值、房间投影、走回入口侧、目标 X、工作区夹取）、现有 `MyJiuMiStateMachine`（含 `SitWatch` / `SitToLie`、`MyJiuMiSitWatchTier` 与极坐标滞回/耐心规则）、`MyJiuMiMotionRules`（呼吸与 `±3°` 微倾）、`IMyJiuMiCursorPositionProvider` 契约与动画清单。
 - **UI**：`MyJiuMiSession`（会话、共享帧缓存、计时器、全屏光标轮询与宿主协调）、`MyJiuMiView`（家庭宿主与页面 `PointerMoved`）、`MyJiuMiDesktopWindow`（桌面宿主与呼吸/微倾渲染）、拖出覆盖层与主窗口可见性/外壳钩子。
 - **Infrastructure**：`ISettingsStore` 继续只承载 `myJiuMi.x`；新增轻量 `SystemCursorPositionProvider`（Win32 `GetCursorPos`），零全局 Hook、无需额外权限。
 - **测试**：`JiuMi.Application.Tests` 覆盖 presence 迁移与守卫、提交阈值、投影/夹取、走回入口侧、失败回退；现有状态机测试保持。UI 用实机验收，不新建 UI 测试项目。

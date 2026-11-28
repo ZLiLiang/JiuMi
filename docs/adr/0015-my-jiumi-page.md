@@ -1,9 +1,9 @@
 # ADR-0015 我的JiuMi：页面优先与双模式边界
 
-- 状态：已接受（2026-11-28 按 [#221](https://github.com/ZLiLiang/JiuMi/issues/221) 修订）
+- 状态：已接受（2026-11-28 按 [#221](https://github.com/ZLiLiang/JiuMi/issues/221)、[#225](https://github.com/ZLiLiang/JiuMi/issues/225) 修订）
 - 日期：2026-11-11（修订：2026-11-28）
 - 取代：[ADR-0014](./0014-desktop-pet.md)
-- 来源：地图 [#103](https://github.com/ZLiLiang/JiuMi/issues/103)；2026-11-11 方向定稿；美术方向 [#117](https://github.com/ZLiLiang/JiuMi/issues/117)；后续桌面模式 [#122](https://github.com/ZLiLiang/JiuMi/issues/122)；v2 坐立注视与绘本风修订 [#209](https://github.com/ZLiLiang/JiuMi/issues/209) / [#221](https://github.com/ZLiLiang/JiuMi/issues/221)
+- 来源：地图 [#103](https://github.com/ZLiLiang/JiuMi/issues/103)；2026-11-11 方向定稿；美术方向 [#117](https://github.com/ZLiLiang/JiuMi/issues/117)；后续桌面模式 [#122](https://github.com/ZLiLiang/JiuMi/issues/122)；v2 坐立注视、9 向跟踪与绘本风修订 [#209](https://github.com/ZLiLiang/JiuMi/issues/209) / [#221](https://github.com/ZLiLiang/JiuMi/issues/221) / [#225](https://github.com/ZLiLiang/JiuMi/issues/225)
 
 ## 背景
 
@@ -21,7 +21,7 @@
 ## 决策
 
 1. **我的JiuMi 是一个页面，不是窗口**：入口在左侧导航，页面落在现有内容岛里，参与现有导航与切页动效。v1 不创建置顶窗口、不加托盘项、不加全局开关。
-2. **v1 先做页面模式**（主窗口内容区内；[#118](https://github.com/ZLiLiang/JiuMi/issues/118) 中称「窗口模式」）：猫生活在内容区的极简房间里，约 200 DIP，旧包默认趴姿待机；2026-11-28 修订（[#221](https://github.com/ZLiLiang/JiuMi/issues/221)）：当角色包清单在 `interactions` 槽位声明 `sit-watch-left` / `sit-watch-center` / `sit-watch-right` 时，进页、唤醒或走完路落定后默认进入**坐立注视态 `SitWatch`**，以猫头中心为基准三向跟随鼠标（非全身追跑）并叠加轻量呼吸与 `±3°` 柔和微倾；看累（持续 `12 s`）或鼠标静止（`4 s` 无 `> 8 DIP` 有效移动）后，页面模式 75% 经 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`，25% 触发自主闲逛（`Stretch → Walk`）走完回到 `SitWatch`。处于 `SleepIn` / `Sleep` 时移动鼠标**不唤醒**，仍只由单击猫、拖拽或地面双击召唤唤醒。离开页面（切页、主窗口隐藏或最小化）暂停并重置。
+2. **v1 先做页面模式**（主窗口内容区内；[#118](https://github.com/ZLiLiang/JiuMi/issues/118) 中称「窗口模式」）：猫生活在内容区的极简房间里，约 200 DIP，旧包默认趴姿待机；2026-11-28 修订（[#221](https://github.com/ZLiLiang/JiuMi/issues/221) / [#225](https://github.com/ZLiLiang/JiuMi/issues/225)）：当角色包清单在 `interactions` 槽位声明 `sit-watch-*`（`sit-watch-center` / `left` / `right` 为最低 3 向基线，可选补齐 `up` / `down` 组成 5 向、再补齐 `up-left` / `up-right` / `down-left` / `down-right` 组成 9 向，缺省按 9 向 → 5 向 → 3 向 → 趴姿待机逐级降级）时，进页、唤醒或走完路落定后默认进入**坐立注视态 `SitWatch`**，以猫头中心为原点按 360° 极坐标（`60 DIP` 中心死区 + `±15 DIP` 半径滞回 + 8 个 45° 方位扇区 / 5 向 90° 象限 + `±7.5°` 角度滞回 + `100 ms` 最小切帧间隔）跟随鼠标（非全身追跑）并叠加轻量呼吸与 `±3°` 柔和微倾；看累（持续 `12 s`）或鼠标静止（`4 s` 无 `> 8 DIP` 有效移动）后，页面模式 75% 经 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`，25% 触发自主闲逛（`Stretch → Walk`）走完回到 `SitWatch`。处于 `SleepIn` / `Sleep` 时移动鼠标**不唤醒**，仍只由单击猫、拖拽或地面双击召唤唤醒。离开页面（切页、主窗口隐藏或最小化）暂停并重置。
 3. **双模式边界**：页面模式的生命周期跟随页面可见性，位置是页面内的归一化水平坐标；桌面模式是后续票（#122）的独立置顶窗口，涉及屏幕坐标、拖出/走回、走出/走回过渡与全局入口。两种模式共用角色、美术与状态语义，但不共用宿主窗口与生命周期。v1 不做 `IPetLayer` 之类的预抽象；桌面模式真正开始时再决定复用范围。
 4. **没有全局开关与外围入口**：v1 删除设置页「桌宠」分区、托盘「显示小猫」项与右键菜单。猫只在进入「我的JiuMi」页面时存在；页面本身就是入口。旧键 `Shell.Pet.*` / `Settings.Pet.*` / `Shell.Tray.ShowPet` 退役，桌面模式票若需要再重新登记。
 5. **状态机在 Application，房间与输入在 UI**：`MyJiuMiStateMachine`、`MyJiuMiAnimationCatalog` 与状态枚举放在 `JiuMi.Application`，纯逻辑、注入时间与随机源；页面、帧渲染、爱心/`Zzz` 叠加与指针事件留在 `JiuMi` 层。位置只持久化归一化 X，不保存屏幕坐标或窗口几何。
@@ -73,7 +73,7 @@
 - 入口：左侧导航，独立「我的JiuMi」页面。
 - 房间：墙、地板线、很淡的接触阴影；猫约 200 DIP，无卡片、无设置控件。
 - 状态：趴姿待机、坐立注视（`SitWatch`，角色包声明 `sit-watch-*` 时启用）、坐姿趴下过渡（`SitToLie`，缺省直切）、眨眼、睡眠进出、Wake、起身/伸懒腰、走路。
-- 轻交互：点击反应 + 爱心、水平拖拽并记忆归一化 X、双击地面召唤、自主闲逛、坐立头部三向跟随鼠标（非全身追跑）→ 看累自动趴睡、5 分钟睡眠兜底；睡眠态移动鼠标不唤醒。
+- 轻交互：点击反应 + 爱心、水平拖拽并记忆归一化 X、双击地面召唤、自主闲逛、坐立头部 9 向（360° 8 方位 + 正中，支持 9 → 5 → 3 → 趴姿待机降级）跟随鼠标（非全身追跑）→ 看累自动趴睡、5 分钟睡眠兜底；睡眠态移动鼠标不唤醒。
 - 生命周期：离开页面暂停/重置；再次进入从默认待机（支持坐姿槽位时为 `SitWatch`，否则 `LyingIdle`）开始。
 
 **不做**

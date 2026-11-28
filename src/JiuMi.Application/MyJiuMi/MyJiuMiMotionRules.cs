@@ -138,7 +138,7 @@ public static class MyJiuMiMotionRules
     /// Computes the gentle <c>±3°</c> tilt applied during <see cref="MyJiuMiState.SitWatch"/> from
     /// the cursor's vertical offset relative to the cat's head.
     /// </summary>
-    /// <param name="direction">The current horizontal gaze direction.</param>
+    /// <param name="direction">The current sit-watch gaze direction.</param>
     /// <param name="cursorOffsetYDip">The cursor Y minus the cat head Y, in DIP (negative is above).</param>
     /// <returns>The target rotation in degrees, clamped to <c>±3°</c>.</returns>
     public static double ComputeSitWatchTiltDegrees(
@@ -151,7 +151,11 @@ public static class MyJiuMiMotionRules
         }
 
         double normalizedY = Math.Clamp(cursorOffsetYDip / SitWatchTiltRangeDip, -1, 1);
-        double sign = direction == MyJiuMiSitWatchDirection.Left ? -1 : 1;
+        double sign = direction is MyJiuMiSitWatchDirection.Left
+            or MyJiuMiSitWatchDirection.UpLeft
+            or MyJiuMiSitWatchDirection.DownLeft
+            ? -1
+            : 1;
         return normalizedY * SitWatchMaxTiltDegrees * sign;
     }
 

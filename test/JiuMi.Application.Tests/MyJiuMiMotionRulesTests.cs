@@ -151,6 +151,12 @@ public sealed class MyJiuMiMotionRulesTests
     [InlineData(MyJiuMiSitWatchDirection.Right, 500, 3.0)]
     [InlineData(MyJiuMiSitWatchDirection.Left, -200, 3.0)]
     [InlineData(MyJiuMiSitWatchDirection.Left, 200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.UpLeft, -200, 3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.DownLeft, 200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.UpRight, -200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.DownRight, 200, 3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Up, -200, -3.0)]
+    [InlineData(MyJiuMiSitWatchDirection.Down, 200, 3.0)]
     [InlineData(MyJiuMiSitWatchDirection.Center, -200, -3.0)]
     [InlineData(MyJiuMiSitWatchDirection.Center, 200, 3.0)]
     public void ComputeSitWatchTiltDegrees_GivenCursorOffsetY_ClampsToThreeDegrees(
