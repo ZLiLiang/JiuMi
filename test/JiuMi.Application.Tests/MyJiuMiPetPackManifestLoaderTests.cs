@@ -316,7 +316,8 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
         Assert.True(result.IsSuccess, result.Error);
         MyJiuMiPetPackManifest manifest = Assert.IsType<MyJiuMiPetPackManifest>(result.Manifest);
         Assert.Equal(new MyJiuMiPetPackCanvas(400, 400), manifest.Canvas);
-        Assert.Equal(new MyJiuMiPetPackAnchor(200, 399), manifest.DefaultAnchor);
+        Assert.Equal(new MyJiuMiPetPackAnchor(200, 360), manifest.DefaultAnchor);
+        Assert.True(manifest.SupportsSitWatch);
 
         foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
         {
@@ -329,6 +330,18 @@ public sealed class MyJiuMiPetPackManifestLoaderTests
                 Assert.Equal(legacy.FrameDurations[index], clip.Frames[index].Duration);
                 string frameFile = Path.Combine(packDirectory, clip.Frames[index].Path.Replace('/', Path.DirectorySeparatorChar));
                 Assert.True(File.Exists(frameFile), $"Manifest frame '{clip.Frames[index].Path}' does not exist.");
+            }
+        }
+
+        foreach (MyJiuMiSitWatchDirection direction in Enum.GetValues<MyJiuMiSitWatchDirection>())
+        {
+            Assert.True(manifest.TryGetSitWatchClip(direction, out MyJiuMiPetPackClip? sitClip));
+            Assert.NotNull(sitClip);
+            foreach (MyJiuMiPetPackFrame frame in sitClip.Frames)
+            {
+                Assert.Equal(new MyJiuMiPetPackAnchor(200, 360), frame.Anchor);
+                string frameFile = Path.Combine(packDirectory, frame.Path.Replace('/', Path.DirectorySeparatorChar));
+                Assert.True(File.Exists(frameFile), $"Sit-watch frame '{frame.Path}' does not exist.");
             }
         }
 

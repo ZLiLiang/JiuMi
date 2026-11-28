@@ -53,6 +53,7 @@ public partial class MyJiuMiDesktopWindow : Window
         CatRoot.RenderTransform = _motionTransform;
         CatImage.RenderTransform = _catImageTransform;
         ApplyMotion();
+        SizeChanged += OnWindowSizeChanged;
         Closed += OnClosed;
 
         if (OperatingSystem.IsWindows())
@@ -270,6 +271,8 @@ public partial class MyJiuMiDesktopWindow : Window
         e.Handled = true;
     }
 
+    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e) => ApplyAppearance();
+
     private void OnClosed(object? sender, EventArgs e)
     {
         if (_session is not null)
@@ -277,6 +280,7 @@ public partial class MyJiuMiDesktopWindow : Window
             _session.PropertyChanged -= OnSessionPropertyChanged;
         }
 
+        SizeChanged -= OnWindowSizeChanged;
         Closed -= OnClosed;
     }
 

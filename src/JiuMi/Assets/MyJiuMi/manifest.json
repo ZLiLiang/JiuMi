@@ -8,12 +8,11 @@
   },
   "defaultAnchor": {
     "x": 200,
-    "y": 399
+    "y": 360
   },
   "clips": {
     "lying-idle": {
       "loop": true,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "lying-idle/00.png", "durationMs": 1500 },
         { "path": "lying-idle/01.png", "durationMs": 1500 }
@@ -21,7 +20,6 @@
     },
     "blink": {
       "loop": false,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "blink/00.png", "durationMs": 60 },
         { "path": "blink/01.png", "durationMs": 90 },
@@ -30,7 +28,6 @@
     },
     "react": {
       "loop": false,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "react/00.png", "durationMs": 120 },
         { "path": "react/01.png", "durationMs": 120 }
@@ -38,7 +35,6 @@
     },
     "drag": {
       "loop": true,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "drag/00.png", "durationMs": 400 },
         { "path": "drag/01.png", "durationMs": 400 }
@@ -46,6 +42,7 @@
     },
     "sleep-in": {
       "loop": false,
+      "anchor": { "x": 200, "y": 399 },
       "frames": [
         { "path": "sleep-in/00.png", "durationMs": 150 },
         { "path": "sleep-in/01.png", "durationMs": 150 },
@@ -54,7 +51,6 @@
     },
     "sleep": {
       "loop": true,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "sleep/00.png", "durationMs": 2000 },
         { "path": "sleep/01.png", "durationMs": 2000 }
@@ -62,6 +58,7 @@
     },
     "wake": {
       "loop": false,
+      "anchor": { "x": 200, "y": 399 },
       "frames": [
         { "path": "wake/00.png", "durationMs": 150 },
         { "path": "wake/01.png", "durationMs": 150 },
@@ -70,6 +67,7 @@
     },
     "stretch": {
       "loop": false,
+      "anchor": { "x": 200, "y": 399 },
       "frames": [
         { "path": "stretch/00.png", "durationMs": 120 },
         { "path": "stretch/01.png", "durationMs": 120 },
@@ -79,6 +77,7 @@
     },
     "walk": {
       "loop": true,
+      "anchor": { "x": 200, "y": 399 },
       "frames": [
         { "path": "walk/00.png", "durationMs": 26 },
         { "path": "walk/01.png", "durationMs": 26 },
@@ -117,6 +116,7 @@
     },
     "jump": {
       "loop": false,
+      "anchor": { "x": 200, "y": 399 },
       "frames": [
         { "path": "jump/airborne.png", "durationMs": 504 },
         { "path": "jump/landing.png", "durationMs": 126 }
@@ -126,21 +126,18 @@
   "interactions": {
     "sit-watch-left": {
       "loop": true,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "sit-watch-left/00.png", "durationMs": 500 }
       ]
     },
     "sit-watch-center": {
       "loop": true,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "sit-watch-center/00.png", "durationMs": 500 }
       ]
     },
     "sit-watch-right": {
       "loop": true,
-      "anchor": { "x": 200, "y": 360 },
       "frames": [
         { "path": "sit-watch-right/00.png", "durationMs": 500 }
       ]
