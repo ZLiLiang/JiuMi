@@ -31,11 +31,12 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private readonly IMyJiuMiCursorPositionProvider _cursorPositionProvider;
     private readonly TimeProvider _timeProvider;
     private readonly Serilog.ILogger _logger;
-    private readonly MyJiuMiPetPackManifest _manifest;
     private readonly MyJiuMiPresenceMachine _presence = new();
-    private readonly MyJiuMiStateMachine _machine;
     private readonly Dictionary<string, Bitmap?[]> _frames = new(StringComparer.Ordinal);
     private readonly HashSet<string> _failedClips = new(StringComparer.Ordinal);
+
+    private MyJiuMiPetPackManifest? _manifest;
+    private MyJiuMiStateMachine? _machine;
 
     private DispatcherTimer? _timer;
     private MainWindow? _shell;
@@ -103,23 +104,40 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _cursorPositionProvider = cursorPositionProvider;
         _timeProvider = timeProvider;
         _logger = logger;
-        _manifest = LoadManifest(logger);
-        _frameAnchor = _manifest.DefaultAnchor;
-        _machine = new MyJiuMiStateMachine(timeProvider, Random.Shared, _manifest);
     }
 
     /// <summary>
-    /// Gets the active character pack manifest.
+    /// Gets the active character pack manifest, loaded lazily once Avalonia's asset loader is ready.
     /// </summary>
-    public MyJiuMiPetPackManifest Manifest => _manifest;
+    public MyJiuMiPetPackManifest Manifest
+    {
+        get
+        {
+            EnsurePackLoaded();
+            return _manifest!;
+        }
+    }
 
     /// <summary>
     /// Gets the effective canvas anchor of the currently displayed frame.
     /// </summary>
     public MyJiuMiPetPackAnchor FrameAnchor
     {
-        get => _frameAnchor;
+        get
+        {
+            EnsurePackLoaded();
+            return _frameAnchor;
+        }
         private set => SetProperty(ref _frameAnchor, value);
+    }
+
+    private MyJiuMiStateMachine Machine
+    {
+        get
+        {
+            EnsurePackLoaded();
+            return _machine!;
+        }
     }
 
     /// <summary>
@@ -141,12 +159,12 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     /// <summary>
     /// Gets a value indicating whether the state machine is running.
     /// </summary>
-    public bool IsMachineActive => _machine.IsActive;
+    public bool IsMachineActive => _machine?.IsActive ?? false;
 
     /// <summary>
     /// Gets a value indicating whether the cat is awake and may leave the page.
     /// </summary>
-    public bool IsAwake => _machine.IsAwake;
+    public bool IsAwake => _machine?.IsAwake ?? false;
 
     /// <summary>
     /// Gets the frame to draw, or <see langword="null"/> when the state's frames are unavailable.
@@ -287,13 +305,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        _machine.SetWanderingEnabled(true);
+        Machine.SetWanderingEnabled(true);
         HomeScale = 1;
-        if (!_machine.IsActive)
+        if (!Machine.IsActive)
         {
             ClearHeart();
             double position = MyJiuMiPositionRules.Clamp(_settingsStore.Current.MyJiuMi.X);
-            _machine.Activate(stageWidth, position);
+            Machine.Activate(stageWidth, position);
             StartMotion();
             StartTimer();
         }
@@ -329,7 +347,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         _homeStageWidth = stageWidth;
-        _machine.SetStageWidth(stageWidth);
+        _machine?.SetStageWidth(stageWidth);
     }
 
     /// <summary>
@@ -340,12 +358,12 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     /// <param name="offsetYDip">The cursor Y minus the cat head centre Y, in DIP.</param>
     public void UpdateHomeCursor(double offsetXDip, double offsetYDip)
     {
-        if (_isDisposed || Presence != MyJiuMiPresence.Home || !_machine.IsActive)
+        if (_isDisposed || Presence != MyJiuMiPresence.Home || !Machine.IsActive)
         {
             return;
         }
 
-        _machine.UpdateCursor(offsetXDip, offsetYDip);
+        Machine.UpdateCursor(offsetXDip, offsetYDip);
     }
 
     /// <summary>
@@ -359,7 +377,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        MyJiuMiClickEffect effect = _machine.Click();
+        MyJiuMiClickEffect effect = Machine.Click();
         if (effect == MyJiuMiClickEffect.React)
         {
             DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -393,9 +411,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         EndJump();
         _homeEntranceStartedAt = null;
         HomeScale = 1;
-        _dragStartPositionX = _machine.PositionX;
+        _dragStartPositionX = Machine.PositionX;
         CloseDragPreview();
-        _machine.BeginDrag();
+        Machine.BeginDrag();
         UpdateVisuals(forceFrame: true);
     }
 
@@ -410,7 +428,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        _machine.SetPosition(positionX);
+        Machine.SetPosition(positionX);
         UpdateVisuals(forceFrame: false);
     }
 
@@ -425,7 +443,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         CloseDragPreview();
-        _machine.EndDrag();
+        Machine.EndDrag();
         SavePosition();
         UpdateVisuals(forceFrame: true);
     }
@@ -506,27 +524,27 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     /// <returns><see langword="true"/> when the desktop host took over.</returns>
     public bool TryDragOut(PixelPoint anchor)
     {
-        if (_isDisposed || Presence != MyJiuMiPresence.Home || !_machine.IsActive)
+        if (_isDisposed || Presence != MyJiuMiPresence.Home || !Machine.IsActive)
         {
             return false;
         }
 
-        bool wasDragging = _machine.State == MyJiuMiState.Drag;
-        _machine.EndDrag();
+        bool wasDragging = Machine.State == MyJiuMiState.Drag;
+        Machine.EndDrag();
         if (!wasDragging ||
             !_presence.TryBeginLeave(
                 MyJiuMiLeaveTrigger.DraggedOut,
                 pageCurrent: true,
-                catAwake: _machine.IsAwake,
+                catAwake: Machine.IsAwake,
                 desktopAvailable: true))
         {
             CloseDragPreview();
-            _machine.SetWanderingEnabled(true);
+            Machine.SetWanderingEnabled(true);
             UpdateVisuals(forceFrame: true);
             return false;
         }
 
-        _machine.SetWanderingEnabled(false);
+        Machine.SetWanderingEnabled(false);
         EndJump();
         ClearHeart();
         IsHeartVisible = false;
@@ -542,7 +560,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         // A failed handoff bounces back to where the drag started; drag-out never writes settings.
         CloseDragPreview();
         CancelLeave();
-        _machine.SetPosition(_dragStartPositionX);
+        Machine.SetPosition(_dragStartPositionX);
         UpdateVisuals(forceFrame: true);
         return false;
     }
@@ -576,8 +594,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         CloseDesktopWindow();
         _leaveTrigger = null;
-        _machine.SetWanderingEnabled(true);
-        _machine.Activate(_homeStageWidth, positionX);
+        Machine.SetWanderingEnabled(true);
+        Machine.Activate(_homeStageWidth, positionX);
         _homeEntranceStartedAt = _timeProvider.GetUtcNow();
         HomeScale = MyJiuMiTransitionRules.DesktopScale;
         StartMotion();
@@ -601,7 +619,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         EndJump();
-        _machine.Summon(positionX);
+        Machine.Summon(positionX);
         UpdateVisuals(forceFrame: true);
     }
 
@@ -618,7 +636,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         if (_isDisposed ||
             _summon is not null ||
             Presence != MyJiuMiPresence.Desktop ||
-            !_machine.IsActive)
+            !Machine.IsActive)
         {
             return false;
         }
@@ -669,7 +687,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             floor);
         double targetX = MyJiuMiPositionRules.Clamp(positionX);
 
-        if (!_machine.BeginSummonDesktopWalk(handoff.X >= start.X))
+        if (!Machine.BeginSummonDesktopWalk(handoff.X >= start.X))
         {
             _logger.Warning("The My JiuMi summon was ignored because the desktop cat cannot walk");
             ClampDesktopWindow();
@@ -703,7 +721,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         ClearHeart();
         IsHeartVisible = false;
         EndJump();
-        _machine.BeginDrag();
+        Machine.BeginDrag();
         UpdateVisuals(forceFrame: true);
     }
 
@@ -712,7 +730,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     /// </summary>
     public void EndDesktopDrag()
     {
-        _machine.EndDrag();
+        Machine.EndDrag();
         UpdateVisuals(forceFrame: true);
     }
 
@@ -746,7 +764,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 new MyJiuMiScreenPoint(
                     placement.Origin.X + anchorOffset.X,
                     placement.Origin.Y + anchorOffset.Y),
-                _machine.PositionX,
+                Machine.PositionX,
                 placement.Area);
         }
     }
@@ -809,8 +827,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        double edge = MyJiuMiTransitionRules.NearestEdge(_machine.PositionX);
-        _machine.WalkTo(edge);
+        double edge = MyJiuMiTransitionRules.NearestEdge(Machine.PositionX);
+        Machine.WalkTo(edge);
         _trayLeave = new TrayLeave(
             _timeProvider.GetUtcNow() +
                 MyJiuMiTransitionRules.TrayHideTimeout -
@@ -873,7 +891,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         PollDesktopCursor();
-        _machine.Update();
+        Machine.Update();
         UpdateSummonPageWalk();
         UpdateMotion();
         UpdateVisuals(forceFrame: false);
@@ -889,8 +907,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     {
         if (Presence != MyJiuMiPresence.Desktop ||
             _desktopWindow is not { } window ||
-            !_machine.IsActive ||
-            !_machine.SupportsSitWatch ||
+            !Machine.IsActive ||
+            !Machine.SupportsSitWatch ||
             _summon is not null)
         {
             return;
@@ -914,7 +932,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             (slotSizeDip * normY) - (slotSizeDip * MyJiuMiInteractionRules.SitWatchHeadHeightRatio);
         double cursorInWindowDipX = (cursorScreen.X - window.Position.X) / scaling;
         double cursorInWindowDipY = (cursorScreen.Y - window.Position.Y) / scaling;
-        _machine.UpdateCursor(
+        Machine.UpdateCursor(
             cursorInWindowDipX - headXInWindowDip,
             cursorInWindowDipY - headYInWindowDip);
     }
@@ -934,8 +952,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private void UpdateMotion()
     {
         if (_isDisposed ||
-            !_machine.IsActive ||
-            (Presence == MyJiuMiPresence.Desktop && !_machine.SupportsSitWatch))
+            !Machine.IsActive ||
+            (Presence == MyJiuMiPresence.Desktop && !Machine.SupportsSitWatch))
         {
             ResetMotion();
             return;
@@ -956,10 +974,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             }
         }
 
-        double targetTilt = _machine.State == MyJiuMiState.SitWatch && _machine.HasCursorPosition
+        double targetTilt = Machine.State == MyJiuMiState.SitWatch && Machine.HasCursorPosition
             ? MyJiuMiMotionRules.ComputeSitWatchTiltDegrees(
-                _machine.SitWatchDirection,
-                _machine.CursorOffsetY)
+                Machine.SitWatchDirection,
+                Machine.CursorOffsetY)
             : 0;
         TimeSpan elapsed = now - _lastMotionUpdateAt;
         _lastMotionUpdateAt = now;
@@ -968,10 +986,10 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             targetTilt,
             elapsed);
 
-        double? tilt = _machine.State == MyJiuMiState.SitWatch
+        double? tilt = Machine.State == MyJiuMiState.SitWatch
             ? _smoothedSitWatchTiltDegrees
             : null;
-        Motion = MyJiuMiMotionRules.Sample(now - _motionStartedAt, _machine.State, tilt);
+        Motion = MyJiuMiMotionRules.Sample(now - _motionStartedAt, Machine.State, tilt);
     }
 
     private void StartJump(DateTimeOffset now)
@@ -991,7 +1009,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             _jumpFrames is not { Length: > 0 } frames ||
             _jumpClip is not { } clip)
         {
-            return (null, _manifest.DefaultAnchor);
+            return (null, Manifest.DefaultAnchor);
         }
 
         const double startProgress = 0.14;
@@ -1000,7 +1018,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             (now - jumpStartedAt).TotalSeconds / MyJiuMiMotionRules.JumpDuration.TotalSeconds;
         if (progress < startProgress || progress >= endProgress)
         {
-            return (null, _manifest.DefaultAnchor);
+            return (null, Manifest.DefaultAnchor);
         }
 
         double windowFraction = (progress - startProgress) / (endProgress - startProgress);
@@ -1034,7 +1052,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         _jumpFramesLoaded = true;
-        if (!_manifest.TryGetJumpClip(out MyJiuMiPetPackClip? jumpClip) || jumpClip is null || jumpClip.Frames.Count == 0)
+        if (!Manifest.TryGetJumpClip(out MyJiuMiPetPackClip? jumpClip) || jumpClip is null || jumpClip.Frames.Count == 0)
         {
             _jumpFramesFailed = true;
             return;
@@ -1153,7 +1171,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        if (_machine.State == MyJiuMiState.Walk &&
+        if (Machine.State == MyJiuMiState.Walk &&
             _timeProvider.GetUtcNow() < leave.Deadline)
         {
             return;
@@ -1233,7 +1251,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        if (!_machine.IsActive)
+        if (!Machine.IsActive)
         {
             IsFrameVisible = false;
             Frame = null;
@@ -1242,13 +1260,13 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             return;
         }
 
-        MyJiuMiState state = _machine.State;
-        int frameIndex = _machine.FrameIndex;
+        MyJiuMiState state = Machine.State;
+        int frameIndex = Machine.FrameIndex;
         DateTimeOffset now = _timeProvider.GetUtcNow();
         bool jumping = IsJumpActive(now);
         (Bitmap? jumpFrame, MyJiuMiPetPackAnchor jumpAnchor) = jumping
             ? GetJumpFrame(now)
-            : (null, _manifest.DefaultAnchor);
+            : (null, Manifest.DefaultAnchor);
         MyJiuMiPetPackClip activeClip = ResolveRenderClip(state, jumping);
         if (forceFrame ||
             !string.Equals(_renderedClipKey, activeClip.Key, StringComparison.Ordinal) ||
@@ -1271,7 +1289,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                     state is MyJiuMiState.SitWatch or MyJiuMiState.SitToLie)
                 {
                     // Optional sit-watch interaction frames degrade gracefully to lying-idle.
-                    activeClip = _manifest.GetClip(MyJiuMiState.LyingIdle);
+                    activeClip = Manifest.GetClip(MyJiuMiState.LyingIdle);
                     frames = GetFrames(activeClip);
                     renderFrame = 0;
                 }
@@ -1280,7 +1298,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                 {
                     IsFrameVisible = false;
                     Frame = null;
-                    FrameAnchor = _manifest.DefaultAnchor;
+                    FrameAnchor = Manifest.DefaultAnchor;
                     if (Presence == MyJiuMiPresence.Desktop)
                     {
                         HandleDesktopFrameLoss();
@@ -1293,7 +1311,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
                     Frame = frames[renderFrame];
                     FrameAnchor = renderFrame < activeClip.Frames.Count
                         ? activeClip.Frames[renderFrame].Anchor
-                        : _manifest.DefaultAnchor;
+                        : Manifest.DefaultAnchor;
                 }
             }
 
@@ -1303,8 +1321,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
             _renderedJumpFrame = jumpFrame;
         }
 
-        IsFacingRight = _machine.IsFacingRight;
-        PositionX = _machine.PositionX;
+        IsFacingRight = Machine.IsFacingRight;
+        PositionX = Machine.PositionX;
 
         if (_heartHideAt is { } hideAt && now >= hideAt)
         {
@@ -1321,14 +1339,14 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private bool TryBeginLeave(MyJiuMiLeaveTrigger trigger, bool pageCurrent)
     {
         if (_isDisposed ||
-            !_machine.IsActive ||
-            _machine.State == MyJiuMiState.Drag ||
-            !_presence.TryBeginLeave(trigger, pageCurrent, _machine.IsAwake, desktopAvailable: true))
+            !Machine.IsActive ||
+            Machine.State == MyJiuMiState.Drag ||
+            !_presence.TryBeginLeave(trigger, pageCurrent, Machine.IsAwake, desktopAvailable: true))
         {
             return false;
         }
 
-        _machine.SetWanderingEnabled(false);
+        Machine.SetWanderingEnabled(false);
         EndJump();
         _leaveStartedAt = _timeProvider.GetUtcNow();
         _leaveTrigger = trigger;
@@ -1354,7 +1372,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     {
         if (_presence.TryCancelLeave())
         {
-            _machine.SetWanderingEnabled(true);
+            Machine.SetWanderingEnabled(true);
             _leaveTrigger = null;
             HomeScale = 1;
             NotifyPresence();
@@ -1603,14 +1621,14 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
 
         // The cat keeps walking a short way while the window glides with it; the window, not the
         // normalized home position, carries the cat across the desktop.
-        double direction = _machine.State == MyJiuMiState.Walk
-            ? (_machine.IsFacingRight ? 1 : -1)
-            : (_machine.PositionX < 0.5 ? 1 : -1);
+        double direction = Machine.State == MyJiuMiState.Walk
+            ? (Machine.IsFacingRight ? 1 : -1)
+            : (Machine.PositionX < 0.5 ? 1 : -1);
         double distance = _homeStageWidth > 0
             ? MyJiuMiTransitionRules.DesktopWalkDistanceDip / _homeStageWidth
             : 0.05;
-        double startX = _machine.PositionX;
-        _machine.WalkTo(startX + (direction * distance));
+        double startX = Machine.PositionX;
+        Machine.WalkTo(startX + (direction * distance));
         _desktopWalk = new DesktopWalk(
             new MyJiuMiScreenPoint(anchor.X, anchor.Y),
             startX,
@@ -1699,8 +1717,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         {
             anchor = walk.Anchor;
             area = walk.Area;
-            offsetDip = (_machine.PositionX - walk.StartPositionX) * _homeStageWidth;
-            if (_machine.State != MyJiuMiState.Walk)
+            offsetDip = (Machine.PositionX - walk.StartPositionX) * _homeStageWidth;
+            if (Machine.State != MyJiuMiState.Walk)
             {
                 _desktopWalk = null;
             }
@@ -1735,7 +1753,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private void UpdateSummonPageWalk()
     {
         if (_isSummonPageWalk &&
-            (!_machine.IsActive || _machine.State != MyJiuMiState.Walk))
+            (!Machine.IsActive || Machine.State != MyJiuMiState.Walk))
         {
             _isSummonPageWalk = false;
         }
@@ -1761,7 +1779,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         DateTimeOffset now = _timeProvider.GetUtcNow();
         if (!run.IsWalking)
         {
-            if (_machine.State != MyJiuMiState.Walk)
+            if (Machine.State != MyJiuMiState.Walk)
             {
                 return;
             }
@@ -1825,9 +1843,9 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         }
 
         _leaveTrigger = null;
-        _machine.SetWanderingEnabled(true);
-        _machine.SetPosition(run.HandoffPositionX);
-        _isSummonPageWalk = _machine.SummonWalkTo(run.TargetPositionX);
+        Machine.SetWanderingEnabled(true);
+        Machine.SetPosition(run.HandoffPositionX);
+        _isSummonPageWalk = Machine.SummonWalkTo(run.TargetPositionX);
         ClearHeart();
         IsHeartVisible = false;
         EndJump();
@@ -1844,7 +1862,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     private void CancelSummonOnDesktop()
     {
         _summon = null;
-        _machine.CancelSummonDesktopWalk();
+        Machine.CancelSummonDesktopWalk();
         if (Presence == MyJiuMiPresence.Returning)
         {
             _presence.TryAbortReturn();
@@ -2012,7 +2030,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _isSummonPageWalk = false;
         StopTimer();
         _homeEntranceStartedAt = null;
-        _machine.Deactivate();
+        _machine?.Deactivate();
         ClearHeart();
         IsHeartVisible = false;
         IsZzzVisible = false;
@@ -2039,8 +2057,8 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         // activation does it from the saved position.
         if (_homeHost is { IsHomeVisible: true } && _homeStageWidth > 0)
         {
-            _machine.SetWanderingEnabled(true);
-            _machine.Activate(
+            Machine.SetWanderingEnabled(true);
+            Machine.Activate(
                 _homeStageWidth,
                 MyJiuMiPositionRules.Clamp(_settingsStore.Current.MyJiuMi.X));
             StartMotion();
@@ -2064,7 +2082,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         _heartHideAt = null;
     }
 
-    private void SavePosition() => SavePosition(_machine.PositionX);
+    private void SavePosition() => SavePosition(Machine.PositionX);
 
     private void SavePosition(double positionX)
     {
@@ -2089,19 +2107,19 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     {
         if (jumping)
         {
-            return _manifest.GetClip(MyJiuMiState.Stretch);
+            return Manifest.GetClip(MyJiuMiState.Stretch);
         }
 
-        if (_manifest.TryGetActiveClip(state, _machine.SitWatchDirection, out MyJiuMiPetPackClip? clip) &&
+        if (Manifest.TryGetActiveClip(state, Machine.SitWatchDirection, out MyJiuMiPetPackClip? clip) &&
             clip is not null)
         {
             return clip;
         }
 
-        return _manifest.GetClip(MyJiuMiState.LyingIdle);
+        return Manifest.GetClip(MyJiuMiState.LyingIdle);
     }
 
-    private Bitmap?[]? GetFrames(MyJiuMiState state) => GetFrames(_manifest.GetClip(state));
+    private Bitmap?[]? GetFrames(MyJiuMiState state) => GetFrames(Manifest.GetClip(state));
 
     [SuppressMessage(
         "Design",
@@ -2154,7 +2172,7 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
     }
 
     private (double NormalizedX, double NormalizedY) GetNormalizedDefaultAnchor() =>
-        MyJiuMiAnchorRules.Normalize(_manifest.DefaultAnchor, _manifest.Canvas);
+        MyJiuMiAnchorRules.Normalize(Manifest.DefaultAnchor, Manifest.Canvas);
 
     private MyJiuMiDesktopPlacement PlaceFromDefaultAnchor(
         MyJiuMiScreenPoint anchor,
@@ -2174,6 +2192,21 @@ public sealed class MyJiuMiSession : ObservableObject, IDisposable
         return new MyJiuMiScreenPoint(
             (int)Math.Round(pixelWidth * normX, MidpointRounding.AwayFromZero),
             (int)Math.Round(pixelHeight * normY, MidpointRounding.AwayFromZero));
+    }
+
+    private void EnsurePackLoaded()
+    {
+        if (_manifest is not null && _machine is not null)
+        {
+            return;
+        }
+
+        // MyJiuMiSession is resolved by ShellLifecycle before AppBuilder registers IAssetLoader;
+        // deferring manifest loading until first UI/session use avoids falling back on startup.
+        MyJiuMiPetPackManifest manifest = LoadManifest(_logger);
+        _manifest = manifest;
+        _frameAnchor = manifest.DefaultAnchor;
+        _machine = new MyJiuMiStateMachine(_timeProvider, Random.Shared, manifest);
     }
 
     [SuppressMessage(
