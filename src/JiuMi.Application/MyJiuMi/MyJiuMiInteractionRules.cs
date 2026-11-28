@@ -88,4 +88,120 @@ public static class MyJiuMiInteractionRules
     /// Gets how long the heart overlay stays visible.
     /// </summary>
     public static TimeSpan HeartDuration { get; } = TimeSpan.FromMilliseconds(800);
+
+    /// <summary>
+    /// Gets the horizontal distance from the cat's head centre, in DIP, within which the cat looks
+    /// forward in <see cref="MyJiuMiState.SitWatch"/>.
+    /// </summary>
+    public const double SitWatchHorizontalThresholdDip = 60;
+
+    /// <summary>
+    /// Gets the hysteresis half-band, in DIP, applied around <see cref="SitWatchHorizontalThresholdDip"/>
+    /// to prevent rapid head flipping when the cursor hovers near the boundary.
+    /// </summary>
+    public const double SitWatchHysteresisDip = 15;
+
+    /// <summary>
+    /// Gets the minimum elapsed time between gaze direction changes in <see cref="MyJiuMiState.SitWatch"/>.
+    /// </summary>
+    public static TimeSpan SitWatchMinSwitchInterval { get; } = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// Gets the cursor displacement, in DIP, that counts as an effective cursor movement and resets
+    /// the sit-watch stillness timeout.
+    /// </summary>
+    public const double SitWatchEffectiveMoveDip = 8;
+
+    /// <summary>
+    /// Gets the maximum continuous time the cat keeps watching the cursor before getting tired.
+    /// </summary>
+    public static TimeSpan SitWatchMaxDuration { get; } = TimeSpan.FromSeconds(12);
+
+    /// <summary>
+    /// Gets how long the cursor may remain without effective movement before the sitting cat loses interest.
+    /// </summary>
+    public static TimeSpan SitWatchIdleTimeout { get; } = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// Gets how long the cat rests in <see cref="MyJiuMiState.LyingIdle"/> after lying down from
+    /// <see cref="MyJiuMiState.SitWatch"/> before entering <see cref="MyJiuMiState.SleepIn"/>.
+    /// </summary>
+    public static TimeSpan SitWatchLieSleepBuffer { get; } = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// Gets the probability that a page-mode cat lies down to sleep (rather than wandering) when
+    /// sit-watch patience runs out.
+    /// </summary>
+    public const double SitWatchPageSleepProbability = 0.75;
+
+    /// <summary>
+    /// Gets the vertical position of the sitting cat's head centre measured upward from the floor
+    /// anchor as a fraction of the square cat slot.
+    /// </summary>
+    public const double SitWatchHeadHeightRatio = 0.6;
+
+    /// <summary>
+    /// Classifies an initial horizontal cursor offset relative to the cat's head centre using the
+    /// nominal <see cref="SitWatchHorizontalThresholdDip"/> boundaries.
+    /// </summary>
+    /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
+    /// <returns>The matching gaze direction.</returns>
+    public static MyJiuMiSitWatchDirection ClassifySitWatchDirection(double offsetXDip)
+    {
+        if (!double.IsFinite(offsetXDip))
+        {
+            return MyJiuMiSitWatchDirection.Center;
+        }
+
+        if (offsetXDip < -SitWatchHorizontalThresholdDip)
+        {
+            return MyJiuMiSitWatchDirection.Left;
+        }
+
+        if (offsetXDip > SitWatchHorizontalThresholdDip)
+        {
+            return MyJiuMiSitWatchDirection.Right;
+        }
+
+        return MyJiuMiSitWatchDirection.Center;
+    }
+
+    /// <summary>
+    /// Resolves the next gaze direction from <paramref name="current"/> by applying the
+    /// <see cref="SitWatchHysteresisDip"/> band around <see cref="SitWatchHorizontalThresholdDip"/>.
+    /// </summary>
+    /// <param name="current">The currently active gaze direction.</param>
+    /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
+    /// <returns>The updated gaze direction.</returns>
+    public static MyJiuMiSitWatchDirection ResolveSitWatchDirection(
+        MyJiuMiSitWatchDirection current,
+        double offsetXDip)
+    {
+        if (!double.IsFinite(offsetXDip))
+        {
+            return current;
+        }
+
+        double enterSide = SitWatchHorizontalThresholdDip + SitWatchHysteresisDip;
+        double exitSide = SitWatchHorizontalThresholdDip - SitWatchHysteresisDip;
+
+        return current switch
+        {
+            MyJiuMiSitWatchDirection.Left => offsetXDip > enterSide
+                ? MyJiuMiSitWatchDirection.Right
+                : offsetXDip >= -exitSide
+                    ? MyJiuMiSitWatchDirection.Center
+                    : MyJiuMiSitWatchDirection.Left,
+            MyJiuMiSitWatchDirection.Right => offsetXDip < -enterSide
+                ? MyJiuMiSitWatchDirection.Left
+                : offsetXDip <= exitSide
+                    ? MyJiuMiSitWatchDirection.Center
+                    : MyJiuMiSitWatchDirection.Right,
+            _ => offsetXDip < -enterSide
+                ? MyJiuMiSitWatchDirection.Left
+                : offsetXDip > enterSide
+                    ? MyJiuMiSitWatchDirection.Right
+                    : MyJiuMiSitWatchDirection.Center,
+        };
+    }
 }

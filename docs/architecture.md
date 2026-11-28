@@ -201,7 +201,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | --- | --- |
 | 入口 | 左侧导航；作为独立页面参与现有导航与切页动效 |
 | 视图 | `MyJiuMiView` 放在内容岛；房间铺满页头以下区域；猫约 200 DIP，贴地板线 |
-| 激活 | 进入页面时 `Activate()`：加载/复用帧、从 `LyingIdle` 开始、读取 `myJiuMi.x`、启动计时 |
+| 激活 | 进入页面时 `Activate()`：加载/复用帧、读取 `myJiuMi.x`、启动计时；角色包声明 `sit-watch-*` 槽位时默认进入 `SitWatch`，旧包缺省回退 `LyingIdle` |
 | 离开 | `Deactivate()`：停表、取消走路/过渡、清空爱心与 `Zzz`；不保存动画状态 |
 | 主窗口隐藏/最小化 | 页面不可见等同离开：暂停并重置；恢复后重新进入页面才重新开始。桌面模式实现后，若我的JiuMi 是当前页且猫清醒，改为走出到桌面（设计见 ADR-0016） |
 | 不创建窗口 | v1 不创建置顶/透明窗口，不写屏幕坐标；桌面模式见 [#122](https://github.com/ZLiLiang/JiuMi/issues/122) |
@@ -213,16 +213,23 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 状态机与调度
 
-- 状态在 `JiuMi.Application`：`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk`；`MyJiuMiStateMachine` 纯逻辑，注入时间与随机源，不依赖 Avalonia。
-- `LyingIdle` 是唯一默认状态；`Blink` 只从 `LyingIdle` 触发；`SleepIn` / `Wake` / `Stretch` 不循环。
-- 帧序、逐帧时长、资源路径与显式锚点由角色包清单 `src/JiuMi/Assets/MyJiuMi/manifest.json`（`schemaVersion: 1`）唯一定义，由 `MyJiuMiPetPackManifestLoader`（`System.Text.Json` Source Generation）解析并校验；`MyJiuMiAnimationCatalog` 仅保留为清单加载失败时的内置兜底。`jump` 已正式收编进清单 `clips["jump"]`，与点击小跳叠加层衔接；可选 `interactions` 与 `files` 缺省时优雅降级。
+- 状态在 `JiuMi.Application`：核心 9 态（`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk`）加可选扩展态 `SitWatch`（坐姿三向注视鼠标）与 `SitToLie`（坐姿缓缓趴下过渡）；`MyJiuMiStateMachine` 纯逻辑，注入时间与随机源，不依赖 Avalonia。
+- `LyingIdle` 是旧包默认状态；若角色包清单在 `interactions` 槽位同时声明 `sit-watch-left` / `sit-watch-center` / `sit-watch-right`，则进页（`Activate`）、唤醒（`Wake` 结束）或走完路落定（`Walk` 结束）时默认进入 `SitWatch`；旧包缺省时回退 `LyingIdle`。`Blink` 只从 `LyingIdle` 触发；`SleepIn` / `Wake` / `Stretch` / `SitToLie` 不循环。
+- 帧序、逐帧时长、资源路径与显式锚点由角色包清单 `src/JiuMi/Assets/MyJiuMi/manifest.json`（`schemaVersion: 1`）唯一定义，由 `MyJiuMiPetPackManifestLoader`（`System.Text.Json` Source Generation）解析并校验；`MyJiuMiAnimationCatalog` 仅保留为清单加载失败时的内置兜底。`jump` 已正式收编进清单 `clips["jump"]`，与点击小跳叠加层衔接；可选 `interactions`（含 `sit-watch-left` / `sit-watch-center` / `sit-watch-right` / `sit-to-lie`）与 `files` 缺省时优雅降级。
+- **坐立头跟鼠标与看累趴睡（[#221](https://github.com/ZLiLiang/JiuMi/issues/221)）**：
+  - 三向朝向以猫头中心 `catHeadX` 为准：`|cursorX - catHeadX| <= 60 DIP` → `sit-watch-center`，`< -60 DIP` → `sit-watch-left`，`> +60 DIP` → `sit-watch-right`；边界叠加 `±15 DIP` 滞回带宽 + `100 ms` 最小切帧间隔，防止光标在阈值附近抖动甩头。
+  - 光标位移 `> 8 DIP` 才视为有效移动（重置静止计时）；持续注视达 `12 s`，或光标连续静止 `4 s` 无有效移动时视为“看累/失去兴趣”：
+    - 桌面模式（自主闲逛关闭）：**100%** 播放 `sit-to-lie`（缺省直切）→ `LyingIdle` 缓冲 `4 s` → `SleepIn` → `Sleep`。
+    - 页面模式（自主闲逛开启）：**75%** 走同款趴下缓 `4 s` 入睡路径；**25%** 改为触发自主闲逛（`Stretch → Walk`），走完后回到 `SitWatch`（若房间过窄无法选出目标则回退趴睡路径）。
+  - 防吵醒契约：处于 `SleepIn` / `Sleep` 时移动鼠标**不唤醒**，仍只由单击猫、拖拽或地面双击召唤唤醒。
+  - 程序微动：页面模式（`MyJiuMiView` 监听页面级 `PointerMoved`）与桌面模式（`MyJiuMiSession` 通过基础设施层轻量 Win32 `GetCursorPos` 随现有 `16 ms` 计时器轮询全屏坐标）均叠加轻量呼吸起伏与随鼠标 Y 轴高低的 `±3°` 柔和微倾。
 - 调度：页面激活时启动 `DispatcherTimer`（约 16ms 渲染滴答）驱动，状态机按注入的 `TimeProvider` 计算逐帧截止时间；页面离开即停表，不做后台补偿。
-- 眨眼：只在 `LyingIdle` 随机 4–8 秒。
-- 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 103 DIP/s（与走路帧步幅匹配）；走路帧循环、页面内位移插值；到达回 `LyingIdle`。自主走动不重置睡眠计时。
-- 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟；到点 `LyingIdle → SleepIn → Sleep`。倒计时在走路中到点则走完当前这段再 `SleepIn`；拖拽中到点则等松手；`React` / `Stretch` 中到点则等过渡结束。
-- 交互可打断 `Blink` / `React` / `Stretch` / `Walk` / `SleepIn`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
+- 眨眼：只在 `LyingIdle` 随机 5–7 秒。
+- 自主闲逛：`LyingIdle` 且页面可见时，每 20–40 秒随机决定是否走动；目标距当前位置至少 120 DIP、离房间左右边缘至少 40 DIP；约 103 DIP/s（与走路帧步幅匹配）；走路帧循环、页面内位移插值；到达后进入 `SitWatch`（支持坐姿槽位时）或回 `LyingIdle`。自主走动不重置睡眠计时。
+- 睡眠：页面激活后从最后一次单击/拖拽/召唤开始计 5 分钟兜底；到点 `LyingIdle` / `SitWatch` → `SleepIn` → `Sleep`。倒计时在走路中到点则走完当前这段再 `SleepIn`；拖拽中到点则等松手；`React` / `Stretch` 中到点则等过渡结束。
+- 交互可打断 `Blink` / `React` / `Stretch` / `Walk` / `SleepIn` / `SitWatch` / `SitToLie`：拖拽立即进 `Drag`，单击按是否已进入 `Sleep` 决定 `React` 或 `Wake`；不排队等动画结束。
 - 爱心（点击后 300ms 出现、显示 800ms）与 `Zzz` 是矢量叠加，不烘焙进帧；无声音。
-- 桌面模式（设计）：桌面窗共享同一个状态机与帧缓存，只启用 `LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`；不跑自主闲逛与双击召唤，睡眠计时不随主窗口隐藏而暂停。走路只用于走出/走回过渡；走回使用召唤专用的 1.6x pace（167 DIP/s、16 ms 帧），自主与走出走路保持 103 DIP/s、26 ms 帧。
+- 桌面模式：桌面窗共享同一个状态机与帧缓存，启用 `SitWatch` / `SitToLie` / `LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake`；不跑自主闲逛与双击召唤，睡眠计时不随主窗口隐藏而暂停，全屏鼠标移动驱动 `SitWatch` 并叠加呼吸与 `±3°` 柔和微倾。走路只用于走出/走回过渡；走回使用召唤专用的 1.6x pace（167 DIP/s、16 ms 帧），自主与走出走路保持 103 DIP/s、26 ms 帧。
 
 ### 交互
 
@@ -253,10 +260,10 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 
 ### 分层与测试
 
-- UI：`MyJiuMiView`、`MyJiuMiViewModel`、`MyJiuMiSession`（加载角色包清单、共享状态机、帧缓存、16 ms 计时器与宿主协调）、`MyJiuMiDesktopWindow`、窗口级拖拽覆盖层，以及外壳隐藏/最小化钩子；帧锚点平移与房间位置换算在 UI。
-- Application：`MyJiuMiStateMachine`、`MyJiuMiPetPackManifestLoader`（Source-Generated JSON）、`MyJiuMiPetPackManifest` / `MyJiuMiPetPackClip` / `MyJiuMiPetPackFrame`、`MyJiuMiAnchorRules`、`MyJiuMiAnimationCatalog`（兜底）、`MyJiuMiState`、`MyJiuMiPresenceMachine` 与 `MyJiuMiTransitionRules`；纯逻辑，注入时间/随机源。
-- Infrastructure：不新增服务；`ISettingsStore` 既有读写承载 `myJiuMi.x`。
-- 测试：`JiuMi.Application.Tests` 覆盖清单解析与校验、锚点覆写/回退与 DIP 偏移换算、缺失可选 `interactions`/`files` 降级、非法清单降级、状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取，以及 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧/交接点/1.6x pace 与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip 与旧键丢弃；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
+- UI：`MyJiuMiView`、`MyJiuMiViewModel`、`MyJiuMiSession`（加载角色包清单、共享状态机、帧缓存、16 ms 计时器、桌面全屏光标轮询与宿主协调）、`MyJiuMiDesktopWindow`、窗口级拖拽覆盖层，以及外壳隐藏/最小化钩子；帧锚点平移、页面 `PointerMoved` 换算与呼吸/`±3°` 微倾渲染在 UI。
+- Application：`MyJiuMiStateMachine`、`MyJiuMiSitWatchDirection`、`IMyJiuMiCursorPositionProvider`、`MyJiuMiMotionRules`、`MyJiuMiPetPackManifestLoader`（Source-Generated JSON）、`MyJiuMiPetPackManifest` / `MyJiuMiPetPackClip` / `MyJiuMiPetPackFrame`、`MyJiuMiAnchorRules`、`MyJiuMiAnimationCatalog`（兜底）、`MyJiuMiState`、`MyJiuMiPresenceMachine` 与 `MyJiuMiTransitionRules`；纯逻辑，注入时间/随机源。
+- Infrastructure：`ISettingsStore` 既有读写承载 `myJiuMi.x`；新增轻量 `SystemCursorPositionProvider`（Win32 `GetCursorPos`），零全局 Hook、无需额外权限。
+- 测试：`JiuMi.Application.Tests` 覆盖清单解析与校验、锚点覆写/回退与 DIP 偏移换算、缺失可选 `interactions`/`files` 降级、非法清单降级、`SitWatch` 入口/三向滞回防抖/有效移动/耐心耗尽与桌面 100% / 页面 75% 分流/睡眠不唤醒/`±3°` 微倾、状态迁移与打断、睡眠/眨眼/闲逛计时、召唤与 Wake 顺序、X 夹取，以及 presence 迁移/守卫、提交阈值、投影/夹取、走回入口侧/交接点/1.6x pace 与失败回退。`JiuMi.Infrastructure.Tests` 覆盖设置默认值、round-trip、旧键丢弃与 `SystemCursorPositionProvider`；UI 用实机验收（[#123](https://github.com/ZLiLiang/JiuMi/issues/123)），不新建 UI 测试项目。
 - 性能：页面离开即停表；目标 <1% 系统 CPU（仅页面可见时），帧切换不触发整页重排。桌面窗懒创建、回家即关闭，不保留隐藏窗口或后台计时器；桌面模式的计时成本只在猫离家时存在。
 - Win10/Win11：页面模式不涉及透明窗口、置顶与焦点；桌面模式（设计）在两版共用同一套窗口与交接逻辑，差异按手动清单确认。
 
@@ -273,7 +280,7 @@ splash 显示之后、`Handoff` 之前完成的初始化，按依赖顺序：
 | 走出 | 主窗口隐藏/最小化且我的JiuMi 是当前页、猫清醒 → 走向最近边缘交接；隐藏最多等 900 ms，最小化用 150 ms 淡入 |
 | 拖回 | 桌面猫拖到房间可见范围松手 → 页面猫在投影 X 落定，写 `myJiuMi.x` |
 | 走回 | 页面双击地面 → 桌面猫从当前屏幕位置走回房间内侧交接点（进场侧内缩 100 DIP、地板线），同帧交给页面猫；页面猫放大到 200 DIP 后以 1.6x 走到目标 X，交接完成写 `myJiuMi.x` |
-| 桌面交互 | 单击 `React` + 爱心、拖拽移动、双击打开页面（猫留在桌面）、眨眼/睡眠/`Zzz`；无闲逛/右键/声音 |
+| 桌面交互 | 单击 `React` + 爱心、拖拽移动、双击打开页面（猫留在桌面）、坐立三向头跟鼠标（Win32 `GetCursorPos` 全屏轮询 + 呼吸/`±3°` 微倾）→ 看累 100% 趴睡、眨眼/睡眠/`Zzz`（睡眠不因鼠标移动唤醒）；无闲逛/右键/声音 |
 | 尺寸 | 页面 200 DIP ↔ 桌面 160 DIP，底边中心锚点，120 ms 缩放 |
 | 持久化 | 不新增设置键；模式与屏幕坐标只在会话内；重启回页面 |
 | 降级 | 桌面宿主创建失败/帧缺失 → 取消过渡、猫留在家、Warning；显示器/DPI 变化夹回工作区 |

@@ -171,6 +171,15 @@ public sealed class MyJiuMiViewModel : ViewModelBase, IDisposable
     public void Click() => _session.Click();
 
     /// <summary>
+    /// Reports pointer coordinates relative to the cat's head centre in DIP for sit-watch head
+    /// tracking and micro-tilt.
+    /// </summary>
+    /// <param name="offsetXDip">The cursor X minus the cat head centre X, in DIP.</param>
+    /// <param name="offsetYDip">The cursor Y minus the cat head centre Y, in DIP.</param>
+    public void UpdateCursor(double offsetXDip, double offsetYDip) =>
+        _session.UpdateHomeCursor(offsetXDip, offsetYDip);
+
+    /// <summary>
     /// Starts dragging the cat; a sleeping cat is picked up directly.
     /// </summary>
     public void BeginDrag() => _session.BeginHomeDrag();

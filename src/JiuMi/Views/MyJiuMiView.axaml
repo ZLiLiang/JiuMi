@@ -5,7 +5,9 @@
              xmlns:vm="using:JiuMi.ViewModels"
              x:Class="JiuMi.Views.MyJiuMiView"
              x:DataType="vm:MyJiuMiViewModel">
-  <Border Padding="44,32,44,36">
+  <Border Padding="44,32,44,36"
+          Background="Transparent"
+          PointerMoved="OnPagePointerMoved">
     <Grid RowDefinitions="Auto,*">
       <StackPanel>
         <TextBlock FontSize="28"

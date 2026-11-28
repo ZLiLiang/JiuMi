@@ -50,7 +50,7 @@ public sealed class MyJiuMiAnimationCatalogTests
     [Fact]
     public void Duration_GivenEveryState_IsTheSumOfItsFrames()
     {
-        foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
+        foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
         {
             MyJiuMiAnimationClip clip = MyJiuMiAnimationCatalog.GetClip(state);
             TimeSpan expected = TimeSpan.FromTicks(

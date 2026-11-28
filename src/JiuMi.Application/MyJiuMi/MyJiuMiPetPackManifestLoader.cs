@@ -122,7 +122,7 @@ public static class MyJiuMiPetPackManifestLoader
             return MyJiuMiPetPackLoadResult.Failure(clipsError);
         }
 
-        foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
+        foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
         {
             string requiredKey = MyJiuMiPetPackManifest.GetClipKey(state);
             if (!clips.ContainsKey(requiredKey))

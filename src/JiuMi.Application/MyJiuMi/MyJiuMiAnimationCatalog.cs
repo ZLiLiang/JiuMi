@@ -48,7 +48,7 @@ public static class MyJiuMiAnimationCatalog
     public static MyJiuMiPetPackManifest CreateFallbackManifest()
     {
         var clips = new Dictionary<string, MyJiuMiPetPackClip>(StringComparer.Ordinal);
-        foreach (MyJiuMiState state in Enum.GetValues<MyJiuMiState>())
+        foreach (MyJiuMiState state in MyJiuMiPetPackManifest.CoreStates)
         {
             MyJiuMiAnimationClip legacy = GetClip(state);
             string key = MyJiuMiPetPackManifest.GetClipKey(state);

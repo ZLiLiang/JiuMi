@@ -49,4 +49,16 @@ public enum MyJiuMiState
     /// The walking loop used by wandering and summoning; mirrors for the other direction.
     /// </summary>
     Walk,
+
+    /// <summary>
+    /// Sitting upright and following the cursor with its head and gaze; backed by optional
+    /// <c>interactions.sit-watch-*</c> clips.
+    /// </summary>
+    SitWatch,
+
+    /// <summary>
+    /// Transitioning from sitting to lying down before resting; plays once when
+    /// <c>interactions.sit-to-lie</c> is declared.
+    /// </summary>
+    SitToLie,
 }

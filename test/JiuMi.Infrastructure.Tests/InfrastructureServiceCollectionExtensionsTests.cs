@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using JiuMi.Application;
+using JiuMi.Application.MyJiuMi;
 using JiuMi.Application.WeChatVideo;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -56,5 +57,6 @@ public sealed class InfrastructureServiceCollectionExtensionsTests
         Assert.NotNull(provider.GetRequiredService<WeChatVideoDownloadQueue>());
         Assert.NotNull(provider.GetRequiredService<WeChatVideoSession>());
         Assert.NotNull(provider.GetRequiredService<WeChatVideoDownloadCoordinator>());
+        Assert.NotNull(provider.GetRequiredService<IMyJiuMiCursorPositionProvider>());
     }
 }

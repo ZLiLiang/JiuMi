@@ -26,11 +26,13 @@ JiuMi 的领域词汇。文档、议题、提交与代码命名以此为准：�
 | 拖出 / 拖回 | — | 拖动猫越过房间边缘松手进入桌面；把桌面猫拖到房间可见范围松手回页面。 |
 | 走出 / 走回 | — | 主窗口最小化或隐藏到托盘时猫走到桌面；页面双击地面召唤猫走回房间。 |
 | 桌面窗 | `MyJiuMiDesktopWindow` | 桌面模式的置顶透明宿主窗口，160 × 160 DIP，无房间、无接触阴影。 |
-| 趴姿待机 | `MyJiuMiState.LyingIdle` | 默认待机状态：猫趴在地板线上呼吸、尾巴轻摆。 |
+| 坐立注视 | `MyJiuMiState.SitWatch` | 坐姿三向头部跟随鼠标的待机态（`interactions.sit-watch-left/center/right`），缺省时回退 `LyingIdle`。 |
+| 坐姿趴下 | `MyJiuMiState.SitToLie` | 从坐立注视过渡到趴姿待机的非循环动画（`interactions.sit-to-lie`），缺省时直切 `LyingIdle`。 |
+| 趴姿待机 | `MyJiuMiState.LyingIdle` | 趴在地板线上呼吸、尾巴轻摆的休息态；旧角色包默认状态，新角色包用于趴下入睡缓冲。 |
 | 自主闲逛 | — | 页面可见且清醒时，猫在房间内水平走动的行为。 |
 | 双击召唤 | — | 双击地面空白处让猫走到落点的交互；猫在桌面时用于召回。 |
 | 起身/伸懒腰 | `MyJiuMiState.Stretch` | 从趴姿到走路的非循环过渡。 |
-| 页面状态 | `MyJiuMiState` | 页面小猫的动画状态：`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk`。 |
+| 页面状态 | `MyJiuMiState` | 小猫的动画状态：`LyingIdle` / `Blink` / `React` / `Drag` / `SleepIn` / `Sleep` / `Wake` / `Stretch` / `Walk` / `SitWatch` / `SitToLie`。 |
 | 动画清单 | `MyJiuMiAnimationCatalog` | 状态、帧序、逐帧时长与资源路径的唯一定义；UI 只按它换帧。 |
 | 猫位置 | `myJiuMi.x` | 猫中心在房间地板上的归一化水平位置，`0` 最左、`1` 最右。 |
 
